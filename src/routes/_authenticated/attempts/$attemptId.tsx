@@ -170,9 +170,9 @@ function TakeExam() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="sticky top-0 z-10 border-b border-border bg-background">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-3">
-          <div className="text-sm font-medium">{exam?.title}</div>
-          <div className="flex items-center gap-4 text-sm">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2 px-3 py-2 sm:px-6 sm:py-3">
+          <div className="min-w-0 flex-1 truncate text-sm font-medium">{exam?.title}</div>
+          <div className="flex shrink-0 items-center gap-3 text-sm">
             <div className={`flex items-center gap-1 font-mono ${remaining < 60 ? "text-destructive" : ""}`}>
               <Clock className="h-4 w-4" /> {timeStr}
             </div>
@@ -186,12 +186,12 @@ function TakeExam() {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-5xl gap-6 px-6 py-6 lg:grid-cols-[200px_1fr]">
+      <div className="mx-auto grid max-w-5xl gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:grid-cols-[200px_1fr]">
         <div className="space-y-1">
           <div className="mb-2 text-xs text-muted-foreground">
             {answered}/{questions.length} answered
           </div>
-          <div className="grid grid-cols-6 gap-1 lg:grid-cols-4">
+          <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 lg:grid-cols-4">
             {questions.map((qq, i) => {
               const done = (answers[qq.id] ?? []).length > 0;
               return (
@@ -214,14 +214,14 @@ function TakeExam() {
         </div>
 
         <Card>
-          <CardHeader className="flex flex-row items-start justify-between space-y-0">
-            <div>
+          <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
+            <div className="min-w-0 flex-1">
               <div className="text-xs uppercase tracking-wide text-muted-foreground">
                 Question {current + 1} of {questions.length}
               </div>
-              <CardTitle className="mt-2 text-lg">{q.prompt}</CardTitle>
+              <CardTitle className="mt-2 text-base sm:text-lg">{q.prompt}</CardTitle>
             </div>
-            <Badge variant="secondary">{q.marks} marks</Badge>
+            <Badge variant="secondary" className="shrink-0">{q.marks} marks</Badge>
           </CardHeader>
           <CardContent className="space-y-4">
             {(q.type === "mcq" || q.type === "tf") && q.options && (

@@ -102,7 +102,7 @@ function StudentsPage() {
     <AppShell title="Students">
       <h1 className="mb-6 text-2xl font-semibold">Members</h1>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_2fr]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Invite new student</CardTitle>
@@ -138,22 +138,22 @@ function StudentsPage() {
             ) : (
               <div className="space-y-2">
                 {rows.map((r) => (
-                  <div key={r.id} className="flex items-center justify-between rounded-md border border-border p-3">
-                    <div>
-                      <div className="flex items-center gap-2 text-sm font-medium">
-                        {r.full_name || r.email}
+                  <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                        <span className="truncate">{r.full_name || r.email}</span>
                         {r.role === "admin" ? (
                           <Badge><Shield className="mr-1 h-3 w-3" />Admin</Badge>
                         ) : (
                           <Badge variant="secondary"><GraduationCap className="mr-1 h-3 w-3" />Student</Badge>
                         )}
                       </div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="truncate text-xs text-muted-foreground">
                         {r.email} · {r.attemptCount} attempt{r.attemptCount === 1 ? "" : "s"}
                         {r.attemptCount > 0 && ` · avg ${r.averagePercent}%`}
                       </div>
                     </div>
-                    <div className="flex gap-1">
+                    <div className="flex shrink-0 gap-1">
                       <Button variant="ghost" size="sm" onClick={() => toggleRole(r)}>
                         {r.role === "admin" ? "Make student" : "Make admin"}
                       </Button>
