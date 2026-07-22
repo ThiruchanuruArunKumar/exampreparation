@@ -405,16 +405,16 @@ function ExamDetail() {
                         null as Assignment["attempts"][number] | null,
                       );
                       return (
-                        <div key={a.id} className="flex items-center justify-between rounded-md border border-border p-3">
-                          <div>
-                            <div className="text-sm font-medium">{studentName(a.student_id)}</div>
+                        <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-medium">{studentName(a.student_id)}</div>
                             <div className="text-xs text-muted-foreground">
                               {a.attempts.length} attempt{a.attempts.length === 1 ? "" : "s"}
                               {best?.score != null && ` · best ${best.score}/${best.max_score}`}
                               {a.due_at && ` · due ${new Date(a.due_at).toLocaleDateString()}`}
                             </div>
                           </div>
-                          <div className="flex items-center gap-1">
+                          <div className="flex shrink-0 items-center gap-1">
                             {best && (
                               <Link to="/results/$attemptId" params={{ attemptId: best.id }}>
                                 <Button variant="outline" size="sm">View</Button>
