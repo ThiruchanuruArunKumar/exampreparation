@@ -218,18 +218,18 @@ function ExamDetail() {
 
   return (
     <AppShell title={exam.title}>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">{exam.title}</h1>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="truncate text-2xl font-semibold">{exam.title}</h1>
           <p className="text-sm text-muted-foreground">{exam.duration_minutes} min · {questions.length} questions</p>
         </div>
-        <Button variant="destructive" size="sm" onClick={deleteExam}>
-          <Trash2 className="mr-2 h-4 w-4" /> Delete exam
+        <Button variant="destructive" size="sm" onClick={deleteExam} className="shrink-0">
+          <Trash2 className="mr-2 h-4 w-4" /> Delete
         </Button>
       </div>
 
       <Tabs defaultValue="questions">
-        <TabsList>
+        <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
           <TabsTrigger value="questions">Questions</TabsTrigger>
           <TabsTrigger value="assign">Assign</TabsTrigger>
           <TabsTrigger value="results">Results</TabsTrigger>
@@ -329,7 +329,7 @@ function ExamDetail() {
                     />
                   </div>
                 )}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                   <div>
                     <Label className="text-xs">Marks</Label>
                     <Input type="number" min={1} value={q.marks} onChange={(e) => patchQ(i, { marks: Number(e.target.value) || 1 })} />
@@ -405,16 +405,16 @@ function ExamDetail() {
                         null as Assignment["attempts"][number] | null,
                       );
                       return (
-                        <div key={a.id} className="flex items-center justify-between rounded-md border border-border p-3">
-                          <div>
-                            <div className="text-sm font-medium">{studentName(a.student_id)}</div>
+                        <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-sm font-medium">{studentName(a.student_id)}</div>
                             <div className="text-xs text-muted-foreground">
                               {a.attempts.length} attempt{a.attempts.length === 1 ? "" : "s"}
                               {best?.score != null && ` · best ${best.score}/${best.max_score}`}
                               {a.due_at && ` · due ${new Date(a.due_at).toLocaleDateString()}`}
                             </div>
                           </div>
-                          <div className="flex items-center gap-1">
+                          <div className="flex shrink-0 items-center gap-1">
                             {best && (
                               <Link to="/results/$attemptId" params={{ attemptId: best.id }}>
                                 <Button variant="outline" size="sm">View</Button>

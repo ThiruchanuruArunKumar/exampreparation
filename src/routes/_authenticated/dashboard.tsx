@@ -84,7 +84,7 @@ function Dashboard() {
   if (role === "admin") {
     return (
       <AppShell title="Admin">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold">Your exams</h1>
           <Button onClick={() => navigate({ to: "/exams/new" })}>
             <Plus className="mr-2 h-4 w-4" /> New exam
@@ -149,15 +149,15 @@ function Dashboard() {
             const remaining = a.max_attempts - done.length;
             return (
               <Card key={a.id}>
-                <CardHeader className="flex flex-row items-start justify-between space-y-0">
-                  <div>
+                <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
                     <CardTitle className="text-lg">{a.exams?.title}</CardTitle>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {a.exams?.duration_minutes} min · {remaining} attempt{remaining === 1 ? "" : "s"} left
                       {a.due_at && ` · due ${new Date(a.due_at).toLocaleString()}`}
                     </p>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {best && (
                       <Link to="/results/$attemptId" params={{ attemptId: best.id }}>
                         <Button variant="outline" size="sm">

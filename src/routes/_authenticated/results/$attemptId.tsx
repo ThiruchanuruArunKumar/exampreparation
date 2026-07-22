@@ -85,9 +85,9 @@ function Results() {
 
   return (
     <AppShell title="Results">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">{attempt.exams?.title}</h1>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="truncate text-2xl font-semibold">{attempt.exams?.title}</h1>
           <p className="text-sm text-muted-foreground">
             {attempt.submitted_at && new Date(attempt.submitted_at).toLocaleString()}
             {attempt.auto_submitted && " · auto-submitted"}
@@ -95,7 +95,7 @@ function Results() {
           </p>
         </div>
         <Link to="/dashboard">
-          <Button variant="outline">Back to dashboard</Button>
+          <Button variant="outline" size="sm">Back</Button>
         </Link>
       </div>
 
@@ -161,16 +161,16 @@ function Results() {
             if (!q) return null;
             return (
               <div key={a.question_id} className="rounded-md border border-border p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                       Q{i + 1}
                       <Badge variant="secondary">{q.type}</Badge>
                       {q.topic && <Badge variant="outline">{q.topic}</Badge>}
                     </div>
                     <p className="mt-1 text-sm font-medium">{q.prompt}</p>
                   </div>
-                  <div className="flex items-center gap-2 text-sm">
+                  <div className="flex shrink-0 items-center gap-2 text-sm">
                     {a.is_correct ? (
                       <CheckCircle2 className="h-5 w-5 text-primary" />
                     ) : (
