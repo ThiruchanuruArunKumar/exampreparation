@@ -14,16 +14,345 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      answers: {
+        Row: {
+          attempt_id: string
+          id: string
+          is_correct: boolean | null
+          marks_awarded: number | null
+          question_id: string
+          response: Json | null
+          time_spent_seconds: number | null
+          updated_at: string
+        }
+        Insert: {
+          attempt_id: string
+          id?: string
+          is_correct?: boolean | null
+          marks_awarded?: number | null
+          question_id: string
+          response?: Json | null
+          time_spent_seconds?: number | null
+          updated_at?: string
+        }
+        Update: {
+          attempt_id?: string
+          id?: string
+          is_correct?: boolean | null
+          marks_awarded?: number | null
+          question_id?: string
+          response?: Json | null
+          time_spent_seconds?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "answers_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assignments: {
+        Row: {
+          assigned_by: string | null
+          created_at: string
+          due_at: string | null
+          exam_id: string
+          id: string
+          max_attempts: number
+          student_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string
+          due_at?: string | null
+          exam_id: string
+          id?: string
+          max_attempts?: number
+          student_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string
+          due_at?: string | null
+          exam_id?: string
+          id?: string
+          max_attempts?: number
+          student_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assignments_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attempts: {
+        Row: {
+          assignment_id: string
+          auto_submitted: boolean
+          ends_at: string
+          exam_id: string
+          id: string
+          max_score: number | null
+          question_order: Json | null
+          score: number | null
+          started_at: string
+          status: string
+          student_id: string
+          submitted_at: string | null
+          warning_count: number
+        }
+        Insert: {
+          assignment_id: string
+          auto_submitted?: boolean
+          ends_at: string
+          exam_id: string
+          id?: string
+          max_score?: number | null
+          question_order?: Json | null
+          score?: number | null
+          started_at?: string
+          status?: string
+          student_id: string
+          submitted_at?: string | null
+          warning_count?: number
+        }
+        Update: {
+          assignment_id?: string
+          auto_submitted?: boolean
+          ends_at?: string
+          exam_id?: string
+          id?: string
+          max_score?: number | null
+          question_order?: Json | null
+          score?: number | null
+          started_at?: string
+          status?: string
+          student_id?: string
+          submitted_at?: string | null
+          warning_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attempts_assignment_id_fkey"
+            columns: ["assignment_id"]
+            isOneToOne: false
+            referencedRelation: "assignments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attempts_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exams: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          duration_minutes: number
+          id: string
+          shuffle_options: boolean
+          shuffle_questions: boolean
+          status: string
+          title: string
+          total_marks: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          shuffle_options?: boolean
+          shuffle_questions?: boolean
+          status?: string
+          title: string
+          total_marks?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          shuffle_options?: boolean
+          shuffle_questions?: boolean
+          status?: string
+          title?: string
+          total_marks?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      insights: {
+        Row: {
+          attempt_id: string
+          generated_at: string
+          id: string
+          recommendations: string | null
+          strong_topics: Json | null
+          summary: string | null
+          weak_topics: Json | null
+        }
+        Insert: {
+          attempt_id: string
+          generated_at?: string
+          id?: string
+          recommendations?: string | null
+          strong_topics?: Json | null
+          summary?: string | null
+          weak_topics?: Json | null
+        }
+        Update: {
+          attempt_id?: string
+          generated_at?: string
+          id?: string
+          recommendations?: string | null
+          strong_topics?: Json | null
+          summary?: string | null
+          weak_topics?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insights_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: true
+            referencedRelation: "attempts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      questions: {
+        Row: {
+          correct_answer: Json | null
+          created_at: string
+          difficulty: string | null
+          exam_id: string
+          id: string
+          marks: number
+          options: Json | null
+          order_index: number
+          prompt: string
+          topic: string | null
+          type: string
+        }
+        Insert: {
+          correct_answer?: Json | null
+          created_at?: string
+          difficulty?: string | null
+          exam_id: string
+          id?: string
+          marks?: number
+          options?: Json | null
+          order_index?: number
+          prompt: string
+          topic?: string | null
+          type: string
+        }
+        Update: {
+          correct_answer?: Json | null
+          created_at?: string
+          difficulty?: string | null
+          exam_id?: string
+          id?: string
+          marks?: number
+          options?: Json | null
+          order_index?: number
+          prompt?: string
+          topic?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "student"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +479,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "student"],
+    },
   },
 } as const
