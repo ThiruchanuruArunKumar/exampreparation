@@ -84,7 +84,7 @@ function Dashboard() {
   if (role === "admin") {
     return (
       <AppShell title="Admin">
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-2xl font-semibold">Your exams</h1>
           <Button onClick={() => navigate({ to: "/exams/new" })}>
             <Plus className="mr-2 h-4 w-4" /> New exam
