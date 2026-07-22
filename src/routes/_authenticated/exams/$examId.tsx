@@ -218,18 +218,18 @@ function ExamDetail() {
 
   return (
     <AppShell title={exam.title}>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">{exam.title}</h1>
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="truncate text-2xl font-semibold">{exam.title}</h1>
           <p className="text-sm text-muted-foreground">{exam.duration_minutes} min · {questions.length} questions</p>
         </div>
-        <Button variant="destructive" size="sm" onClick={deleteExam}>
-          <Trash2 className="mr-2 h-4 w-4" /> Delete exam
+        <Button variant="destructive" size="sm" onClick={deleteExam} className="shrink-0">
+          <Trash2 className="mr-2 h-4 w-4" /> Delete
         </Button>
       </div>
 
       <Tabs defaultValue="questions">
-        <TabsList>
+        <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
           <TabsTrigger value="questions">Questions</TabsTrigger>
           <TabsTrigger value="assign">Assign</TabsTrigger>
           <TabsTrigger value="results">Results</TabsTrigger>
