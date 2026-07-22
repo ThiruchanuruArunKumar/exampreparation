@@ -43,8 +43,19 @@ function AuthPage() {
     navigate({ to: "/dashboard" });
   };
 
+  const validatePassword = (pw: string): string | null => {
+    if (pw.length < 8) return "Password must be at least 8 characters.";
+    if (!/[A-Z]/.test(pw)) return "Password must contain an uppercase letter.";
+    if (!/[a-z]/.test(pw)) return "Password must contain a lowercase letter.";
+    if (!/[0-9]/.test(pw)) return "Password must contain a number.";
+    if (!/[^A-Za-z0-9]/.test(pw)) return "Password must contain a symbol.";
+    return null;
+  };
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    const pwError = validatePassword(password);
+    if (pwError) return toast.error(pwError);
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email,
@@ -109,7 +120,10 @@ function AuthPage() {
               </div>
               <div>
                 <Label htmlFor="su-pw">Password</Label>
-                <Input id="su-pw" type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} />
+                <Input id="su-pw" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Min 8 chars with uppercase, lowercase, number, and symbol.
+                </p>
               </div>
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Creating account…" : "Create account"}
