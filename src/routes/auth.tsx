@@ -110,11 +110,9 @@ function AuthPage() {
               </div>
               <div>
                 <Label htmlFor="su-pw">Password</Label>
-                <Input id="su-pw" type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Min 8 chars with uppercase, lowercase, number, and symbol.
-                </p>
+                <Input id="su-pw" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
+
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Creating account…" : "Create account"}
               </Button>
