@@ -27,7 +27,7 @@ function Landing() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
           <div className="flex items-center gap-2">
             <Brain className="h-6 w-6 text-primary" />
             <span className="text-lg font-semibold">ExamPrep</span>
@@ -41,16 +41,16 @@ function Landing() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-6">
-        <section className="py-20 text-center">
-          <h1 className="text-4xl font-bold tracking-tight sm:text-6xl">
+      <main className="mx-auto max-w-6xl px-4 sm:px-6">
+        <section className="py-14 text-center sm:py-20">
+          <h1 className="text-3xl font-bold tracking-tight sm:text-5xl md:text-6xl">
             AI-powered exams. Real analytics.
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground">
+          <p className="mx-auto mt-5 max-w-2xl text-base text-muted-foreground sm:mt-6 sm:text-lg">
             Upload any PDF, doc, or image. AI extracts every question. Students take secure proctored
             exams. You see exactly where they're lagging.
           </p>
-          <div className="mt-10 flex justify-center gap-3">
+          <div className="mt-8 flex justify-center gap-3 sm:mt-10">
             <Link
               to="/auth"
               className="inline-flex items-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
@@ -60,7 +60,7 @@ function Landing() {
           </div>
         </section>
 
-        <section className="grid gap-6 pb-24 sm:grid-cols-3">
+        <section className="grid gap-4 pb-16 sm:grid-cols-3 sm:gap-6 sm:pb-24">
           {[
             {
               icon: Sparkles,
