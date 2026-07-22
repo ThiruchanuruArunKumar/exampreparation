@@ -329,7 +329,7 @@ function ExamDetail() {
                     />
                   </div>
                 )}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                   <div>
                     <Label className="text-xs">Marks</Label>
                     <Input type="number" min={1} value={q.marks} onChange={(e) => patchQ(i, { marks: Number(e.target.value) || 1 })} />
