@@ -43,19 +43,8 @@ function AuthPage() {
     navigate({ to: "/dashboard" });
   };
 
-  const validatePassword = (pw: string): string | null => {
-    if (pw.length < 8) return "Password must be at least 8 characters.";
-    if (!/[A-Z]/.test(pw)) return "Password must contain an uppercase letter.";
-    if (!/[a-z]/.test(pw)) return "Password must contain a lowercase letter.";
-    if (!/[0-9]/.test(pw)) return "Password must contain a number.";
-    if (!/[^A-Za-z0-9]/.test(pw)) return "Password must contain a symbol.";
-    return null;
-  };
-
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    const pwError = validatePassword(password);
-    if (pwError) return toast.error(pwError);
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email,
@@ -69,6 +58,7 @@ function AuthPage() {
     if (error) return toast.error(error.message);
     toast.success("Account created — check your email to confirm, then sign in.");
   };
+
 
   const handleGoogle = async () => {
     const res = await lovable.auth.signInWithOAuth("google", {
