@@ -97,6 +97,7 @@ export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: 
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("visibilitychange", onVisibilityWake);
       window.removeEventListener("blur", onBlur);
       document.removeEventListener("fullscreenchange", onFullscreenChange);
       document.removeEventListener("contextmenu", onContextMenu);
@@ -105,6 +106,7 @@ export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: 
       document.removeEventListener("cut", onCopyPaste);
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("beforeunload", onBeforeUnload);
+      if (wakeLock) { void wakeLock.release().catch(() => {}); wakeLock = null; }
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
