@@ -51,15 +51,13 @@ function randomAccessCode() {
 }
 
 function randomStudentCode() {
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const bytes = new Uint8Array(5);
+  // 6 uppercase letters only — clear, easy to read/type.
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // no I, O
+  const bytes = new Uint8Array(6);
   crypto.getRandomValues(bytes);
-  return (
-    "STU-" +
-    Array.from(bytes)
-      .map((b) => alphabet[b % alphabet.length])
-      .join("")
-  );
+  return Array.from(bytes)
+    .map((b) => alphabet[b % alphabet.length])
+    .join("");
 }
 
 /* ---------------- Exam create / settings ---------------- */
