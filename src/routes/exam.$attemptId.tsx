@@ -404,3 +404,255 @@ function ErrorCard({ message }: { message: string }) {
     </Card>
   );
 }
+
+/* -------- Result screen with Answer sheet + Answer book -------- */
+
+type ReviewQ = {
+  id: string;
+  type: string;
+  prompt: string;
+  options: string[] | null;
+  correct_answer: string[];
+  marks: number;
+  topic: string | null;
+  response: string[];
+  is_correct: boolean | null;
+  marks_awarded: number | null;
+};
+
+function ResultScreen({
+  attemptId,
+  sessionToken,
+  result,
+  exam,
+  student,
+}: {
+  attemptId: string;
+  sessionToken: string | null;
+  result: {
+    score: number;
+    maxScore: number;
+    insight: Insight | null;
+    auto: boolean;
+    showResult: boolean;
+    showAnswerSheet: boolean;
+    showAnswerBook: boolean;
+  };
+  exam: { title: string; duration_minutes: number } | null;
+  student: { name: string; student_code: string } | null;
+}) {
+  const [tab, setTab] = useState<"summary" | "sheet" | "book">("summary");
+  const [review, setReview] = useState<ReviewQ[] | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [explanations, setExplanations] = useState<Record<string, string>>({});
+  const [expBusy, setExpBusy] = useState<Record<string, boolean>>({});
+
+  const hasAnyReview = result.showAnswerSheet || result.showAnswerBook;
+  useEffect(() => {
+    if (!sessionToken || !hasAnyReview || review) return;
+    if (tab === "summary") return;
+    setReviewLoading(true);
+    import("@/lib/student.functions")
+      .then(({ getStudentReview }) =>
+        getStudentReview({ data: { attemptId, sessionToken } }),
+      )
+      .then((r) => setReview(r.questions as ReviewQ[]))
+      .catch((e) => toast.error((e as Error).message))
+      .finally(() => setReviewLoading(false));
+  }, [tab, sessionToken, attemptId, review, hasAnyReview]);
+
+  const loadExplanation = async (qid: string) => {
+    if (!sessionToken || explanations[qid] || expBusy[qid]) return;
+    setExpBusy((b) => ({ ...b, [qid]: true }));
+    try {
+      const { getStudentExplanation } = await import("@/lib/student.functions");
+      const r = await getStudentExplanation({
+        data: { attemptId, sessionToken, questionId: qid },
+      });
+      setExplanations((e) => ({ ...e, [qid]: r.explanation }));
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setExpBusy((b) => ({ ...b, [qid]: false }));
+    }
+  };
+
+  const pct = result.maxScore ? Math.round((result.score / result.maxScore) * 100) : 0;
+
+  return (
+    <div className="mx-auto max-w-4xl space-y-4">
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
+            <CheckCircle2 className="h-6 w-6 text-primary" />
+            {result.auto ? "Auto-submitted" : "Exam submitted"}
+          </CardTitle>
+          {student && exam && (
+            <p className="text-sm text-muted-foreground">
+              {student.name} · {student.student_code} · {exam.title}
+            </p>
+          )}
+        </CardHeader>
+        <CardContent>
+          {!result.showResult ? (
+            <p className="text-sm text-muted-foreground">
+              Your responses have been recorded. Your teacher will share results when they are ready.
+            </p>
+          ) : (
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <div className="text-5xl font-bold sm:text-6xl">
+                  {result.score}
+                  <span className="text-2xl text-muted-foreground">/{result.maxScore}</span>
+                </div>
+                <div className="mt-1 text-base text-muted-foreground">{pct}%</div>
+              </div>
+              <Link to="/">
+                <Button variant="outline">Done</Button>
+              </Link>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {result.showResult && hasAnyReview && (
+        <div className="flex flex-wrap gap-2">
+          <Button variant={tab === "summary" ? "default" : "outline"} size="sm" onClick={() => setTab("summary")}>
+            Summary
+          </Button>
+          {result.showAnswerSheet && (
+            <Button variant={tab === "sheet" ? "default" : "outline"} size="sm" onClick={() => setTab("sheet")}>
+              Answer sheet
+            </Button>
+          )}
+          {result.showAnswerBook && (
+            <Button variant={tab === "book" ? "default" : "outline"} size="sm" onClick={() => setTab("book")}>
+              Answer book
+            </Button>
+          )}
+        </div>
+      )}
+
+      {result.showResult && tab === "summary" && result.insight && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Sparkles className="h-4 w-4 text-primary" /> AI feedback
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-sm">{result.insight.summary}</p>
+            {result.insight.weak_topics.length > 0 && (
+              <div>
+                <div className="mb-1 flex items-center gap-1 text-sm font-medium text-destructive">
+                  <TrendingDown className="h-4 w-4" /> Needs work
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {result.insight.weak_topics.map((t) => (
+                    <Badge key={t} variant="destructive">{t}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {result.insight.strong_topics.length > 0 && (
+              <div>
+                <div className="mb-1 flex items-center gap-1 text-sm font-medium text-primary">
+                  <TrendingUp className="h-4 w-4" /> Strong areas
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {result.insight.strong_topics.map((t) => (
+                    <Badge key={t}>{t}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="whitespace-pre-wrap text-sm">{result.insight.recommendations}</div>
+          </CardContent>
+        </Card>
+      )}
+
+      {result.showResult && tab !== "summary" && (
+        <div className="space-y-3">
+          {reviewLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+          {review?.map((q, i) => {
+            const correct = q.correct_answer ?? [];
+            const chose = q.response ?? [];
+            return (
+              <Card key={q.id}>
+                <CardHeader className="pb-2">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Q{i + 1} · {q.type} · {q.marks}m{q.topic ? ` · ${q.topic}` : ""}
+                    </div>
+                    <div className="flex items-center gap-1 text-sm">
+                      {q.is_correct ? (
+                        <span className="text-primary">✓ {q.marks_awarded ?? 0}/{q.marks}</span>
+                      ) : (
+                        <span className="text-destructive">✗ {q.marks_awarded ?? 0}/{q.marks}</span>
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3 pt-0 text-sm">
+                  <div className="whitespace-pre-wrap font-medium">{q.prompt}</div>
+                  {q.options && (
+                    <ul className="ml-4 list-disc space-y-0.5 text-xs">
+                      {q.options.map((o) => (
+                        <li
+                          key={o}
+                          className={
+                            correct.includes(o)
+                              ? "font-semibold text-primary"
+                              : chose.includes(o)
+                                ? "text-destructive line-through"
+                                : ""
+                          }
+                        >
+                          {o}
+                          {correct.includes(o) && " ✓"}
+                          {!correct.includes(o) && chose.includes(o) && " (your answer)"}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {(q.type === "short" || q.type === "tf") && (
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="rounded-md border border-border p-2">
+                        <div className="text-xs text-muted-foreground">Your answer</div>
+                        <div>{chose.length ? chose.join(", ") : "—"}</div>
+                      </div>
+                      <div className="rounded-md border border-border p-2">
+                        <div className="text-xs text-muted-foreground">Correct answer</div>
+                        <div className="text-primary">{correct.join(", ")}</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {tab === "book" && (
+                    <div className="rounded-md bg-muted/40 p-3">
+                      {explanations[q.id] ? (
+                        <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                          {explanations[q.id]}
+                        </div>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => loadExplanation(q.id)}
+                          disabled={!!expBusy[q.id]}
+                        >
+                          <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                          {expBusy[q.id] ? "Generating…" : "Show detailed explanation"}
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
