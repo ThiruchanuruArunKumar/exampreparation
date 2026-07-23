@@ -22,7 +22,7 @@ import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 const searchSchema = z.object({ sid: z.string().trim().min(1).max(40).optional() });
 
 export const Route = createFileRoute("/history/$attemptId")({
-  validateSearch: zodValidator(searchSchema),
+  validateSearch: (s: Record<string, unknown>) => searchSchema.parse(s),
   head: () => ({
     meta: [
       { title: "Result details — ExamPrep" },
