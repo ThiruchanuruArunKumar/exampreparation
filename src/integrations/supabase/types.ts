@@ -184,7 +184,7 @@ export type Database = {
         Row: {
           access_code: string
           created_at: string
-          created_by: string | null
+          created_by: string
           description: string | null
           duration_minutes: number
           end_at: string | null
@@ -206,7 +206,7 @@ export type Database = {
         Insert: {
           access_code: string
           created_at?: string
-          created_by?: string | null
+          created_by: string
           description?: string | null
           duration_minutes?: number
           end_at?: string | null
@@ -228,7 +228,7 @@ export type Database = {
         Update: {
           access_code?: string
           created_at?: string
-          created_by?: string | null
+          created_by?: string
           description?: string | null
           duration_minutes?: number
           end_at?: string | null
@@ -289,6 +289,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          admin_code: string | null
           created_at: string
           email: string | null
           full_name: string | null
@@ -297,6 +298,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_code?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -305,6 +307,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_code?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -397,7 +400,7 @@ export type Database = {
         Row: {
           class_name: string | null
           created_at: string
-          created_by: string | null
+          created_by: string
           email: string | null
           id: string
           name: string
@@ -408,7 +411,7 @@ export type Database = {
         Insert: {
           class_name?: string | null
           created_at?: string
-          created_by?: string | null
+          created_by: string
           email?: string | null
           id?: string
           name: string
@@ -419,7 +422,7 @@ export type Database = {
         Update: {
           class_name?: string | null
           created_at?: string
-          created_by?: string | null
+          created_by?: string
           email?: string | null
           id?: string
           name?: string
@@ -455,6 +458,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      gen_admin_code: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
