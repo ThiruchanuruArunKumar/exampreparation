@@ -170,7 +170,7 @@ function Results() {
                       <Badge variant="secondary">{q.type}</Badge>
                       {q.topic && <Badge variant="outline">{q.topic}</Badge>}
                     </div>
-                    <p className="mt-1 text-sm font-medium">{q.prompt}</p>
+                    <div className="mt-1 text-sm font-medium"><RichContent>{q.prompt}</RichContent></div>
                   </div>
                   <div className="flex shrink-0 items-center gap-2 text-sm">
                     {a.is_correct ? (
@@ -184,13 +184,24 @@ function Results() {
                 <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                   <div>
                     <div className="text-xs text-muted-foreground">Your answer</div>
-                    <div>{a.response?.length ? a.response.join(", ") : "—"}</div>
+                    <div className="flex flex-wrap gap-x-2">
+                      {a.response?.length
+                        ? a.response.map((r: string, ri: number) => (
+                            <span key={ri}><RichContent inline>{r}</RichContent>{ri < a.response.length - 1 ? "," : ""}</span>
+                          ))
+                        : "—"}
+                    </div>
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground">Correct answer</div>
-                    <div>{q.correct_answer.join(", ")}</div>
+                    <div className="flex flex-wrap gap-x-2 text-primary">
+                      {q.correct_answer.map((r: string, ri: number) => (
+                        <span key={ri}><RichContent inline>{r}</RichContent>{ri < q.correct_answer.length - 1 ? "," : ""}</span>
+                      ))}
+                    </div>
                   </div>
                 </div>
+
               </div>
             );
           })}
