@@ -55,7 +55,6 @@ export const Route = createFileRoute("/_authenticated/exams/new")({
 
 function NewExam() {
   const navigate = useNavigate();
-  const DRAFT_KEY = "examprep:new-exam-draft:v1";
   const [title, setTitle] = useState("");
   const [pattern, setPattern] = useState<ExamPattern>("neet");
   const [config, setConfig] = useState<PatternConfig | null>(presetToConfig("neet"));
@@ -65,48 +64,75 @@ function NewExam() {
   const [showSheet, setShowSheet] = useState(true);
   const [showBook, setShowBook] = useState(true);
   const [restored, setRestored] = useState(false);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved">("idle");
+  const skipNextSave = useRef(false);
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Restore draft (once)
+  // Restore draft from cloud (once)
   useEffect(() => {
-    try {
-      const raw = typeof window !== "undefined" ? window.localStorage.getItem(DRAFT_KEY) : null;
-      if (!raw) return;
-      const d = JSON.parse(raw);
-      if (d.title) setTitle(d.title);
-      if (d.pattern) setPattern(d.pattern);
-      if (d.config) setConfig(d.config);
-      if (Array.isArray(d.questions)) setQuestions(d.questions);
-      if (typeof d.showResult === "boolean") setShowResult(d.showResult);
-      if (typeof d.showSheet === "boolean") setShowSheet(d.showSheet);
-      if (typeof d.showBook === "boolean") setShowBook(d.showBook);
-      if (d.title || (Array.isArray(d.questions) && d.questions.length)) {
-        toast.message("Draft restored", { description: "Your unsaved exam was recovered." });
-      }
-    } catch { /* ignore */ }
-    setRestored(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    let cancelled = false;
+    (async () => {
+      try {
+        const d = await getLatestDraft();
+        if (cancelled || !d) return;
+        skipNextSave.current = true;
+        setDraftId(d.id);
+        if (d.title) setTitle(d.title);
+        if (d.pattern) setPattern(d.pattern);
+        if (d.pattern_config) setConfig(d.pattern_config);
+        if (Array.isArray(d.questions)) setQuestions(d.questions as GeneratedQuestion[]);
+        if (typeof d.show_result_after_submit === "boolean") setShowResult(d.show_result_after_submit);
+        if (typeof d.show_answer_sheet === "boolean") setShowSheet(d.show_answer_sheet);
+        if (typeof d.show_answer_book === "boolean") setShowBook(d.show_answer_book);
+        if (d.title || (Array.isArray(d.questions) && d.questions.length)) {
+          toast.message("Draft restored", { description: "Your unsaved exam was recovered from the cloud." });
+        }
+      } catch { /* ignore */ }
+      if (!cancelled) setRestored(true);
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  // Persist draft on every change (after initial restore)
+  // Debounced cloud save on every change
   useEffect(() => {
     if (!restored) return;
-    try {
-      const isEmpty = !title.trim() && questions.length === 0;
-      if (isEmpty) {
-        window.localStorage.removeItem(DRAFT_KEY);
-        return;
+    if (skipNextSave.current) { skipNextSave.current = false; return; }
+    const isEmpty = !title.trim() && questions.length === 0;
+    if (isEmpty) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    setDraftStatus("saving");
+    saveTimer.current = setTimeout(async () => {
+      try {
+        const r = await saveDraft({
+          data: {
+            id: draftId,
+            title,
+            pattern,
+            pattern_config: config,
+            questions,
+            show_result_after_submit: showResult,
+            show_answer_sheet: showSheet,
+            show_answer_book: showBook,
+          },
+        });
+        if (r?.id && r.id !== draftId) setDraftId(r.id);
+        setDraftStatus("saved");
+      } catch {
+        setDraftStatus("idle");
       }
-      window.localStorage.setItem(
-        DRAFT_KEY,
-        JSON.stringify({ title, pattern, config, questions, showResult, showSheet, showBook, savedAt: Date.now() }),
-      );
-    } catch { /* ignore quota */ }
-  }, [restored, title, pattern, config, questions, showResult, showSheet, showBook]);
+    }, 800);
+    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
+  }, [restored, draftId, title, pattern, config, questions, showResult, showSheet, showBook]);
 
-  const clearDraft = () => {
-    try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+  const clearDraft = async () => {
+    if (draftId) {
+      try { await deleteDraft({ data: { id: draftId } }); } catch { /* ignore */ }
+    }
+    setDraftId(null);
     setTitle("");
     setQuestions([]);
+    setDraftStatus("idle");
     toast.success("Draft cleared");
   };
 
@@ -132,7 +158,7 @@ function NewExam() {
         },
       });
       toast.success(`Exam created — password ${r.access_code}`);
-      try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+      if (draftId) { try { await deleteDraft({ data: { id: draftId } }); } catch { /* ignore */ } }
       navigate({ to: "/exams/$examId", params: { examId: r.id } });
 
     } catch (e) {
@@ -140,6 +166,7 @@ function NewExam() {
       setSaving(false);
     }
   };
+
 
   return (
     <AppShell title="New exam">
