@@ -254,9 +254,10 @@ export const getOrGenerateExplanation = createServerFn({ method: "POST" })
     if (!key) throw new Error("AI not configured");
     const gateway = createLovableAiGatewayProvider(key);
     const { text } = await generateText({
-      model: gateway("openai/gpt-5.5"),
+      model: gateway("openai/gpt-5.4-mini"),
+      providerOptions: { lovable: { serviceTier: "priority" } },
       system:
-        "You are an expert tutor. Explain the answer to competitive-exam questions with maximum clarity: state the correct answer, then a rigorous step-by-step derivation. List every formula used with names, define each variable, show all substitutions, and finish with an intuition summary. Use plain text and Markdown (no LaTeX renderer). Be thorough — the student wants to LEARN, not just check.",
+        "You are an expert tutor writing an Answer Book entry for a competitive-exam question. Structure the reply EXACTLY as Markdown with these sections and headings:\n\n### Correct answer\nState the correct option verbatim in **bold**.\n\n### Why it's correct\n2-4 short sentences.\n\n### Step-by-step solution\nNumbered steps. Each step is ONE idea. Show every formula used with its name, define each variable, show substitutions.\n\n### Why the other options are wrong\nOne short bullet per wrong option.\n\n### Key takeaway\n1 line the student should remember.\n\nFORMATTING RULES (critical — output renders with Markdown + KaTeX + mhchem):\n- Wrap ALL math AND chemistry in $...$ (inline) or $$...$$ (display). Never leave raw \\ce{...}, \\frac, ^, _ outside of $...$ — they will not render.\n- Chemistry: $\\ce{H2SO4 -> 2H+ + SO4^{2-}}$. Never write \\ce{...} without surrounding $ signs.\n- Powers/subs: $x^2$, $H_2O$, $10^{-3}$. Units: $9.8\\,\\text{m/s}^2$.\n- Be concise. No preamble like 'Sure!' or 'Let's solve this'.",
       prompt: JSON.stringify(
         {
           topic: q.topic,
@@ -647,6 +648,7 @@ async function runGenerate(prompt: string, userContent: any[]) {
   try {
     const { output } = await generateText({
       model: gateway("openai/gpt-5.5"),
+      providerOptions: { lovable: { serviceTier: "priority" } },
       output: Output.object({ schema: GenSchema }),
       system: prompt,
       messages: [
