@@ -100,6 +100,20 @@ function StudentsPage() {
     }
   };
 
+  const changeStatus = async (r: Row, status: "approved" | "rejected" | "pending") => {
+    try {
+      await setStudentStatus({ data: { userId: r.id, status } });
+      toast.success(status === "approved" ? "Student approved" : status === "rejected" ? "Student rejected" : "Reset to pending");
+      load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  const pending = rows.filter((r) => r.status === "pending" && r.role === "student");
+  const others = rows.filter((r) => !(r.status === "pending" && r.role === "student"));
+
+
   return (
     <AppShell title="Students">
       <h1 className="mb-6 text-2xl font-semibold">Members</h1>
