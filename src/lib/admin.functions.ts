@@ -734,7 +734,9 @@ export const appendQuestions = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    await assertOwnsExam(context, data.examId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
     const { data: existing } = await supabaseAdmin
       .from("questions")
       .select("order_index")
