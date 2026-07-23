@@ -1,12 +1,13 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { Brain, GraduationCap, LogIn } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Brain, GraduationCap, LogIn, ListChecks, Clock, CalendarDays, ArrowRight, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { startStudentAttempt } from "@/lib/student.functions";
+import { listStudentExams, startStudentAttempt } from "@/lib/student.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -15,13 +16,13 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Students enter their ID and exam password to start. Admins can create exams and analyse performance.",
+          "Students see their ongoing and upcoming exams, enter their ID and password to begin. Admins can create and analyse exams.",
       },
       { property: "og:title", content: "ExamPrep — Take your exam" },
       {
         property: "og:description",
         content:
-          "Students enter their ID and exam password to start. Admins can create exams and analyse performance.",
+          "See your ongoing and upcoming exams and start with your student ID and exam password.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -30,11 +31,66 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
+type ExamRow = Awaited<ReturnType<typeof listStudentExams>>["exams"][number];
+
+const STORAGE_KEY = "examprep:studentCode";
+
+function stateBadge(state: ExamRow["state"]) {
+  switch (state) {
+    case "ongoing":
+      return <Badge className="bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/15 dark:text-emerald-400">Ongoing</Badge>;
+    case "upcoming":
+      return <Badge className="bg-sky-500/15 text-sky-600 hover:bg-sky-500/15 dark:text-sky-400">Upcoming</Badge>;
+    case "closed":
+      return <Badge variant="secondary">Closed</Badge>;
+    case "completed":
+      return <Badge variant="outline">Completed</Badge>;
+  }
+}
+
+function fmt(d?: string | null) {
+  if (!d) return "—";
+  return new Date(d).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+}
+
 function Landing() {
   const navigate = useNavigate();
   const [studentCode, setStudentCode] = useState("");
   const [accessCode, setAccessCode] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const [lookupCode, setLookupCode] = useState("");
+  const [loadingList, setLoadingList] = useState(false);
+  const [exams, setExams] = useState<ExamRow[] | null>(null);
+  const [studentName, setStudentName] = useState<string>("");
+
+  useEffect(() => {
+    const saved = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+    if (saved) {
+      setLookupCode(saved);
+      setStudentCode(saved);
+      void fetchExams(saved);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const fetchExams = async (code: string) => {
+    const c = code.trim().toUpperCase();
+    if (!c) return toast.error("Enter your student ID");
+    setLoadingList(true);
+    try {
+      const r = await listStudentExams({ data: { studentCode: c } });
+      setExams(r.exams);
+      setStudentName(r.student.name);
+      localStorage.setItem(STORAGE_KEY, c);
+      setStudentCode(c);
+    } catch (err) {
+      setExams(null);
+      toast.error((err as Error).message);
+    } finally {
+      setLoadingList(false);
+    }
+  };
 
   const start = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +127,7 @@ function Landing() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
+      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
           <div>
             <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
@@ -129,6 +185,113 @@ function Landing() {
             </CardContent>
           </Card>
         </div>
+
+        {/* My exams */}
+        <section className="mt-14">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="flex items-center gap-2 text-xl font-semibold sm:text-2xl">
+                <ListChecks className="h-5 w-5 text-primary" /> My exams
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                See every ongoing and upcoming exam assigned to you.
+              </p>
+            </div>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                void fetchExams(lookupCode);
+              }}
+              className="flex w-full max-w-sm gap-2"
+            >
+              <Input
+                placeholder="Student ID (ABCDEF)"
+                value={lookupCode}
+                onChange={(e) => setLookupCode(e.target.value.toUpperCase())}
+                maxLength={6}
+              />
+              <Button type="submit" disabled={loadingList}>
+                {loadingList ? <Loader2 className="h-4 w-4 animate-spin" /> : "Show"}
+              </Button>
+            </form>
+          </div>
+
+          {loadingList && !exams && (
+            <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+              Loading your exams…
+            </div>
+          )}
+
+          {exams && exams.length === 0 && (
+            <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+              No exams assigned to <span className="font-medium">{studentName}</span> yet.
+            </div>
+          )}
+
+          {exams && exams.length > 0 && (
+            <>
+              <p className="mb-3 text-sm text-muted-foreground">
+                Signed in as <span className="font-medium text-foreground">{studentName}</span>
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {exams.map((row) => (
+                  <Link
+                    key={row.exam.id}
+                    to="/exam-info/$examId"
+                    params={{ examId: row.exam.id }}
+                    search={{ student: studentCode }}
+                    className="group"
+                  >
+                    <Card className="h-full transition hover:border-primary/50 hover:shadow-md">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <CardTitle className="text-base leading-tight">
+                            {row.exam.title}
+                          </CardTitle>
+                          {stateBadge(row.state)}
+                        </div>
+                        {row.exam.pattern && (
+                          <div className="mt-1 text-xs uppercase tracking-wide text-muted-foreground">
+                            {row.exam.pattern}
+                          </div>
+                        )}
+                      </CardHeader>
+                      <CardContent className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Clock className="h-3.5 w-3.5" />
+                          {row.exam.duration_minutes} min · {row.exam.total_marks ?? 0} marks
+                        </div>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <CalendarDays className="h-3.5 w-3.5" />
+                          {row.exam.start_at ? fmt(row.exam.start_at) : "Anytime"}
+                        </div>
+                        {row.state === "upcoming" && row.exam.start_at && (
+                          <div className="text-xs text-sky-600 dark:text-sky-400">
+                            Opens {fmt(row.exam.start_at)}
+                          </div>
+                        )}
+                        {row.state === "ongoing" && (
+                          <div className="text-xs text-emerald-600 dark:text-emerald-400">
+                            Available now
+                            {row.exam.end_at ? ` · closes ${fmt(row.exam.end_at)}` : ""}
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between pt-1 text-xs text-muted-foreground">
+                          <span>
+                            Attempts {row.attempts_used}/{row.max_attempts}
+                          </span>
+                          <span className="inline-flex items-center gap-1 text-primary group-hover:underline">
+                            Details <ArrowRight className="h-3 w-3" />
+                          </span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
+        </section>
       </main>
     </div>
   );
