@@ -22,6 +22,8 @@ import {
   reportStudentWarning,
   submitStudentAttempt,
 } from "@/lib/student.functions";
+import { RichContent } from "@/components/RichContent";
+
 
 export const Route = createFileRoute("/exam/$attemptId")({
   head: () => ({
@@ -295,7 +297,10 @@ function TakeExam() {
               <div className="text-xs uppercase tracking-wide text-muted-foreground">
                 Question {current + 1} of {questions.length}
               </div>
-              <CardTitle className="mt-2 text-base sm:text-lg">{q.prompt}</CardTitle>
+              <CardTitle className="mt-2 text-base sm:text-lg">
+                <RichContent>{q.prompt}</RichContent>
+              </CardTitle>
+
             </div>
             <Badge variant="secondary" className="shrink-0">
               {q.marks} marks
@@ -317,7 +322,8 @@ function TakeExam() {
                       checked={resp.includes(opt)}
                       onChange={() => setResp(q.id, [opt])}
                     />
-                    <span className="text-sm">{opt}</span>
+                    <RichContent inline className="text-sm">{opt}</RichContent>
+
                   </label>
                 ))}
               </div>
@@ -338,7 +344,7 @@ function TakeExam() {
                         setResp(q.id, e.target.checked ? [...resp, opt] : resp.filter((v) => v !== opt))
                       }
                     />
-                    <span className="text-sm">{opt}</span>
+                    <RichContent inline className="text-sm">{opt}</RichContent>
                   </label>
                 ))}
               </div>
@@ -594,9 +600,9 @@ function ResultScreen({
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-0 text-sm">
-                  <div className="whitespace-pre-wrap font-medium">{q.prompt}</div>
+                  <div className="font-medium"><RichContent>{q.prompt}</RichContent></div>
                   {q.options && (
-                    <ul className="ml-4 list-disc space-y-0.5 text-xs">
+                    <ul className="ml-4 list-disc space-y-1 text-xs">
                       {q.options.map((o) => (
                         <li
                           key={o}
@@ -608,13 +614,14 @@ function ResultScreen({
                                 : ""
                           }
                         >
-                          {o}
+                          <RichContent inline>{o}</RichContent>
                           {correct.includes(o) && " ✓"}
                           {!correct.includes(o) && chose.includes(o) && " (your answer)"}
                         </li>
                       ))}
                     </ul>
                   )}
+
                   {(q.type === "short" || q.type === "tf") && (
                     <div className="grid gap-2 sm:grid-cols-2">
                       <div className="rounded-md border border-border p-2">
@@ -631,9 +638,10 @@ function ResultScreen({
                   {tab === "book" && (
                     <div className="rounded-md bg-muted/40 p-3">
                       {explanations[q.id] ? (
-                        <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                        <RichContent className="text-sm leading-relaxed">
                           {explanations[q.id]}
-                        </div>
+                        </RichContent>
+
                       ) : (
                         <Button
                           size="sm"

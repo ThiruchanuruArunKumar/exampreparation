@@ -13,6 +13,9 @@ import { PatternPicker } from "@/components/PatternPicker";
 import { QuestionSource, type GeneratedQuestion } from "@/components/QuestionSource";
 import { createExam } from "@/lib/admin.functions";
 import { type ExamPattern, type PatternConfig, presetToConfig } from "@/lib/exam-patterns";
+import { RichContent } from "@/components/RichContent";
+import { useEffect } from "react";
+
 
 function ToggleRow({
   label,
@@ -50,6 +53,7 @@ export const Route = createFileRoute("/_authenticated/exams/new")({
 
 function NewExam() {
   const navigate = useNavigate();
+  const DRAFT_KEY = "examprep:new-exam-draft:v1";
   const [title, setTitle] = useState("");
   const [pattern, setPattern] = useState<ExamPattern>("neet");
   const [config, setConfig] = useState<PatternConfig | null>(presetToConfig("neet"));
@@ -58,6 +62,52 @@ function NewExam() {
   const [showResult, setShowResult] = useState(true);
   const [showSheet, setShowSheet] = useState(true);
   const [showBook, setShowBook] = useState(true);
+  const [restored, setRestored] = useState(false);
+
+  // Restore draft (once)
+  useEffect(() => {
+    try {
+      const raw = typeof window !== "undefined" ? window.localStorage.getItem(DRAFT_KEY) : null;
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (d.title) setTitle(d.title);
+      if (d.pattern) setPattern(d.pattern);
+      if (d.config) setConfig(d.config);
+      if (Array.isArray(d.questions)) setQuestions(d.questions);
+      if (typeof d.showResult === "boolean") setShowResult(d.showResult);
+      if (typeof d.showSheet === "boolean") setShowSheet(d.showSheet);
+      if (typeof d.showBook === "boolean") setShowBook(d.showBook);
+      if (d.title || (Array.isArray(d.questions) && d.questions.length)) {
+        toast.message("Draft restored", { description: "Your unsaved exam was recovered." });
+      }
+    } catch { /* ignore */ }
+    setRestored(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist draft on every change (after initial restore)
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      const isEmpty = !title.trim() && questions.length === 0;
+      if (isEmpty) {
+        window.localStorage.removeItem(DRAFT_KEY);
+        return;
+      }
+      window.localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({ title, pattern, config, questions, showResult, showSheet, showBook, savedAt: Date.now() }),
+      );
+    } catch { /* ignore quota */ }
+  }, [restored, title, pattern, config, questions, showResult, showSheet, showBook]);
+
+  const clearDraft = () => {
+    try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+    setTitle("");
+    setQuestions([]);
+    toast.success("Draft cleared");
+  };
+
 
   const duration = config?.duration_minutes ?? 60;
   const subjects = config?.sections.map((s) => s.name) ?? [];
@@ -80,7 +130,9 @@ function NewExam() {
         },
       });
       toast.success(`Exam created — password ${r.access_code}`);
+      try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       navigate({ to: "/exams/$examId", params: { examId: r.id } });
+
     } catch (e) {
       toast.error((e as Error).message);
       setSaving(false);
@@ -139,9 +191,18 @@ function NewExam() {
           <Button className="w-full" size="lg" onClick={save} disabled={saving}>
             {saving ? "Saving…" : `Save exam (${questions.length} questions)`}
           </Button>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>✓ Draft auto-saved locally — safe to close and come back.</span>
+            {(title || questions.length > 0) && (
+              <button type="button" onClick={clearDraft} className="underline underline-offset-2 hover:text-destructive">
+                Discard draft
+              </button>
+            )}
+          </div>
           <p className="text-center text-xs text-muted-foreground">
             You can add more questions any time — even after publishing — from the exam page.
           </p>
+
         </div>
 
         <div className="space-y-3">
@@ -163,14 +224,17 @@ function NewExam() {
                   </Button>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
-                  <div className="whitespace-pre-wrap">{q.prompt || <span className="text-muted-foreground">(empty prompt)</span>}</div>
+                  <RichContent>{q.prompt || "*(empty prompt)*"}</RichContent>
                   {q.options && (
                     <ul className="ml-4 list-disc text-xs">
                       {q.options.map((o, oi) => (
-                        <li key={oi} className={q.correct_answer.includes(o) ? "font-medium text-primary" : ""}>{o}</li>
+                        <li key={oi} className={q.correct_answer.includes(o) ? "font-medium text-primary" : ""}>
+                          <RichContent inline>{o}</RichContent>
+                        </li>
                       ))}
                     </ul>
                   )}
+
                   {q.type === "short" && (
                     <div className="text-xs text-muted-foreground">Accepted: {q.correct_answer.join(", ") || "—"}</div>
                   )}
