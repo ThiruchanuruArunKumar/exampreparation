@@ -667,14 +667,6 @@ async function runGenerateExact(prompt: string, userContent: any[], count: numbe
   return qs.slice(0, count);
 }
 
-function _unused() {
-  } catch (error) {
-    if (NoObjectGeneratedError.isInstance(error)) {
-      throw new Error("AI could not produce structured questions. Try clearer input or fewer questions.");
-    }
-    throw error;
-  }
-}
 
 
 function baseGenPrompt(pattern: string, count: number, subject?: string | null) {
