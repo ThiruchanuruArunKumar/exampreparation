@@ -34,7 +34,7 @@ const QuestionInput = z.object({
   prompt: z.string().min(1),
   options: z.array(z.string()).nullable(),
   correct_answer: z.array(z.string()),
-  marks: z.number().int().min(1).max(100),
+  marks: z.number().min(0).max(100),
   topic: z.string().nullable(),
   difficulty: z.enum(["easy", "medium", "hard"]),
 });
