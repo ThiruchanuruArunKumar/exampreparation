@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { listStudentExams, startStudentAttempt } from "@/lib/student.functions";
-import { LAST_STUDENT_ID_KEY, getLastStudentId, setLastStudentId, clearLastStudentId } from "@/lib/lastStudentId";
+import { LAST_STUDENT_ID_KEY as _LAST_STUDENT_ID_KEY, getLastStudentId, setLastStudentId, clearLastStudentId } from "@/lib/lastStudentId";
+void _LAST_STUDENT_ID_KEY;
 
 export const Route = createFileRoute("/")({
   head: () => ({
