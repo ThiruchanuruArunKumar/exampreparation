@@ -191,72 +191,19 @@ function TakeExam() {
   if (error) return <Frame><ErrorCard message={error} /></Frame>;
 
   if (result) {
-    const pct = result.maxScore ? Math.round((result.score / result.maxScore) * 100) : 0;
     return (
       <Frame>
-        <Card className="mx-auto max-w-3xl">
-          <CardHeader>
-            <CardTitle className="flex flex-wrap items-center gap-2">
-              <CheckCircle2 className="h-6 w-6 text-primary" />
-              {result.auto ? "Auto-submitted — Your score" : "Submitted — Your score"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div>
-              <div className="text-6xl font-bold">
-                {result.score}
-                <span className="text-2xl text-muted-foreground">/{result.maxScore}</span>
-              </div>
-              <div className="mt-1 text-lg text-muted-foreground">{pct}%</div>
-              {student && (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {student.name} · {student.student_code} · {exam?.title}
-                </p>
-              )}
-            </div>
-            {result.insight && (
-              <div className="space-y-3 rounded-lg border border-border p-4">
-                <div className="flex items-center gap-2 font-medium">
-                  <Sparkles className="h-4 w-4 text-primary" /> AI feedback
-                </div>
-                <p className="text-sm">{result.insight.summary}</p>
-                {result.insight.weak_topics.length > 0 && (
-                  <div>
-                    <div className="mb-1 flex items-center gap-1 text-sm font-medium text-destructive">
-                      <TrendingDown className="h-4 w-4" /> Needs work
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {result.insight.weak_topics.map((t) => (
-                        <Badge key={t} variant="destructive">{t}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {result.insight.strong_topics.length > 0 && (
-                  <div>
-                    <div className="mb-1 flex items-center gap-1 text-sm font-medium text-primary">
-                      <TrendingUp className="h-4 w-4" /> Strong areas
-                    </div>
-                    <div className="flex flex-wrap gap-1">
-                      {result.insight.strong_topics.map((t) => (
-                        <Badge key={t}>{t}</Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                <div className="whitespace-pre-wrap text-sm">{result.insight.recommendations}</div>
-              </div>
-            )}
-            <div className="flex justify-end">
-              <Link to="/">
-                <Button variant="outline">Done</Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+        <ResultScreen
+          attemptId={attemptId}
+          sessionToken={token}
+          result={result}
+          exam={exam}
+          student={student}
+        />
       </Frame>
     );
   }
+
 
   if (!started) {
     return (
