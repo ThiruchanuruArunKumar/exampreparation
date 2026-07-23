@@ -292,7 +292,9 @@ export const saveQuestions = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    await assertOwnsExam(context, data.examId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
     if (data.deletedIds.length) {
       await supabaseAdmin.from("questions").delete().in("id", data.deletedIds);
     }
