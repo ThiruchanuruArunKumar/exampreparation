@@ -50,12 +50,25 @@ function HistoryPage() {
   const [busy, setBusy] = useState(false);
   const [student, setStudent] = useState<StudentInfo | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [lastId, setLastId] = useState<string | null>(null);
 
   const fetchFor = useCallback(async (code: string) => {
     const r = await getStudentHistory({ data: { studentCode: code } });
     setStudent(r.student as StudentInfo);
     setHistory(r.history as HistoryItem[]);
+    setLastStudentId(code);
+    setLastId(code.toUpperCase());
     return r;
+  }, []);
+
+  useEffect(() => {
+    const saved = getLastStudentId();
+    if (saved) {
+      setLastId(saved);
+      setStudentCode(saved);
+      void fetchFor(saved).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const load = async (e: React.FormEvent) => {
@@ -63,7 +76,7 @@ function HistoryPage() {
     if (!studentCode.trim()) return toast.error("Enter your student ID");
     setBusy(true);
     try {
-      const r = await fetchFor(studentCode.trim());
+      const r = await fetchFor(studentCode.trim().toUpperCase());
       if (!r.history.length) toast.info("No exam attempts yet");
     } catch (err) {
       toast.error((err as Error).message);
