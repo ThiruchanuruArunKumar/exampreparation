@@ -662,6 +662,20 @@ async function runGenerate(prompt: string, userContent: any[]) {
   }
 }
 
+async function runGenerateExact(prompt: string, userContent: any[], count: number) {
+  const qs = await runGenerate(prompt, userContent);
+  return qs.slice(0, count);
+}
+
+function _unused() {
+  } catch (error) {
+    if (NoObjectGeneratedError.isInstance(error)) {
+      throw new Error("AI could not produce structured questions. Try clearer input or fewer questions.");
+    }
+    throw error;
+  }
+}
+
 
 function baseGenPrompt(pattern: string, count: number, subject?: string | null) {
   const guide = PATTERN_GUIDE[pattern] ?? PATTERN_GUIDE.custom;
