@@ -11,6 +11,9 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { NumberField } from "@/components/NumberField";
+import { PatternPicker } from "@/components/PatternPicker";
+import { QuestionSource } from "@/components/QuestionSource";
 import { listStudents } from "@/lib/exams.functions";
 import { reassignAttempt } from "@/lib/attempts.functions";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
@@ -20,9 +23,15 @@ import {
   bulkAssign,
   getExamAnalytics,
   regenerateExamCode,
+  appendQuestions,
 } from "@/lib/admin.functions";
 import {
-  Trash2, RotateCcw, UserPlus, Plus, Save, ArrowUp, ArrowDown, CheckCircle2, Copy, RefreshCw,
+  type ExamPattern,
+  type PatternConfig,
+  patternLabel,
+} from "@/lib/exam-patterns";
+import {
+  Trash2, RotateCcw, UserPlus, Save, ArrowUp, ArrowDown, CheckCircle2, Copy, RefreshCw,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/exams/$examId")({
@@ -48,6 +57,9 @@ type Exam = {
   access_code: string;
   start_at: string | null;
   end_at: string | null;
+  pattern: ExamPattern;
+  pattern_config: PatternConfig | null;
+  negative_mark_per_wrong: number;
 };
 
 type Question = {
@@ -97,7 +109,7 @@ function ExamDetail() {
 
   const reload = async () => {
     const [{ data: e }, { data: q }, { data: a }] = await Promise.all([
-      supabase.from("exams").select("id, title, description, duration_minutes, shuffle_questions, shuffle_options, access_code, start_at, end_at").eq("id", examId).single(),
+      supabase.from("exams").select("id, title, description, duration_minutes, shuffle_questions, shuffle_options, access_code, start_at, end_at, pattern, pattern_config, negative_mark_per_wrong").eq("id", examId).single(),
       supabase.from("questions").select("id, type, prompt, options, correct_answer, marks, topic, difficulty").eq("exam_id", examId).order("order_index"),
       supabase.from("assignments")
         .select("id, student_id, due_at, max_attempts, attempts(id, status, score, max_score)")
@@ -133,6 +145,9 @@ function ExamDetail() {
           shuffle_options: exam.shuffle_options,
           start_at: exam.start_at,
           end_at: exam.end_at,
+          pattern: exam.pattern,
+          pattern_config: exam.pattern_config,
+          negative_mark_per_wrong: exam.negative_mark_per_wrong ?? 0,
         },
       });
       toast.success("Settings saved");
@@ -161,10 +176,6 @@ function ExamDetail() {
     });
   };
 
-  const addQ = () => setQuestions((qs) => [...qs, {
-    type: "mcq", prompt: "", options: ["", "", "", ""], correct_answer: [], marks: 1, topic: null, difficulty: "medium",
-  }]);
-
   const persistQuestions = async () => {
     setSavingQuestions(true);
     try {
@@ -175,6 +186,38 @@ function ExamDetail() {
       reload();
     } catch (e) { toast.error((e as Error).message); }
     finally { setSavingQuestions(false); }
+  };
+
+  const onAddQuestions = async (qs: Question[]) => {
+    if (!qs.length) return;
+    // For AI-generated batches persist immediately so the admin sees them in the editor
+    // even if they haven't saved yet. Blank manual questions still just append locally.
+    const hasContent = qs.some((q) => q.prompt.trim());
+    if (hasContent) {
+      try {
+        await appendQuestions({
+          data: {
+            examId,
+            questions: qs.filter((q) => q.prompt.trim()).map((q) => ({
+              type: q.type,
+              prompt: q.prompt,
+              options: q.options,
+              correct_answer: q.correct_answer,
+              marks: q.marks,
+              topic: q.topic,
+              difficulty: q.difficulty,
+            })),
+          },
+        });
+        toast.success(`Added ${qs.length} question${qs.length === 1 ? "" : "s"}`);
+        reload();
+        return;
+      } catch (e) {
+        toast.error((e as Error).message);
+        return;
+      }
+    }
+    setQuestions((prev) => [...prev, ...qs]);
   };
 
   const assignedIds = new Set(assignments.map((a) => a.student_id));
@@ -252,12 +295,17 @@ function ExamDetail() {
 
   if (!exam) return <AppShell><p>Loading…</p></AppShell>;
 
+  const subjects = exam.pattern_config?.sections.map((s) => s.name) ?? [];
+
   return (
     <AppShell title={exam.title}>
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="truncate text-2xl font-semibold">{exam.title}</h1>
-          <p className="text-sm text-muted-foreground">{exam.duration_minutes} min · {questions.length} questions</p>
+          <p className="text-sm text-muted-foreground">
+            {patternLabel(exam.pattern)} · {exam.duration_minutes} min · {questions.length} questions
+            {exam.negative_mark_per_wrong ? ` · −${exam.negative_mark_per_wrong} per wrong` : ""}
+          </p>
         </div>
         <Button variant="destructive" size="sm" onClick={deleteExam} className="shrink-0">
           <Trash2 className="mr-2 h-4 w-4" /> Delete
@@ -287,13 +335,19 @@ function ExamDetail() {
         </TabsList>
 
         {/* QUESTIONS */}
-        <TabsContent value="questions" className="mt-4 space-y-3">
-          <div className="flex justify-between">
-            <Button variant="outline" onClick={addQ}><Plus className="mr-2 h-4 w-4" />Add question</Button>
+        <TabsContent value="questions" className="mt-4 space-y-4">
+          <QuestionSource
+            pattern={exam.pattern}
+            subjects={subjects}
+            onQuestions={(qs) => onAddQuestions(qs as Question[])}
+          />
+
+          <div className="flex justify-end">
             <Button onClick={persistQuestions} disabled={savingQuestions}>
               <Save className="mr-2 h-4 w-4" />{savingQuestions ? "Saving…" : "Save changes"}
             </Button>
           </div>
+
           {questions.map((q, i) => (
             <Card key={q.id ?? `new-${i}`}>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
@@ -365,7 +419,7 @@ function ExamDetail() {
                     })}
                     {(q.type === "mcq" || q.type === "multi") && (
                       <Button variant="ghost" size="sm" onClick={() => patchQ(i, { options: [...(q.options ?? []), ""] })}>
-                        <Plus className="mr-1 h-3 w-3" />Add option
+                        + Add option
                       </Button>
                     )}
                   </div>
@@ -382,7 +436,7 @@ function ExamDetail() {
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                   <div>
                     <Label className="text-xs">Marks</Label>
-                    <Input type="number" min={1} value={q.marks} onChange={(e) => patchQ(i, { marks: Number(e.target.value) || 1 })} />
+                    <NumberField value={q.marks} onChange={(n) => patchQ(i, { marks: n })} min={0} step={0.25} fallback={1} />
                   </div>
                   <div>
                     <Label className="text-xs">Topic</Label>
@@ -419,7 +473,7 @@ function ExamDetail() {
                   </div>
                   <div>
                     <Label>Max attempts</Label>
-                    <Input type="number" min={1} value={maxAttempts} onChange={(e) => setMaxAttempts(Number(e.target.value) || 1)} />
+                    <NumberField value={maxAttempts} onChange={setMaxAttempts} min={1} fallback={1} />
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
@@ -531,9 +585,27 @@ function ExamDetail() {
         </TabsContent>
 
         {/* SETTINGS */}
-        <TabsContent value="settings" className="mt-4">
+        <TabsContent value="settings" className="mt-4 space-y-4">
           <Card>
-            <CardHeader><CardTitle className="text-base">Exam settings</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-base">Exam pattern</CardTitle></CardHeader>
+            <CardContent>
+              <PatternPicker
+                pattern={exam.pattern}
+                config={exam.pattern_config}
+                onChange={(p, c) =>
+                  patchExam({
+                    pattern: p,
+                    pattern_config: c,
+                    duration_minutes: c?.duration_minutes ?? exam.duration_minutes,
+                    negative_mark_per_wrong: c?.negative_mark_per_wrong ?? exam.negative_mark_per_wrong,
+                  })
+                }
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader><CardTitle className="text-base">Exam details</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               <div>
                 <Label>Title</Label>
@@ -543,26 +615,35 @@ function ExamDetail() {
                 <Label>Description</Label>
                 <Textarea value={exam.description ?? ""} onChange={(e) => patchExam({ description: e.target.value || null })} />
               </div>
-              <div>
-                <Label>Duration (minutes)</Label>
-                <Input type="number" min={1} value={exam.duration_minutes} onChange={(e) => patchExam({ duration_minutes: Number(e.target.value) || 1 })} />
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <Label>Duration (minutes)</Label>
+                  <NumberField
+                    value={exam.duration_minutes}
+                    onChange={(n) => patchExam({ duration_minutes: n })}
+                    min={1}
+                    fallback={30}
+                  />
+                </div>
+                <div>
+                  <Label>Negative marks per wrong</Label>
+                  <NumberField
+                    value={exam.negative_mark_per_wrong ?? 0}
+                    onChange={(n) => patchExam({ negative_mark_per_wrong: n })}
+                    min={0}
+                    step={0.25}
+                    fallback={0}
+                  />
+                </div>
               </div>
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <Label>Available from</Label>
-                  <Input
-                    type="datetime-local"
-                    value={toLocalInput(exam.start_at)}
-                    onChange={(e) => patchExam({ start_at: fromLocalInput(e.target.value) })}
-                  />
+                  <Input type="datetime-local" value={toLocalInput(exam.start_at)} onChange={(e) => patchExam({ start_at: fromLocalInput(e.target.value) })} />
                 </div>
                 <div>
                   <Label>Available until</Label>
-                  <Input
-                    type="datetime-local"
-                    value={toLocalInput(exam.end_at)}
-                    onChange={(e) => patchExam({ end_at: fromLocalInput(e.target.value) })}
-                  />
+                  <Input type="datetime-local" value={toLocalInput(exam.end_at)} onChange={(e) => patchExam({ end_at: fromLocalInput(e.target.value) })} />
                 </div>
               </div>
               <p className="text-xs text-muted-foreground">Students can only start the exam within this window. Leave blank for always-available.</p>

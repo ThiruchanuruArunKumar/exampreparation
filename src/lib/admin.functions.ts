@@ -1,6 +1,24 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { createLovableAiGatewayProvider } from "./ai-gateway.server";
+
+const PatternEnum = z.enum(["neet", "eamcet", "mains", "custom"]);
+const PatternConfigSchema = z
+  .object({
+    sections: z.array(
+      z.object({
+        name: z.string().min(1).max(80),
+        count: z.number().int().min(0).max(500),
+        marks_per_q: z.number().min(0).max(100),
+      }),
+    ),
+    negative_mark_per_wrong: z.number().min(0).max(100),
+    duration_minutes: z.number().int().min(1).max(600),
+    notes: z.string().max(2000).optional().nullable(),
+  })
+  .nullable();
 
 async function assertAdmin(context: { supabase: any; userId: string }) {
   const { data } = await context.supabase.rpc("has_role", {
@@ -16,7 +34,7 @@ const QuestionInput = z.object({
   prompt: z.string().min(1),
   options: z.array(z.string()).nullable(),
   correct_answer: z.array(z.string()),
-  marks: z.number().int().min(1).max(100),
+  marks: z.number().min(0).max(100),
   topic: z.string().nullable(),
   difficulty: z.enum(["easy", "medium", "hard"]),
 });
@@ -53,7 +71,10 @@ export const createExam = createServerFn({ method: "POST" })
       .object({
         title: z.string().min(1).max(200),
         duration_minutes: z.number().int().min(1).max(600),
-        questions: z.array(QuestionInput).min(1),
+        questions: z.array(QuestionInput).default([]),
+        pattern: PatternEnum.default("custom"),
+        pattern_config: PatternConfigSchema.optional(),
+        negative_mark_per_wrong: z.number().min(0).max(100).default(0),
       })
       .parse(input),
   )
@@ -82,24 +103,29 @@ export const createExam = createServerFn({ method: "POST" })
         access_code,
         created_by: context.userId,
         total_marks: total,
+        pattern: data.pattern,
+        pattern_config: data.pattern_config ?? null,
+        negative_mark_per_wrong: data.negative_mark_per_wrong,
       })
       .select("id, access_code")
       .single();
     if (error) throw error;
 
-    const rows = data.questions.map((q, i) => ({
-      exam_id: exam.id,
-      type: q.type,
-      prompt: q.prompt,
-      options: q.options,
-      correct_answer: q.correct_answer,
-      marks: q.marks,
-      topic: q.topic,
-      difficulty: q.difficulty,
-      order_index: i,
-    }));
-    const { error: qErr } = await supabaseAdmin.from("questions").insert(rows);
-    if (qErr) throw qErr;
+    if (data.questions.length) {
+      const rows = data.questions.map((q, i) => ({
+        exam_id: exam.id,
+        type: q.type,
+        prompt: q.prompt,
+        options: q.options,
+        correct_answer: q.correct_answer,
+        marks: q.marks,
+        topic: q.topic,
+        difficulty: q.difficulty,
+        order_index: i,
+      }));
+      const { error: qErr } = await supabaseAdmin.from("questions").insert(rows);
+      if (qErr) throw qErr;
+    }
 
     return { id: exam.id, access_code: exam.access_code };
   });
@@ -141,6 +167,9 @@ export const updateExam = createServerFn({ method: "POST" })
         shuffle_options: z.boolean(),
         start_at: z.string().nullable(),
         end_at: z.string().nullable(),
+        pattern: PatternEnum,
+        pattern_config: PatternConfigSchema.optional(),
+        negative_mark_per_wrong: z.number().min(0).max(100),
       })
       .parse(input),
   )
@@ -159,6 +188,9 @@ export const updateExam = createServerFn({ method: "POST" })
         shuffle_options: data.shuffle_options,
         start_at: data.start_at,
         end_at: data.end_at,
+        pattern: data.pattern,
+        pattern_config: data.pattern_config ?? null,
+        negative_mark_per_wrong: data.negative_mark_per_wrong,
       })
       .eq("id", data.examId);
     if (error) throw error;
@@ -501,3 +533,150 @@ export const adminGetStudentHistory = createServerFn({ method: "POST" })
       })),
     };
   });
+
+/* ---------------- AI question generation & append ---------------- */
+
+const GenQuestionSchema = z.object({
+  type: z.enum(["mcq", "multi", "tf", "short"]),
+  prompt: z.string(),
+  options: z.array(z.string()).nullable(),
+  correct_answer: z.array(z.string()),
+  marks: z.number().min(0).max(100),
+  topic: z.string().nullable(),
+  difficulty: z.enum(["easy", "medium", "hard"]),
+});
+const GenSchema = z.object({ questions: z.array(GenQuestionSchema) });
+
+const PATTERN_GUIDE: Record<string, string> = {
+  neet:
+    "NEET UG (India) standard. Single-correct MCQs only (type=mcq) with exactly 4 options. NCERT Class 11 & 12 syllabus. Subjects: Physics, Chemistry, Botany, Zoology. Marks per question = 4. Difficulty balanced (easy/medium/hard). Style must match previous NEET question papers — conceptual, application-based, formula recall.",
+  eamcet:
+    "AP/TS EAMCET (Engineering) standard. Single-correct MCQs only (type=mcq) with exactly 4 options. Intermediate 1st & 2nd year syllabus. Subjects: Mathematics, Physics, Chemistry. Marks per question = 1, no negative marks. Style must match previous EAMCET question papers — direct and formula-based.",
+  mains:
+    "JEE Main (India) standard. Single-correct MCQs (type=mcq, 4 options) and numerical-value questions (type=short with numeric expected answer). CBSE Class 11 & 12 syllabus. Subjects: Physics, Chemistry, Mathematics. Marks per question = 4. Style must match previous JEE Main papers — conceptual + calculation heavy.",
+  custom: "Follow the admin's brief exactly.",
+};
+
+async function runGenerate(prompt: string, userContent: any[]) {
+  const key = process.env.LOVABLE_API_KEY;
+  if (!key) throw new Error("Missing LOVABLE_API_KEY");
+  const gateway = createLovableAiGatewayProvider(key, { structuredOutputs: true });
+  try {
+    const { output } = await generateText({
+      model: gateway("openai/gpt-5.5"),
+      output: Output.object({ schema: GenSchema }),
+      messages: [
+        { role: "system", content: prompt },
+        { role: "user", content: userContent as never },
+      ] as never,
+    });
+    return output.questions;
+  } catch (error) {
+    if (NoObjectGeneratedError.isInstance(error)) {
+      throw new Error("AI could not produce structured questions. Try clearer input or fewer questions.");
+    }
+    throw error;
+  }
+}
+
+function baseGenPrompt(pattern: string, count: number, subject?: string | null) {
+  const guide = PATTERN_GUIDE[pattern] ?? PATTERN_GUIDE.custom;
+  return `You are an expert exam question setter. ${guide}
+Generate exactly ${count} high-quality questions${subject ? ` on subject/topic: ${subject}` : ""}.
+Return JSON matching the schema. For MCQ use type "mcq" with 4 options and one correct answer in correct_answer array. For true/false use "tf" with options ["True","False"]. For numerical/short use "short" with options null and correct_answer as accepted answers. Set topic to the subject or sub-topic. Set difficulty (easy/medium/hard) mixed. Do not repeat questions.`;
+}
+
+export const generateFromNotes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        pattern: PatternEnum,
+        count: z.number().int().min(1).max(60),
+        subject: z.string().max(120).nullable().optional(),
+        fileBase64: z.string(),
+        mimeType: z.string(),
+        fileName: z.string(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const sys =
+      baseGenPrompt(data.pattern, data.count, data.subject) +
+      `\n\nBase the questions strictly on the notes/material in the attached file (${data.fileName}). Cross-reference with the style, difficulty, and pattern of PAST ${data.pattern.toUpperCase()} papers on these topics. Do not invent facts outside the notes.`;
+    const part =
+      data.mimeType.startsWith("image/")
+        ? { type: "image_url", image_url: { url: `data:${data.mimeType};base64,${data.fileBase64}` } }
+        : {
+            type: "file",
+            file: {
+              filename: data.fileName,
+              file_data: `data:${data.mimeType};base64,${data.fileBase64}`,
+            },
+          };
+    const questions = await runGenerate(sys, [
+      { type: "text", text: `Generate ${data.count} questions from these notes.` },
+      part,
+    ]);
+    return { questions };
+  });
+
+export const generateFromDescription = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        pattern: PatternEnum,
+        count: z.number().int().min(1).max(60),
+        subject: z.string().max(120).nullable().optional(),
+        description: z.string().min(3).max(4000),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const sys = baseGenPrompt(data.pattern, data.count, data.subject);
+    const questions = await runGenerate(sys, [
+      { type: "text", text: `Exam brief / topics from admin:\n${data.description}` },
+    ]);
+    return { questions };
+  });
+
+export const appendQuestions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ examId: z.string().uuid(), questions: z.array(QuestionInput).min(1) }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: existing } = await supabaseAdmin
+      .from("questions")
+      .select("order_index")
+      .eq("exam_id", data.examId)
+      .order("order_index", { ascending: false })
+      .limit(1);
+    const start = (existing?.[0]?.order_index ?? -1) + 1;
+    const rows = data.questions.map((q, i) => ({
+      exam_id: data.examId,
+      type: q.type,
+      prompt: q.prompt,
+      options: q.options,
+      correct_answer: q.correct_answer,
+      marks: q.marks,
+      topic: q.topic,
+      difficulty: q.difficulty,
+      order_index: start + i,
+    }));
+    const { error } = await supabaseAdmin.from("questions").insert(rows);
+    if (error) throw error;
+    const { data: totals } = await supabaseAdmin
+      .from("questions")
+      .select("marks")
+      .eq("exam_id", data.examId);
+    const total = (totals ?? []).reduce((s, r) => s + (r.marks ?? 0), 0);
+    await supabaseAdmin.from("exams").update({ total_marks: total }).eq("id", data.examId);
+    return { added: rows.length };
+  });
+
