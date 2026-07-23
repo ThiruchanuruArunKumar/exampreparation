@@ -22,9 +22,9 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AuthenticatedResultsIndexRouteImport } from './routes/_authenticated/results.index'
 import { Route as AuthenticatedResultsStudentIdRouteImport } from './routes/_authenticated/results.$studentId'
-import { Route as AuthenticatedResultsAttemptIdRouteImport } from './routes/_authenticated/results/$attemptId'
 import { Route as AuthenticatedExamsNewRouteImport } from './routes/_authenticated/exams/new'
 import { Route as AuthenticatedExamsExamIdRouteImport } from './routes/_authenticated/exams/$examId'
+import { Route as AuthenticatedAttemptResultsAttemptIdRouteImport } from './routes/_authenticated/attempt-results.$attemptId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 
@@ -96,12 +96,6 @@ const AuthenticatedResultsStudentIdRoute =
     path: '/results/$studentId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedResultsAttemptIdRoute =
-  AuthenticatedResultsAttemptIdRouteImport.update({
-    id: '/results/$attemptId',
-    path: '/results/$attemptId',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedExamsNewRoute = AuthenticatedExamsNewRouteImport.update({
   id: '/exams/new',
   path: '/exams/new',
@@ -111,6 +105,12 @@ const AuthenticatedExamsExamIdRoute =
   AuthenticatedExamsExamIdRouteImport.update({
     id: '/exams/$examId',
     path: '/exams/$examId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAttemptResultsAttemptIdRoute =
+  AuthenticatedAttemptResultsAttemptIdRouteImport.update({
+    id: '/attempt-results/$attemptId',
+    path: '/attempt-results/$attemptId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
@@ -138,9 +138,9 @@ export interface FileRoutesByFullPath {
   '/exam/$attemptId': typeof ExamAttemptIdRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/attempt-results/$attemptId': typeof AuthenticatedAttemptResultsAttemptIdRoute
   '/exams/$examId': typeof AuthenticatedExamsExamIdRoute
   '/exams/new': typeof AuthenticatedExamsNewRoute
-  '/results/$attemptId': typeof AuthenticatedResultsAttemptIdRoute
   '/results/$studentId': typeof AuthenticatedResultsStudentIdRoute
   '/results/': typeof AuthenticatedResultsIndexRoute
 }
@@ -157,9 +157,9 @@ export interface FileRoutesByTo {
   '/exam/$attemptId': typeof ExamAttemptIdRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/attempt-results/$attemptId': typeof AuthenticatedAttemptResultsAttemptIdRoute
   '/exams/$examId': typeof AuthenticatedExamsExamIdRoute
   '/exams/new': typeof AuthenticatedExamsNewRoute
-  '/results/$attemptId': typeof AuthenticatedResultsAttemptIdRoute
   '/results/$studentId': typeof AuthenticatedResultsStudentIdRoute
   '/results': typeof AuthenticatedResultsIndexRoute
 }
@@ -178,9 +178,9 @@ export interface FileRoutesById {
   '/exam/$attemptId': typeof ExamAttemptIdRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
+  '/_authenticated/attempt-results/$attemptId': typeof AuthenticatedAttemptResultsAttemptIdRoute
   '/_authenticated/exams/$examId': typeof AuthenticatedExamsExamIdRoute
   '/_authenticated/exams/new': typeof AuthenticatedExamsNewRoute
-  '/_authenticated/results/$attemptId': typeof AuthenticatedResultsAttemptIdRoute
   '/_authenticated/results/$studentId': typeof AuthenticatedResultsStudentIdRoute
   '/_authenticated/results/': typeof AuthenticatedResultsIndexRoute
 }
@@ -199,9 +199,9 @@ export interface FileRouteTypes {
     | '/exam/$attemptId'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/attempt-results/$attemptId'
     | '/exams/$examId'
     | '/exams/new'
-    | '/results/$attemptId'
     | '/results/$studentId'
     | '/results/'
   fileRoutesByTo: FileRoutesByTo
@@ -218,9 +218,9 @@ export interface FileRouteTypes {
     | '/exam/$attemptId'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/attempt-results/$attemptId'
     | '/exams/$examId'
     | '/exams/new'
-    | '/results/$attemptId'
     | '/results/$studentId'
     | '/results'
   id:
@@ -238,9 +238,9 @@ export interface FileRouteTypes {
     | '/exam/$attemptId'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
+    | '/_authenticated/attempt-results/$attemptId'
     | '/_authenticated/exams/$examId'
     | '/_authenticated/exams/new'
-    | '/_authenticated/results/$attemptId'
     | '/_authenticated/results/$studentId'
     | '/_authenticated/results/'
   fileRoutesById: FileRoutesById
@@ -351,13 +351,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedResultsStudentIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/results/$attemptId': {
-      id: '/_authenticated/results/$attemptId'
-      path: '/results/$attemptId'
-      fullPath: '/results/$attemptId'
-      preLoaderRoute: typeof AuthenticatedResultsAttemptIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/exams/new': {
       id: '/_authenticated/exams/new'
       path: '/exams/new'
@@ -370,6 +363,13 @@ declare module '@tanstack/react-router' {
       path: '/exams/$examId'
       fullPath: '/exams/$examId'
       preLoaderRoute: typeof AuthenticatedExamsExamIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/attempt-results/$attemptId': {
+      id: '/_authenticated/attempt-results/$attemptId'
+      path: '/attempt-results/$attemptId'
+      fullPath: '/attempt-results/$attemptId'
+      preLoaderRoute: typeof AuthenticatedAttemptResultsAttemptIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/.mcp/invoke-tool/$tool': {
@@ -393,9 +393,9 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminsRoute: typeof AuthenticatedAdminsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedStudentsRoute: typeof AuthenticatedStudentsRoute
+  AuthenticatedAttemptResultsAttemptIdRoute: typeof AuthenticatedAttemptResultsAttemptIdRoute
   AuthenticatedExamsExamIdRoute: typeof AuthenticatedExamsExamIdRoute
   AuthenticatedExamsNewRoute: typeof AuthenticatedExamsNewRoute
-  AuthenticatedResultsAttemptIdRoute: typeof AuthenticatedResultsAttemptIdRoute
   AuthenticatedResultsStudentIdRoute: typeof AuthenticatedResultsStudentIdRoute
   AuthenticatedResultsIndexRoute: typeof AuthenticatedResultsIndexRoute
 }
@@ -404,9 +404,10 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminsRoute: AuthenticatedAdminsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedStudentsRoute: AuthenticatedStudentsRoute,
+  AuthenticatedAttemptResultsAttemptIdRoute:
+    AuthenticatedAttemptResultsAttemptIdRoute,
   AuthenticatedExamsExamIdRoute: AuthenticatedExamsExamIdRoute,
   AuthenticatedExamsNewRoute: AuthenticatedExamsNewRoute,
-  AuthenticatedResultsAttemptIdRoute: AuthenticatedResultsAttemptIdRoute,
   AuthenticatedResultsStudentIdRoute: AuthenticatedResultsStudentIdRoute,
   AuthenticatedResultsIndexRoute: AuthenticatedResultsIndexRoute,
 }

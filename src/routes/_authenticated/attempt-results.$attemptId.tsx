@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, XCircle, Sparkles, TrendingUp, TrendingDown } from "lucide-react";
 
-export const Route = createFileRoute("/_authenticated/results/$attemptId")({
+export const Route = createFileRoute("/_authenticated/attempt-results/$attemptId")({
   head: () => ({
     meta: [
       { title: "Results — ExamPrep" },
