@@ -98,6 +98,13 @@ export type Database = {
             referencedRelation: "exams"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "assignments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
         ]
       }
       attempts: {
@@ -110,6 +117,7 @@ export type Database = {
           max_score: number | null
           question_order: Json | null
           score: number | null
+          session_token: string | null
           started_at: string
           status: string
           student_id: string
@@ -125,6 +133,7 @@ export type Database = {
           max_score?: number | null
           question_order?: Json | null
           score?: number | null
+          session_token?: string | null
           started_at?: string
           status?: string
           student_id: string
@@ -140,6 +149,7 @@ export type Database = {
           max_score?: number | null
           question_order?: Json | null
           score?: number | null
+          session_token?: string | null
           started_at?: string
           status?: string
           student_id?: string
@@ -161,10 +171,18 @@ export type Database = {
             referencedRelation: "exams"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "attempts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
         ]
       }
       exams: {
         Row: {
+          access_code: string
           created_at: string
           created_by: string | null
           description: string | null
@@ -178,6 +196,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          access_code: string
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -191,6 +210,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          access_code?: string
           created_at?: string
           created_by?: string | null
           description?: string | null
@@ -319,6 +339,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      students: {
+        Row: {
+          class_name: string | null
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          name: string
+          notes: string | null
+          student_code: string
+          updated_at: string
+        }
+        Insert: {
+          class_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name: string
+          notes?: string | null
+          student_code: string
+          updated_at?: string
+        }
+        Update: {
+          class_name?: string | null
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          name?: string
+          notes?: string | null
+          student_code?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
