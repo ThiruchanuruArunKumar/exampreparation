@@ -81,19 +81,6 @@ function Landing() {
               Enter the student ID your teacher gave you and the exam password to begin. No account
               needed.
             </p>
-            <div className="mt-10 grid gap-4 sm:grid-cols-3">
-              {[
-                { icon: Sparkles, title: "AI-generated", body: "Exams are built from your teacher's materials." },
-                { icon: ShieldCheck, title: "Secure", body: "Fullscreen proctoring with a 3-warning limit." },
-                { icon: GraduationCap, title: "Instant feedback", body: "See your score and study tips right after." },
-              ].map((f) => (
-                <div key={f.title} className="rounded-lg border border-border p-4">
-                  <f.icon className="h-5 w-5 text-primary" />
-                  <h3 className="mt-3 text-sm font-semibold">{f.title}</h3>
-                  <p className="mt-1 text-xs text-muted-foreground">{f.body}</p>
-                </div>
-              ))}
-            </div>
           </div>
 
           <Card className="border-primary/30 shadow-lg">
