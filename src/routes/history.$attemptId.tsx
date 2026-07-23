@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
-import { zodValidator } from "@tanstack/zod-adapter";
+
 import {
   Brain,
   ArrowLeft,
