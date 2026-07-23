@@ -10,7 +10,8 @@ import { NumberField } from "@/components/NumberField";
 import { Upload, Sparkles, FileText, Plus } from "lucide-react";
 import { extractQuestions } from "@/lib/exams.functions";
 import { generateFromNotes, generateFromDescription } from "@/lib/admin.functions";
-import type { ExamPattern } from "@/lib/exam-patterns";
+import { PATTERN_PRESETS, type ExamPattern } from "@/lib/exam-patterns";
+
 
 export type GeneratedQuestion = {
   type: "mcq" | "multi" | "tf" | "short";
