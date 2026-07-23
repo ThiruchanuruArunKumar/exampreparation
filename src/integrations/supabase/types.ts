@@ -180,6 +180,48 @@ export type Database = {
           },
         ]
       }
+      exam_drafts: {
+        Row: {
+          created_at: string
+          id: string
+          owner_id: string
+          pattern: string
+          pattern_config: Json | null
+          questions: Json
+          show_answer_book: boolean
+          show_answer_sheet: boolean
+          show_result_after_submit: boolean
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          owner_id: string
+          pattern?: string
+          pattern_config?: Json | null
+          questions?: Json
+          show_answer_book?: boolean
+          show_answer_sheet?: boolean
+          show_result_after_submit?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_id?: string
+          pattern?: string
+          pattern_config?: Json | null
+          questions?: Json
+          show_answer_book?: boolean
+          show_answer_sheet?: boolean
+          show_result_after_submit?: boolean
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       exams: {
         Row: {
           access_code: string
