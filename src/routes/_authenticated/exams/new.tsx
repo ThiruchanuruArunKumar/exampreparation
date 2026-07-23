@@ -13,6 +13,9 @@ import { PatternPicker } from "@/components/PatternPicker";
 import { QuestionSource, type GeneratedQuestion } from "@/components/QuestionSource";
 import { createExam } from "@/lib/admin.functions";
 import { type ExamPattern, type PatternConfig, presetToConfig } from "@/lib/exam-patterns";
+import { RichContent } from "@/components/RichContent";
+import { useEffect } from "react";
+
 
 function ToggleRow({
   label,
@@ -163,14 +166,17 @@ function NewExam() {
                   </Button>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
-                  <div className="whitespace-pre-wrap">{q.prompt || <span className="text-muted-foreground">(empty prompt)</span>}</div>
+                  <RichContent>{q.prompt || "*(empty prompt)*"}</RichContent>
                   {q.options && (
                     <ul className="ml-4 list-disc text-xs">
                       {q.options.map((o, oi) => (
-                        <li key={oi} className={q.correct_answer.includes(o) ? "font-medium text-primary" : ""}>{o}</li>
+                        <li key={oi} className={q.correct_answer.includes(o) ? "font-medium text-primary" : ""}>
+                          <RichContent inline>{o}</RichContent>
+                        </li>
                       ))}
                     </ul>
                   )}
+
                   {q.type === "short" && (
                     <div className="text-xs text-muted-foreground">Accepted: {q.correct_answer.join(", ") || "—"}</div>
                   )}
