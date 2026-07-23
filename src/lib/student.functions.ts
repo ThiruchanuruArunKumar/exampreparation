@@ -323,12 +323,7 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
       return { ok: true, alreadySubmitted: true, score: att.score, maxScore: att.max_score, insight: existing, ...flags };
     }
 
-    const { data: examRow } = await sb
-      .from("exams")
-      .select("negative_mark_per_wrong")
-      .eq("id", att.exam_id)
-      .maybeSingle();
-    const negPerWrong = Number(examRow?.negative_mark_per_wrong ?? 0);
+    const negPerWrong = Number(examFlags?.negative_mark_per_wrong ?? 0);
 
     const order = (att.question_order as { qid: string }[]) ?? [];
     const qids = order.map((o) => o.qid);
