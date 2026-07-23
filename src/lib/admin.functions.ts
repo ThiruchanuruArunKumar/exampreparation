@@ -268,6 +268,9 @@ export const inviteStudent = createServerFn({ method: "POST" })
       data: { full_name: data.fullName ?? data.email.split("@")[0] },
     });
     if (error) throw new Error(error.message);
+    if (invited.user?.id) {
+      await supabaseAdmin.from("profiles").update({ status: "approved" }).eq("id", invited.user.id);
+    }
     return { ok: true, userId: invited.user?.id };
   });
 
