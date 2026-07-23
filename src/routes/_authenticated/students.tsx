@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { UserPlus, Trash2, Shield, GraduationCap } from "lucide-react";
+import { UserPlus, Trash2, Shield, GraduationCap, Check, X, Clock } from "lucide-react";
 import {
   listAllStudents,
   inviteStudent,
   setUserRole,
   deleteStudent,
+  setStudentStatus,
 } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/students")({
