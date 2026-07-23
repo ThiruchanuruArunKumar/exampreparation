@@ -516,8 +516,9 @@ function ExamDetail() {
                     </label>
                   ))}
                 </div>
-                <Button className="w-full" onClick={doBulkAssign} disabled={!selected.size}>
-                  <UserPlus className="mr-2 h-4 w-4" />Assign to {selected.size || "…"}
+                <Button className="w-full" onClick={doBulkAssign} disabled={!selected.size && assignments.length === 0}>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  {selected.size ? `Save & assign to ${selected.size}` : "Save changes"}
                 </Button>
               </CardContent>
             </Card>
