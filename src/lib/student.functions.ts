@@ -105,7 +105,9 @@ export const startStudentAttempt = createServerFn({ method: "POST" })
           : null,
     }));
     const maxScore = qs.reduce((s, q) => s + (q.marks ?? 0), 0);
-    const endsAt = new Date(Date.now() + exam.duration_minutes * 60_000).toISOString();
+    let endsAtMs = Date.now() + exam.duration_minutes * 60_000;
+    if (exam.end_at) endsAtMs = Math.min(endsAtMs, new Date(exam.end_at).getTime());
+    const endsAt = new Date(endsAtMs).toISOString();
     const token = randomToken();
 
     const { data: created, error } = await sb
