@@ -422,3 +422,82 @@ export const deleteStudentRecord = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true };
   });
+
+/* ---------------- Results (per-student history) ---------------- */
+
+export const adminListStudentsWithStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdmin(context);
+    const { data: students } = await context.supabase
+      .from("students")
+      .select("id, student_code, name, email, class_name, created_at")
+      .order("created_at", { ascending: false });
+    const ids = (students ?? []).map((s: any) => s.id);
+    if (!ids.length) return { students: [] };
+    const { data: attempts } = await context.supabase
+      .from("attempts")
+      .select("student_id, status, score, max_score, submitted_at")
+      .in("student_id", ids);
+    const byStudent = new Map<string, any[]>();
+    for (const a of attempts ?? []) {
+      const arr = byStudent.get(a.student_id) ?? [];
+      arr.push(a);
+      byStudent.set(a.student_id, arr);
+    }
+    return {
+      students: (students ?? []).map((s: any) => {
+        const rows = byStudent.get(s.id) ?? [];
+        const finished = rows.filter((r) => r.status !== "in_progress");
+        const totalScore = finished.reduce((n, r) => n + Number(r.score ?? 0), 0);
+        const totalMax = finished.reduce((n, r) => n + Number(r.max_score ?? 0), 0);
+        const last = finished.reduce<string | null>(
+          (acc, r) => (r.submitted_at && (!acc || r.submitted_at > acc) ? r.submitted_at : acc),
+          null,
+        );
+        return {
+          ...s,
+          attempts_total: rows.length,
+          attempts_finished: finished.length,
+          average_percent: totalMax ? Math.round((totalScore / totalMax) * 100) : null,
+          last_attempt_at: last,
+        };
+      }),
+    };
+  });
+
+export const adminGetStudentHistory = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ studentId: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { data: student } = await context.supabase
+      .from("students")
+      .select("id, student_code, name, email, class_name, notes, created_at")
+      .eq("id", data.studentId)
+      .maybeSingle();
+    if (!student) throw new Error("Student not found");
+    const { data: attempts } = await context.supabase
+      .from("attempts")
+      .select("id, exam_id, status, score, max_score, warning_count, started_at, submitted_at, auto_submitted")
+      .eq("student_id", data.studentId)
+      .order("started_at", { ascending: false });
+    const examIds = Array.from(new Set((attempts ?? []).map((a: any) => a.exam_id)));
+    const { data: exams } = examIds.length
+      ? await context.supabase.from("exams").select("id, title, duration_minutes").in("id", examIds)
+      : { data: [] };
+    const examMap = new Map((exams ?? []).map((e: any) => [e.id, e]));
+    const attemptIds = (attempts ?? []).map((a: any) => a.id);
+    const { data: insights } = attemptIds.length
+      ? await context.supabase.from("insights").select("attempt_id, summary, weak_topics, strong_topics").in("attempt_id", attemptIds)
+      : { data: [] };
+    const insMap = new Map((insights ?? []).map((i: any) => [i.attempt_id, i]));
+    return {
+      student,
+      history: (attempts ?? []).map((a: any) => ({
+        ...a,
+        exam: examMap.get(a.exam_id) ?? null,
+        insight: insMap.get(a.id) ?? null,
+      })),
+    };
+  });

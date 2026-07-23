@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { Brain, LogOut, LayoutDashboard, Users, BarChart3 } from "lucide-react";
+import { Brain, LogOut, LayoutDashboard, Users, ClipboardList } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useQueryClient } from "@tanstack/react-query";
@@ -44,7 +44,7 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
               <nav className="hidden items-center gap-1 text-sm md:flex">
                 <Link to="/dashboard" className={navLink}><LayoutDashboard className="h-4 w-4" /> Exams</Link>
                 <Link to="/students" className={navLink}><Users className="h-4 w-4" /> Students</Link>
-                <Link to="/analytics" className={navLink}><BarChart3 className="h-4 w-4" /> Analytics</Link>
+                <Link to="/results" className={navLink}><ClipboardList className="h-4 w-4" /> Results</Link>
               </nav>
             )}
             {title && <span className="hidden truncate text-sm text-muted-foreground sm:inline">{title}</span>}
@@ -58,7 +58,7 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
           <nav className="flex items-center gap-1 overflow-x-auto border-t border-border px-4 py-2 text-sm md:hidden">
             <Link to="/dashboard" className={navLink}><LayoutDashboard className="h-4 w-4" /> Exams</Link>
             <Link to="/students" className={navLink}><Users className="h-4 w-4" /> Students</Link>
-            <Link to="/analytics" className={navLink}><BarChart3 className="h-4 w-4" /> Analytics</Link>
+            <Link to="/results" className={navLink}><ClipboardList className="h-4 w-4" /> Results</Link>
           </nav>
         )}
       </header>

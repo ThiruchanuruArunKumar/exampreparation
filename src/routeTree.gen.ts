@@ -17,9 +17,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ExamAttemptIdRouteImport } from './routes/exam.$attemptId'
 import { Route as AuthenticatedStudentsRouteImport } from './routes/_authenticated/students'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedAnalyticsRouteImport } from './routes/_authenticated/analytics'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
+import { Route as AuthenticatedResultsIndexRouteImport } from './routes/_authenticated/results.index'
+import { Route as AuthenticatedResultsStudentIdRouteImport } from './routes/_authenticated/results.$studentId'
 import { Route as AuthenticatedResultsAttemptIdRouteImport } from './routes/_authenticated/results/$attemptId'
 import { Route as AuthenticatedExamsNewRouteImport } from './routes/_authenticated/exams/new'
 import { Route as AuthenticatedExamsExamIdRouteImport } from './routes/_authenticated/exams/$examId'
@@ -65,11 +66,6 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedAnalyticsRoute = AuthenticatedAnalyticsRouteImport.update({
-  id: '/analytics',
-  path: '/analytics',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const Char91DotwellKnownChar93OauthProtectedResourceRoute =
   Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
     id: '/.well-known/oauth-protected-resource',
@@ -81,6 +77,18 @@ const Char91DotmcpChar93ListToolsRoute =
     id: '/.mcp/list-tools',
     path: '/.mcp/list-tools',
     getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthenticatedResultsIndexRoute =
+  AuthenticatedResultsIndexRouteImport.update({
+    id: '/results/',
+    path: '/results/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedResultsStudentIdRoute =
+  AuthenticatedResultsStudentIdRouteImport.update({
+    id: '/results/$studentId',
+    path: '/results/$studentId',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedResultsAttemptIdRoute =
   AuthenticatedResultsAttemptIdRouteImport.update({
@@ -118,7 +126,6 @@ export interface FileRoutesByFullPath {
   '/mcp': typeof McpRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  '/analytics': typeof AuthenticatedAnalyticsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/students': typeof AuthenticatedStudentsRoute
   '/exam/$attemptId': typeof ExamAttemptIdRoute
@@ -127,6 +134,8 @@ export interface FileRoutesByFullPath {
   '/exams/$examId': typeof AuthenticatedExamsExamIdRoute
   '/exams/new': typeof AuthenticatedExamsNewRoute
   '/results/$attemptId': typeof AuthenticatedResultsAttemptIdRoute
+  '/results/$studentId': typeof AuthenticatedResultsStudentIdRoute
+  '/results/': typeof AuthenticatedResultsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -135,7 +144,6 @@ export interface FileRoutesByTo {
   '/mcp': typeof McpRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  '/analytics': typeof AuthenticatedAnalyticsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/students': typeof AuthenticatedStudentsRoute
   '/exam/$attemptId': typeof ExamAttemptIdRoute
@@ -144,6 +152,8 @@ export interface FileRoutesByTo {
   '/exams/$examId': typeof AuthenticatedExamsExamIdRoute
   '/exams/new': typeof AuthenticatedExamsNewRoute
   '/results/$attemptId': typeof AuthenticatedResultsAttemptIdRoute
+  '/results/$studentId': typeof AuthenticatedResultsStudentIdRoute
+  '/results': typeof AuthenticatedResultsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -154,7 +164,6 @@ export interface FileRoutesById {
   '/mcp': typeof McpRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
-  '/_authenticated/analytics': typeof AuthenticatedAnalyticsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/students': typeof AuthenticatedStudentsRoute
   '/exam/$attemptId': typeof ExamAttemptIdRoute
@@ -163,6 +172,8 @@ export interface FileRoutesById {
   '/_authenticated/exams/$examId': typeof AuthenticatedExamsExamIdRoute
   '/_authenticated/exams/new': typeof AuthenticatedExamsNewRoute
   '/_authenticated/results/$attemptId': typeof AuthenticatedResultsAttemptIdRoute
+  '/_authenticated/results/$studentId': typeof AuthenticatedResultsStudentIdRoute
+  '/_authenticated/results/': typeof AuthenticatedResultsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -173,7 +184,6 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
-    | '/analytics'
     | '/dashboard'
     | '/students'
     | '/exam/$attemptId'
@@ -182,6 +192,8 @@ export interface FileRouteTypes {
     | '/exams/$examId'
     | '/exams/new'
     | '/results/$attemptId'
+    | '/results/$studentId'
+    | '/results/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -190,7 +202,6 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
-    | '/analytics'
     | '/dashboard'
     | '/students'
     | '/exam/$attemptId'
@@ -199,6 +210,8 @@ export interface FileRouteTypes {
     | '/exams/$examId'
     | '/exams/new'
     | '/results/$attemptId'
+    | '/results/$studentId'
+    | '/results'
   id:
     | '__root__'
     | '/'
@@ -208,7 +221,6 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
-    | '/_authenticated/analytics'
     | '/_authenticated/dashboard'
     | '/_authenticated/students'
     | '/exam/$attemptId'
@@ -217,6 +229,8 @@ export interface FileRouteTypes {
     | '/_authenticated/exams/$examId'
     | '/_authenticated/exams/new'
     | '/_authenticated/results/$attemptId'
+    | '/_authenticated/results/$studentId'
+    | '/_authenticated/results/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -290,13 +304,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/analytics': {
-      id: '/_authenticated/analytics'
-      path: '/analytics'
-      fullPath: '/analytics'
-      preLoaderRoute: typeof AuthenticatedAnalyticsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/.well-known/oauth-protected-resource': {
       id: '/.well-known/oauth-protected-resource'
       path: '/.well-known/oauth-protected-resource'
@@ -310,6 +317,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/.mcp/list-tools'
       preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/results/': {
+      id: '/_authenticated/results/'
+      path: '/results'
+      fullPath: '/results/'
+      preLoaderRoute: typeof AuthenticatedResultsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/results/$studentId': {
+      id: '/_authenticated/results/$studentId'
+      path: '/results/$studentId'
+      fullPath: '/results/$studentId'
+      preLoaderRoute: typeof AuthenticatedResultsStudentIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/results/$attemptId': {
       id: '/_authenticated/results/$attemptId'
@@ -350,21 +371,23 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedAnalyticsRoute: typeof AuthenticatedAnalyticsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedStudentsRoute: typeof AuthenticatedStudentsRoute
   AuthenticatedExamsExamIdRoute: typeof AuthenticatedExamsExamIdRoute
   AuthenticatedExamsNewRoute: typeof AuthenticatedExamsNewRoute
   AuthenticatedResultsAttemptIdRoute: typeof AuthenticatedResultsAttemptIdRoute
+  AuthenticatedResultsStudentIdRoute: typeof AuthenticatedResultsStudentIdRoute
+  AuthenticatedResultsIndexRoute: typeof AuthenticatedResultsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedAnalyticsRoute: AuthenticatedAnalyticsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedStudentsRoute: AuthenticatedStudentsRoute,
   AuthenticatedExamsExamIdRoute: AuthenticatedExamsExamIdRoute,
   AuthenticatedExamsNewRoute: AuthenticatedExamsNewRoute,
   AuthenticatedResultsAttemptIdRoute: AuthenticatedResultsAttemptIdRoute,
+  AuthenticatedResultsStudentIdRoute: AuthenticatedResultsStudentIdRoute,
+  AuthenticatedResultsIndexRoute: AuthenticatedResultsIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
