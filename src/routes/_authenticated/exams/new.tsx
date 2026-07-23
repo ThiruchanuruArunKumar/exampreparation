@@ -32,6 +32,9 @@ function NewExam() {
   const [config, setConfig] = useState<PatternConfig | null>(presetToConfig("neet"));
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
   const [saving, setSaving] = useState(false);
+  const [showResult, setShowResult] = useState(true);
+  const [showSheet, setShowSheet] = useState(true);
+  const [showBook, setShowBook] = useState(true);
 
   const duration = config?.duration_minutes ?? 60;
   const subjects = config?.sections.map((s) => s.name) ?? [];
@@ -48,6 +51,9 @@ function NewExam() {
           pattern,
           pattern_config: config,
           negative_mark_per_wrong: config?.negative_mark_per_wrong ?? 0,
+          show_result_after_submit: showResult,
+          show_answer_sheet: showSheet,
+          show_answer_book: showBook,
         },
       });
       toast.success(`Exam created — password ${r.access_code}`);
@@ -64,16 +70,23 @@ function NewExam() {
         <div className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Details</CardTitle>
+              <CardTitle className="text-base">Exam details</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="t">Title</Label>
                 <Input id="t" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. NEET Mock 1 — Aug" />
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  A 6-character exam password is generated automatically.
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                A 6-character exam password is generated automatically. Share it with your students along with their ID.
-              </p>
+
+              <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">After submission</div>
+                <ToggleRow label="Show result to student" hint="Score, %, and AI feedback." checked={showResult} onChange={setShowResult} />
+                <ToggleRow label="Show answer sheet" hint="Reveals correct answers alongside the student's response." checked={showSheet} onChange={setShowSheet} />
+                <ToggleRow label="Show answer book" hint="Detailed AI explanations with formulas & steps." checked={showBook} onChange={setShowBook} />
+              </div>
             </CardContent>
           </Card>
 
