@@ -29,6 +29,40 @@ export const getLatestDraft = createServerFn({ method: "GET" })
     return data ?? null;
   });
 
+export const listDrafts = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("exam_drafts")
+      .select("id, title, pattern, questions, updated_at, created_at")
+      .eq("owner_id", context.userId)
+      .order("updated_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    return (data ?? []).map((d: any) => ({
+      id: d.id as string,
+      title: (d.title as string) || "",
+      pattern: (d.pattern as string) || "neet",
+      questionCount: Array.isArray(d.questions) ? d.questions.length : 0,
+      updated_at: d.updated_at as string,
+      created_at: d.created_at as string,
+    }));
+  });
+
+export const getDraft = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { data: row, error } = await context.supabase
+      .from("exam_drafts")
+      .select("*")
+      .eq("id", data.id)
+      .eq("owner_id", context.userId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    return row ?? null;
+  });
+
+
 export const saveDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => DraftPayload.parse(input))

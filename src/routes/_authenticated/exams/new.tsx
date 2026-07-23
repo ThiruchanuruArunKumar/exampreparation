@@ -12,7 +12,8 @@ import { NumberField } from "@/components/NumberField";
 import { PatternPicker } from "@/components/PatternPicker";
 import { QuestionSource, type GeneratedQuestion } from "@/components/QuestionSource";
 import { createExam } from "@/lib/admin.functions";
-import { getLatestDraft, saveDraft, deleteDraft } from "@/lib/drafts.functions";
+import { getLatestDraft, getDraft, saveDraft, deleteDraft } from "@/lib/drafts.functions";
+import { z } from "zod";
 import { type ExamPattern, type PatternConfig, presetToConfig } from "@/lib/exam-patterns";
 import { RichContent } from "@/components/RichContent";
 import { useEffect, useRef } from "react";
@@ -42,6 +43,8 @@ function ToggleRow({
 }
 
 export const Route = createFileRoute("/_authenticated/exams/new")({
+  validateSearch: (s: Record<string, unknown>) =>
+    z.object({ draftId: z.string().uuid().optional() }).parse(s),
   head: () => ({
     meta: [
       { title: "New exam — ExamPrep" },
@@ -55,6 +58,7 @@ export const Route = createFileRoute("/_authenticated/exams/new")({
 
 function NewExam() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [title, setTitle] = useState("");
   const [pattern, setPattern] = useState<ExamPattern>("neet");
   const [config, setConfig] = useState<PatternConfig | null>(presetToConfig("neet"));
@@ -69,12 +73,14 @@ function NewExam() {
   const skipNextSave = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Restore draft from cloud (once)
+  // Restore draft from cloud (once): specific ?draftId= if provided, else latest
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const d = await getLatestDraft();
+        const d = search.draftId
+          ? await getDraft({ data: { id: search.draftId } })
+          : await getLatestDraft();
         if (cancelled || !d) return;
         skipNextSave.current = true;
         setDraftId(d.id);
