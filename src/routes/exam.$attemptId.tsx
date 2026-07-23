@@ -144,6 +144,9 @@ function TakeExam() {
           maxScore: Number(r.maxScore ?? 0),
           insight: (r.insight as Insight | null) ?? null,
           auto,
+          showResult: r.showResult ?? true,
+          showAnswerSheet: r.showAnswerSheet ?? false,
+          showAnswerBook: r.showAnswerBook ?? false,
         });
         if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
       } catch (e) {
