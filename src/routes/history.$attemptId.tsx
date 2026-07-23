@@ -239,25 +239,25 @@ function DetailBody({
             </CardHeader>
             <CardContent className="space-y-3">
               <p className="text-sm">{insight.summary}</p>
-              {insight.weak_topics?.length > 0 && (
+              {(insight.weak_topics?.length ?? 0) > 0 && (
                 <div>
                   <div className="mb-1 flex items-center gap-1 text-sm font-medium text-destructive">
                     <TrendingDown className="h-4 w-4" /> Needs work
                   </div>
                   <div className="flex flex-wrap gap-1">
-                    {insight.weak_topics.map((t: string) => (
+                    {insight.weak_topics!.map((t: string) => (
                       <Badge key={t} variant="destructive">{t}</Badge>
                     ))}
                   </div>
                 </div>
               )}
-              {insight.strong_topics?.length > 0 && (
+              {(insight.strong_topics?.length ?? 0) > 0 && (
                 <div>
                   <div className="mb-1 flex items-center gap-1 text-sm font-medium text-primary">
                     <TrendingUp className="h-4 w-4" /> Strong areas
                   </div>
                   <div className="flex flex-wrap gap-1">
-                    {insight.strong_topics.map((t: string) => (
+                    {insight.strong_topics!.map((t: string) => (
                       <Badge key={t}>{t}</Badge>
                     ))}
                   </div>
