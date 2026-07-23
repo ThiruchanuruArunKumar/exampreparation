@@ -297,7 +297,10 @@ function TakeExam() {
               <div className="text-xs uppercase tracking-wide text-muted-foreground">
                 Question {current + 1} of {questions.length}
               </div>
-              <CardTitle className="mt-2 text-base sm:text-lg">{q.prompt}</CardTitle>
+              <CardTitle className="mt-2 text-base sm:text-lg">
+                <RichContent>{q.prompt}</RichContent>
+              </CardTitle>
+
             </div>
             <Badge variant="secondary" className="shrink-0">
               {q.marks} marks
