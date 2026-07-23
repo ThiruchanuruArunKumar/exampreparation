@@ -738,9 +738,9 @@ export const generateFromDescription = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const sys = baseGenPrompt(data.pattern, data.count, data.subject);
-    const questions = await runGenerate(sys, [
-      { type: "text", text: `Exam brief / topics from admin:\n${data.description}` },
-    ]);
+    const questions = await runGenerateExact(sys, [
+      { type: "text", text: `Exam brief / topics from admin:\n${data.description}\n\nProduce exactly ${data.count} questions — no more, no less.` },
+    ], data.count);
     return { questions };
   });
 
