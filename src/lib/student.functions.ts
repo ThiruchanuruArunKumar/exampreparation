@@ -496,5 +496,119 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
     } catch (e) {
       console.error("insights failed", e);
     }
-    return { ok: true, score, maxScore, insight };
+    return { ok: true, score, maxScore, insight, ...flags };
+  });
+
+/* ---------------- Student review (Answer Sheet + Answer Book) ---------------- */
+
+export const getStudentReview = createServerFn({ method: "POST" })
+  .inputValidator((i: unknown) =>
+    z.object({ attemptId: z.string().uuid(), sessionToken: z.string().min(10) }).parse(i),
+  )
+  .handler(async ({ data }) => {
+    const { sb, att } = await loadAttempt(data.attemptId, data.sessionToken);
+    const { data: exam } = await sb
+      .from("exams")
+      .select("id, title, show_result_after_submit, show_answer_sheet, show_answer_book")
+      .eq("id", att.exam_id)
+      .single();
+    if (!exam) throw new Error("Exam not found");
+    if (!exam.show_answer_sheet && !exam.show_answer_book) {
+      return {
+        exam: { title: exam.title, showAnswerSheet: false, showAnswerBook: false, showResult: !!exam.show_result_after_submit },
+        questions: [],
+      };
+    }
+    const order = (att.question_order as { qid: string; options_order: number[] | null }[]) ?? [];
+    const qids = order.map((o) => o.qid);
+    const [{ data: qs }, { data: ans }] = await Promise.all([
+      sb.from("questions").select("id, type, prompt, options, correct_answer, marks, topic").in("id", qids),
+      sb.from("answers").select("question_id, response, is_correct, marks_awarded").eq("attempt_id", att.id),
+    ]);
+    const ansMap = new Map((ans ?? []).map((a) => [a.question_id, a]));
+    const qMap = new Map((qs ?? []).map((q) => [q.id, q]));
+    const questions = order
+      .map((o) => {
+        const q = qMap.get(o.qid);
+        if (!q) return null;
+        const a = ansMap.get(q.id);
+        return {
+          id: q.id,
+          type: q.type,
+          prompt: q.prompt,
+          options: q.options,
+          correct_answer: q.correct_answer,
+          marks: q.marks,
+          topic: q.topic,
+          response: (a?.response as string[] | null) ?? [],
+          is_correct: a?.is_correct ?? null,
+          marks_awarded: a?.marks_awarded ?? 0,
+        };
+      })
+      .filter(Boolean);
+    return {
+      exam: {
+        title: exam.title,
+        showAnswerSheet: !!exam.show_answer_sheet,
+        showAnswerBook: !!exam.show_answer_book,
+        showResult: !!exam.show_result_after_submit,
+      },
+      questions,
+    };
+  });
+
+export const getStudentExplanation = createServerFn({ method: "POST" })
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        attemptId: z.string().uuid(),
+        sessionToken: z.string().min(10),
+        questionId: z.string().uuid(),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data }) => {
+    const { sb, att } = await loadAttempt(data.attemptId, data.sessionToken);
+    const { data: exam } = await sb
+      .from("exams")
+      .select("show_answer_book")
+      .eq("id", att.exam_id)
+      .single();
+    if (!exam?.show_answer_book) throw new Error("Answer book is disabled for this exam");
+    const order = (att.question_order as { qid: string }[]) ?? [];
+    if (!order.some((o) => o.qid === data.questionId)) throw new Error("Question not part of this attempt");
+
+    const { data: cached } = await sb
+      .from("question_explanations")
+      .select("explanation")
+      .eq("question_id", data.questionId)
+      .maybeSingle();
+    if (cached?.explanation) return { explanation: cached.explanation as string };
+
+    const { data: q } = await sb
+      .from("questions")
+      .select("prompt, options, correct_answer, type, topic")
+      .eq("id", data.questionId)
+      .single();
+    if (!q) throw new Error("Question not found");
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("AI not configured");
+    const gateway = createLovableAiGatewayProvider(key);
+    const { text } = await generateText({
+      model: gateway("openai/gpt-5.5"),
+      system:
+        "You are an expert tutor. Explain the answer to competitive-exam questions with maximum clarity: state the correct answer, then a rigorous step-by-step derivation. List every formula used with names, define each variable, show all substitutions, and finish with an intuition summary. Use plain text and Markdown. Be thorough — the student wants to LEARN, not just check.",
+      prompt: JSON.stringify(
+        { topic: q.topic, question: q.prompt, options: q.options, correct_answer: q.correct_answer, type: q.type },
+        null,
+        2,
+      ),
+    });
+    await sb
+      .from("question_explanations")
+      .upsert(
+        { question_id: data.questionId, explanation: text, updated_at: new Date().toISOString() },
+        { onConflict: "question_id" },
+      );
+    return { explanation: text };
   });
