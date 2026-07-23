@@ -222,7 +222,7 @@ function NewExam() {
             {saving ? "Saving…" : `Save exam (${questions.length} questions)`}
           </Button>
           <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>✓ Draft auto-saved locally — safe to close and come back.</span>
+            <span>{draftStatus === "saving" ? "Saving draft to cloud…" : draftStatus === "saved" ? "✓ Draft saved to cloud — safe to close and come back." : "Draft auto-saves to cloud."}</span>
             {(title || questions.length > 0) && (
               <button type="button" onClick={clearDraft} className="underline underline-offset-2 hover:text-destructive">
                 Discard draft
