@@ -33,8 +33,8 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
 
   const goNext = () => {
-    if (next) window.location.href = next;
-    else navigate({ to: "/dashboard" });
+    if (next) window.location.replace(next);
+    else navigate({ to: "/dashboard", replace: true });
   };
 
   useEffect(() => {
