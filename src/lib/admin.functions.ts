@@ -162,6 +162,11 @@ export const updateExam = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
+export const updateExam = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
         examId: z.string().uuid(),
         title: z.string().min(1).max(200),
         description: z.string().max(2000).nullable(),
@@ -173,6 +178,9 @@ export const updateExam = createServerFn({ method: "POST" })
         pattern: PatternEnum,
         pattern_config: PatternConfigSchema.optional(),
         negative_mark_per_wrong: z.number().min(0).max(100),
+        show_result_after_submit: z.boolean().default(true),
+        show_answer_sheet: z.boolean().default(false),
+        show_answer_book: z.boolean().default(false),
       })
       .parse(input),
   )
@@ -194,10 +202,65 @@ export const updateExam = createServerFn({ method: "POST" })
         pattern: data.pattern,
         pattern_config: data.pattern_config ?? null,
         negative_mark_per_wrong: data.negative_mark_per_wrong,
+        show_result_after_submit: data.show_result_after_submit,
+        show_answer_sheet: data.show_answer_sheet,
+        show_answer_book: data.show_answer_book,
       })
       .eq("id", data.examId);
     if (error) throw error;
     return { ok: true };
+  });
+
+/* ---------------- Detailed explanation (Answer Book) ---------------- */
+
+export const getOrGenerateExplanation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({ questionId: z.string().uuid(), regenerate: z.boolean().optional() }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    if (!data.regenerate) {
+      const { data: cached } = await supabaseAdmin
+        .from("question_explanations")
+        .select("explanation")
+        .eq("question_id", data.questionId)
+        .maybeSingle();
+      if (cached?.explanation) return { explanation: cached.explanation as string, cached: true };
+    }
+    const { data: q } = await supabaseAdmin
+      .from("questions")
+      .select("prompt, options, correct_answer, type, topic")
+      .eq("id", data.questionId)
+      .single();
+    if (!q) throw new Error("Question not found");
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("AI not configured");
+    const gateway = createLovableAiGatewayProvider(key);
+    const { text } = await generateText({
+      model: gateway("openai/gpt-5.5"),
+      system:
+        "You are an expert tutor. Explain the answer to competitive-exam questions with maximum clarity: state the correct answer, then a rigorous step-by-step derivation. List every formula used with names, define each variable, show all substitutions, and finish with an intuition summary. Use plain text and Markdown (no LaTeX renderer). Be thorough — the student wants to LEARN, not just check.",
+      prompt: JSON.stringify(
+        {
+          topic: q.topic,
+          question: q.prompt,
+          options: q.options,
+          correct_answer: q.correct_answer,
+          type: q.type,
+        },
+        null,
+        2,
+      ),
+    });
+    await supabaseAdmin
+      .from("question_explanations")
+      .upsert(
+        { question_id: data.questionId, explanation: text, updated_at: new Date().toISOString() },
+        { onConflict: "question_id" },
+      );
+    return { explanation: text, cached: false };
   });
 
 
