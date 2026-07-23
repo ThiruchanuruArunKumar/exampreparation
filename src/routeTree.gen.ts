@@ -13,6 +13,7 @@ import { Route as McpRouteImport } from './routes/mcp'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ExamAttemptIdRouteImport } from './routes/exam.$attemptId'
 import { Route as AuthenticatedStudentsRouteImport } from './routes/_authenticated/students'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAnalyticsRouteImport } from './routes/_authenticated/analytics'
@@ -21,7 +22,6 @@ import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]
 import { Route as AuthenticatedResultsAttemptIdRouteImport } from './routes/_authenticated/results/$attemptId'
 import { Route as AuthenticatedExamsNewRouteImport } from './routes/_authenticated/exams/new'
 import { Route as AuthenticatedExamsExamIdRouteImport } from './routes/_authenticated/exams/$examId'
-import { Route as AuthenticatedAttemptsAttemptIdRouteImport } from './routes/_authenticated/attempts/$attemptId'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 
@@ -42,6 +42,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExamAttemptIdRoute = ExamAttemptIdRouteImport.update({
+  id: '/exam/$attemptId',
+  path: '/exam/$attemptId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedStudentsRoute = AuthenticatedStudentsRouteImport.update({
@@ -88,12 +93,6 @@ const AuthenticatedExamsExamIdRoute =
     path: '/exams/$examId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedAttemptsAttemptIdRoute =
-  AuthenticatedAttemptsAttemptIdRouteImport.update({
-    id: '/attempts/$attemptId',
-    path: '/attempts/$attemptId',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const Char91DotmcpChar93InvokeToolToolRoute =
   Char91DotmcpChar93InvokeToolToolRouteImport.update({
     id: '/.mcp/invoke-tool/$tool',
@@ -115,9 +114,9 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AuthenticatedAnalyticsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/students': typeof AuthenticatedStudentsRoute
+  '/exam/$attemptId': typeof ExamAttemptIdRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/attempts/$attemptId': typeof AuthenticatedAttemptsAttemptIdRoute
   '/exams/$examId': typeof AuthenticatedExamsExamIdRoute
   '/exams/new': typeof AuthenticatedExamsNewRoute
   '/results/$attemptId': typeof AuthenticatedResultsAttemptIdRoute
@@ -131,9 +130,9 @@ export interface FileRoutesByTo {
   '/analytics': typeof AuthenticatedAnalyticsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/students': typeof AuthenticatedStudentsRoute
+  '/exam/$attemptId': typeof ExamAttemptIdRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/attempts/$attemptId': typeof AuthenticatedAttemptsAttemptIdRoute
   '/exams/$examId': typeof AuthenticatedExamsExamIdRoute
   '/exams/new': typeof AuthenticatedExamsNewRoute
   '/results/$attemptId': typeof AuthenticatedResultsAttemptIdRoute
@@ -149,9 +148,9 @@ export interface FileRoutesById {
   '/_authenticated/analytics': typeof AuthenticatedAnalyticsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/students': typeof AuthenticatedStudentsRoute
+  '/exam/$attemptId': typeof ExamAttemptIdRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/_authenticated/attempts/$attemptId': typeof AuthenticatedAttemptsAttemptIdRoute
   '/_authenticated/exams/$examId': typeof AuthenticatedExamsExamIdRoute
   '/_authenticated/exams/new': typeof AuthenticatedExamsNewRoute
   '/_authenticated/results/$attemptId': typeof AuthenticatedResultsAttemptIdRoute
@@ -167,9 +166,9 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/dashboard'
     | '/students'
+    | '/exam/$attemptId'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
-    | '/attempts/$attemptId'
     | '/exams/$examId'
     | '/exams/new'
     | '/results/$attemptId'
@@ -183,9 +182,9 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/dashboard'
     | '/students'
+    | '/exam/$attemptId'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
-    | '/attempts/$attemptId'
     | '/exams/$examId'
     | '/exams/new'
     | '/results/$attemptId'
@@ -200,9 +199,9 @@ export interface FileRouteTypes {
     | '/_authenticated/analytics'
     | '/_authenticated/dashboard'
     | '/_authenticated/students'
+    | '/exam/$attemptId'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
-    | '/_authenticated/attempts/$attemptId'
     | '/_authenticated/exams/$examId'
     | '/_authenticated/exams/new'
     | '/_authenticated/results/$attemptId'
@@ -215,6 +214,7 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  ExamAttemptIdRoute: typeof ExamAttemptIdRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
 }
@@ -247,6 +247,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/exam/$attemptId': {
+      id: '/exam/$attemptId'
+      path: '/exam/$attemptId'
+      fullPath: '/exam/$attemptId'
+      preLoaderRoute: typeof ExamAttemptIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/students': {
@@ -305,13 +312,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedExamsExamIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/attempts/$attemptId': {
-      id: '/_authenticated/attempts/$attemptId'
-      path: '/attempts/$attemptId'
-      fullPath: '/attempts/$attemptId'
-      preLoaderRoute: typeof AuthenticatedAttemptsAttemptIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/.mcp/invoke-tool/$tool': {
       id: '/.mcp/invoke-tool/$tool'
       path: '/.mcp/invoke-tool/$tool'
@@ -333,7 +333,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAnalyticsRoute: typeof AuthenticatedAnalyticsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedStudentsRoute: typeof AuthenticatedStudentsRoute
-  AuthenticatedAttemptsAttemptIdRoute: typeof AuthenticatedAttemptsAttemptIdRoute
   AuthenticatedExamsExamIdRoute: typeof AuthenticatedExamsExamIdRoute
   AuthenticatedExamsNewRoute: typeof AuthenticatedExamsNewRoute
   AuthenticatedResultsAttemptIdRoute: typeof AuthenticatedResultsAttemptIdRoute
@@ -343,7 +342,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAnalyticsRoute: AuthenticatedAnalyticsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedStudentsRoute: AuthenticatedStudentsRoute,
-  AuthenticatedAttemptsAttemptIdRoute: AuthenticatedAttemptsAttemptIdRoute,
   AuthenticatedExamsExamIdRoute: AuthenticatedExamsExamIdRoute,
   AuthenticatedExamsNewRoute: AuthenticatedExamsNewRoute,
   AuthenticatedResultsAttemptIdRoute: AuthenticatedResultsAttemptIdRoute,
@@ -360,6 +358,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  ExamAttemptIdRoute: ExamAttemptIdRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
 }

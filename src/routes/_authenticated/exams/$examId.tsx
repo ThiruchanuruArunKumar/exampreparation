@@ -18,9 +18,10 @@ import {
   saveQuestions,
   bulkAssign,
   getExamAnalytics,
+  regenerateExamCode,
 } from "@/lib/admin.functions";
 import {
-  Trash2, RotateCcw, UserPlus, Plus, Save, ArrowUp, ArrowDown, CheckCircle2,
+  Trash2, RotateCcw, UserPlus, Plus, Save, ArrowUp, ArrowDown, CheckCircle2, Copy, RefreshCw,
 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/exams/$examId")({
@@ -35,7 +36,7 @@ export const Route = createFileRoute("/_authenticated/exams/$examId")({
   component: ExamDetail,
 });
 
-type Student = { id: string; email: string | null; full_name: string | null };
+type Student = { id: string; student_code: string; name: string; email: string | null; class_name: string | null };
 type Exam = {
   id: string;
   title: string;
@@ -43,6 +44,7 @@ type Exam = {
   duration_minutes: number;
   shuffle_questions: boolean;
   shuffle_options: boolean;
+  access_code: string;
 };
 type Question = {
   id?: string;
@@ -79,7 +81,7 @@ function ExamDetail() {
 
   const reload = async () => {
     const [{ data: e }, { data: q }, { data: a }] = await Promise.all([
-      supabase.from("exams").select("id, title, description, duration_minutes, shuffle_questions, shuffle_options").eq("id", examId).single(),
+      supabase.from("exams").select("id, title, description, duration_minutes, shuffle_questions, shuffle_options, access_code").eq("id", examId).single(),
       supabase.from("questions").select("id, type, prompt, options, correct_answer, marks, topic, difficulty").eq("exam_id", examId).order("order_index"),
       supabase.from("assignments")
         .select("id, student_id, due_at, max_attempts, attempts(id, status, score, max_score)")
@@ -211,7 +213,22 @@ function ExamDetail() {
 
   const studentName = (id: string) => {
     const s = students.find((x) => x.id === id);
-    return s?.full_name || s?.email || id.slice(0, 8);
+    return s ? `${s.name} (${s.student_code})` : id.slice(0, 8);
+  };
+
+  const copyCode = () => {
+    if (!exam) return;
+    navigator.clipboard.writeText(exam.access_code);
+    toast.success(`Copied ${exam.access_code}`);
+  };
+
+  const regenerate = async () => {
+    if (!confirm("Regenerate exam password? Old password will stop working.")) return;
+    try {
+      const r = await regenerateExamCode({ data: { examId } });
+      toast.success(`New password: ${r.access_code}`);
+      reload();
+    } catch (e) { toast.error((e as Error).message); }
   };
 
   if (!exam) return <AppShell><p>Loading…</p></AppShell>;
@@ -227,6 +244,20 @@ function ExamDetail() {
           <Trash2 className="mr-2 h-4 w-4" /> Delete
         </Button>
       </div>
+
+      <Card className="mb-6 border-primary/40">
+        <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div className="min-w-0">
+            <div className="text-xs uppercase tracking-wide text-muted-foreground">Exam password</div>
+            <div className="font-mono text-2xl font-bold tracking-widest text-primary">{exam.access_code}</div>
+            <p className="mt-1 text-xs text-muted-foreground">Students enter their ID + this password on the home page to start.</p>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={copyCode}><Copy className="mr-2 h-4 w-4" />Copy</Button>
+            <Button variant="ghost" size="sm" onClick={regenerate}><RefreshCw className="mr-2 h-4 w-4" />Regenerate</Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="questions">
         <TabsList className="w-full justify-start overflow-x-auto sm:w-auto">
@@ -382,7 +413,8 @@ function ExamDetail() {
                   ) : availableStudents.map((s) => (
                     <label key={s.id} className="flex cursor-pointer items-center gap-2 rounded p-2 text-sm hover:bg-muted">
                       <input type="checkbox" checked={selected.has(s.id)} onChange={() => toggle(s.id)} />
-                      <span>{s.full_name || s.email}</span>
+                      <span className="min-w-0 flex-1 truncate">{s.name}</span>
+                      <span className="font-mono text-xs text-muted-foreground">{s.student_code}</span>
                     </label>
                   ))}
                 </div>

@@ -1,20 +1,27 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Brain, ShieldCheck, Sparkles, Timer } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { Brain, ShieldCheck, Sparkles, GraduationCap, LogIn } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { startStudentAttempt } from "@/lib/student.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "ExamPrep — AI Exams & Analytics" },
+      { title: "ExamPrep — Take your exam" },
       {
         name: "description",
         content:
-          "Upload any file, let AI generate exams, proctor attempts, and see exactly where each student is lagging.",
+          "Students enter their ID and exam password to start. Admins can create exams and analyse performance.",
       },
-      { property: "og:title", content: "ExamPrep — AI Exams & Analytics" },
+      { property: "og:title", content: "ExamPrep — Take your exam" },
       {
         property: "og:description",
         content:
-          "Upload any file, let AI generate exams, proctor attempts, and see exactly where each student is lagging.",
+          "Students enter their ID and exam password to start. Admins can create exams and analyse performance.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -24,6 +31,29 @@ export const Route = createFileRoute("/")({
 });
 
 function Landing() {
+  const navigate = useNavigate();
+  const [studentCode, setStudentCode] = useState("");
+  const [accessCode, setAccessCode] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const start = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!studentCode.trim() || !accessCode.trim()) {
+      return toast.error("Enter both student ID and exam password");
+    }
+    setBusy(true);
+    try {
+      const r = await startStudentAttempt({
+        data: { studentCode: studentCode.trim(), accessCode: accessCode.trim() },
+      });
+      sessionStorage.setItem(`exam:${r.attemptId}`, r.sessionToken);
+      navigate({ to: "/exam/$attemptId", params: { attemptId: r.attemptId } });
+    } catch (err) {
+      toast.error((err as Error).message);
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border">
@@ -34,57 +64,77 @@ function Landing() {
           </div>
           <Link
             to="/auth"
-            className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted"
           >
-            Sign in
+            <LogIn className="h-4 w-4" /> Admin sign in
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 sm:px-6">
-        <section className="py-14 text-center sm:py-20">
-          <h1 className="text-3xl font-bold tracking-tight sm:text-5xl md:text-6xl">
-            AI-powered exams. Real analytics.
-          </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-base text-muted-foreground sm:mt-6 sm:text-lg">
-            Upload any PDF, doc, or image. AI extracts every question. Students take secure proctored
-            exams. You see exactly where they're lagging.
-          </p>
-          <div className="mt-8 flex justify-center gap-3 sm:mt-10">
-            <Link
-              to="/auth"
-              className="inline-flex items-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              Get started
-            </Link>
-          </div>
-        </section>
-
-        <section className="grid gap-4 pb-16 sm:grid-cols-3 sm:gap-6 sm:pb-24">
-          {[
-            {
-              icon: Sparkles,
-              title: "AI question extraction",
-              body: "Drop a file. AI identifies MCQ, multi-select, true/false, and short-answer questions with topics and difficulty.",
-            },
-            {
-              icon: ShieldCheck,
-              title: "Secure proctoring",
-              body: "Fullscreen, tab-switch, copy-paste, and shortcut detection. Three warnings and the exam auto-submits.",
-            },
-            {
-              icon: Timer,
-              title: "Personalized insights",
-              body: "Per-topic accuracy, mastery trends, and AI recommendations pinpoint what to study next.",
-            },
-          ].map((f) => (
-            <div key={f.title} className="rounded-lg border border-border p-6">
-              <f.icon className="h-6 w-6 text-primary" />
-              <h3 className="mt-4 text-lg font-semibold">{f.title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{f.body}</p>
+      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
+              Take your proctored exam
+            </h1>
+            <p className="mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">
+              Enter the student ID your teacher gave you and the exam password to begin. No account
+              needed.
+            </p>
+            <div className="mt-10 grid gap-4 sm:grid-cols-3">
+              {[
+                { icon: Sparkles, title: "AI-generated", body: "Exams are built from your teacher's materials." },
+                { icon: ShieldCheck, title: "Secure", body: "Fullscreen proctoring with a 3-warning limit." },
+                { icon: GraduationCap, title: "Instant feedback", body: "See your score and study tips right after." },
+              ].map((f) => (
+                <div key={f.title} className="rounded-lg border border-border p-4">
+                  <f.icon className="h-5 w-5 text-primary" />
+                  <h3 className="mt-3 text-sm font-semibold">{f.title}</h3>
+                  <p className="mt-1 text-xs text-muted-foreground">{f.body}</p>
+                </div>
+              ))}
             </div>
-          ))}
-        </section>
+          </div>
+
+          <Card className="border-primary/30 shadow-lg">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <GraduationCap className="h-5 w-5 text-primary" /> Start your exam
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={start} className="space-y-4">
+                <div>
+                  <Label htmlFor="sid">Student ID</Label>
+                  <Input
+                    id="sid"
+                    autoComplete="off"
+                    placeholder="STU-XXXXX"
+                    value={studentCode}
+                    onChange={(e) => setStudentCode(e.target.value.toUpperCase())}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="ac">Exam password</Label>
+                  <Input
+                    id="ac"
+                    autoComplete="off"
+                    placeholder="6-character code"
+                    value={accessCode}
+                    onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
+                    maxLength={10}
+                  />
+                </div>
+                <Button type="submit" className="w-full" size="lg" disabled={busy}>
+                  {busy ? "Starting…" : "Start exam"}
+                </Button>
+                <p className="text-center text-xs text-muted-foreground">
+                  Your teacher provides both the ID and the password.
+                </p>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
       </main>
     </div>
   );
