@@ -312,6 +312,13 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
       return { ok: true, alreadySubmitted: true, score: att.score, maxScore: att.max_score, insight: existing };
     }
 
+    const { data: examRow } = await sb
+      .from("exams")
+      .select("negative_mark_per_wrong")
+      .eq("id", att.exam_id)
+      .maybeSingle();
+    const negPerWrong = Number(examRow?.negative_mark_per_wrong ?? 0);
+
     const order = (att.question_order as { qid: string }[]) ?? [];
     const qids = order.map((o) => o.qid);
     const [{ data: qs }, { data: ans }] = await Promise.all([
@@ -345,8 +352,9 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
       if (q.type === "short") {
         shortToGrade.push({ id: q.id, prompt: q.prompt, correct, response: resp, marks: q.marks });
       } else {
-        const ok = resp.length > 0 && answersEqual(resp, correct);
-        const awarded = ok ? q.marks : 0;
+        const attempted = resp.length > 0;
+        const ok = attempted && answersEqual(resp, correct);
+        const awarded = ok ? q.marks : attempted ? -negPerWrong : 0;
         score += awarded;
         graded.push({
           id: q.id,

@@ -189,6 +189,9 @@ export type Database = {
           duration_minutes: number
           end_at: string | null
           id: string
+          negative_mark_per_wrong: number
+          pattern: string
+          pattern_config: Json | null
           shuffle_options: boolean
           shuffle_questions: boolean
           start_at: string | null
@@ -205,6 +208,9 @@ export type Database = {
           duration_minutes?: number
           end_at?: string | null
           id?: string
+          negative_mark_per_wrong?: number
+          pattern?: string
+          pattern_config?: Json | null
           shuffle_options?: boolean
           shuffle_questions?: boolean
           start_at?: string | null
@@ -221,6 +227,9 @@ export type Database = {
           duration_minutes?: number
           end_at?: string | null
           id?: string
+          negative_mark_per_wrong?: number
+          pattern?: string
+          pattern_config?: Json | null
           shuffle_options?: boolean
           shuffle_questions?: boolean
           start_at?: string | null
