@@ -242,19 +242,29 @@ function ExamDetail() {
   const selectAllAvail = () => setSelected(new Set(availableStudents.map((s) => s.id)));
 
   const doBulkAssign = async () => {
-    if (!selected.size) return toast.error("Select at least one student");
+    if (!selected.size && assignments.length === 0) return toast.error("Select at least one student");
     try {
-      const r = await bulkAssign({
-        data: {
-          examId,
-          studentIds: Array.from(selected),
-          due_at: due || null,
-          max_attempts: maxAttempts,
-        },
-      });
-      toast.success(`Assigned to ${r.assigned}`);
+      let assignedCount = 0;
+      if (selected.size) {
+        const r = await bulkAssign({
+          data: {
+            examId,
+            studentIds: Array.from(selected),
+            due_at: due || null,
+            max_attempts: maxAttempts,
+          },
+        });
+        assignedCount = r.assigned;
+      }
+      // Also apply due/max to existing assignments so admins can edit them
+      if (assignments.length) {
+        await supabase
+          .from("assignments")
+          .update({ due_at: due || null, max_attempts: maxAttempts })
+          .eq("exam_id", examId);
+      }
+      toast.success(assignedCount ? `Saved · assigned to ${assignedCount}` : "Saved");
       setSelected(new Set());
-      setDue("");
       reload();
     } catch (e) { toast.error((e as Error).message); }
   };
