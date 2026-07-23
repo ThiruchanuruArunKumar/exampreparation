@@ -114,9 +114,51 @@ function StudentsPage() {
   const others = rows.filter((r) => !(r.status === "pending" && r.role === "student"));
 
 
+  const statusBadge = (s: Row["status"]) =>
+    s === "approved" ? (
+      <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"><Check className="mr-1 h-3 w-3" />Approved</Badge>
+    ) : s === "rejected" ? (
+      <Badge variant="secondary" className="bg-destructive/10 text-destructive"><X className="mr-1 h-3 w-3" />Rejected</Badge>
+    ) : (
+      <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 dark:text-amber-400"><Clock className="mr-1 h-3 w-3" />Pending</Badge>
+    );
+
   return (
     <AppShell title="Students">
       <h1 className="mb-6 text-2xl font-semibold">Members</h1>
+
+      {pending.length > 0 && (
+        <Card className="mb-6 border-amber-500/40">
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Clock className="h-4 w-4 text-amber-500" />
+              Pending approvals ({pending.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {pending.map((r) => (
+                <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium">{r.full_name || r.email}</div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {r.email} · requested {new Date(r.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div className="flex shrink-0 gap-1">
+                    <Button size="sm" onClick={() => changeStatus(r, "approved")}>
+                      <Check className="mr-1 h-4 w-4" />Approve
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => changeStatus(r, "rejected")}>
+                      <X className="mr-1 h-4 w-4" />Reject
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <Card>
@@ -137,23 +179,23 @@ function StudentsPage() {
               {busy ? "Sending…" : "Send invitation"}
             </Button>
             <p className="text-xs text-muted-foreground">
-              An email invite is sent. On first sign-in they join as a student.
+              An email invite is sent. Invited students are auto-approved; self-signups need approval.
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Roster ({rows.length})</CardTitle>
+            <CardTitle className="text-base">Roster ({others.length})</CardTitle>
           </CardHeader>
           <CardContent>
             {loading ? (
               <p className="text-sm text-muted-foreground">Loading…</p>
-            ) : rows.length === 0 ? (
+            ) : others.length === 0 ? (
               <p className="text-sm text-muted-foreground">No members yet.</p>
             ) : (
               <div className="space-y-2">
-                {rows.map((r) => (
+                {others.map((r) => (
                   <div key={r.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2 text-sm font-medium">
@@ -163,13 +205,24 @@ function StudentsPage() {
                         ) : (
                           <Badge variant="secondary"><GraduationCap className="mr-1 h-3 w-3" />Student</Badge>
                         )}
+                        {r.role === "student" && statusBadge(r.status)}
                       </div>
                       <div className="truncate text-xs text-muted-foreground">
                         {r.email} · {r.attemptCount} attempt{r.attemptCount === 1 ? "" : "s"}
                         {r.attemptCount > 0 && ` · avg ${r.averagePercent}%`}
                       </div>
                     </div>
-                    <div className="flex shrink-0 gap-1">
+                    <div className="flex shrink-0 flex-wrap gap-1">
+                      {r.role === "student" && r.status === "rejected" && (
+                        <Button variant="ghost" size="sm" onClick={() => changeStatus(r, "approved")}>
+                          <Check className="mr-1 h-4 w-4" />Approve
+                        </Button>
+                      )}
+                      {r.role === "student" && r.status === "approved" && (
+                        <Button variant="ghost" size="sm" onClick={() => changeStatus(r, "rejected")}>
+                          Revoke
+                        </Button>
+                      )}
                       <Button variant="ghost" size="sm" onClick={() => toggleRole(r)}>
                         {r.role === "admin" ? "Make student" : "Make admin"}
                       </Button>
