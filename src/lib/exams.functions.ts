@@ -19,6 +19,14 @@ const ExtractedSchema = z.object({
   questions: z.array(QuestionSchema),
 });
 
+async function assertAdmin(context: { supabase: any; userId: string }) {
+  const { data } = await context.supabase.rpc("has_role", {
+    _user_id: context.userId,
+    _role: "admin",
+  });
+  if (!data) throw new Error("Forbidden");
+}
+
 export const extractQuestions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
@@ -31,12 +39,7 @@ export const extractQuestions = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (!isAdmin) throw new Error("Forbidden");
-
+    await assertAdmin(context);
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
     const gateway = createLovableAiGatewayProvider(key, { structuredOutputs: true });
@@ -72,7 +75,9 @@ export const extractQuestions = createServerFn({ method: "POST" })
       return output;
     } catch (error) {
       if (NoObjectGeneratedError.isInstance(error)) {
-        throw new Error("AI could not extract structured questions from this file. Try a clearer file.");
+        throw new Error(
+          "AI could not extract structured questions from this file. Try a clearer file.",
+        );
       }
       throw error;
     }
@@ -81,20 +86,10 @@ export const extractQuestions = createServerFn({ method: "POST" })
 export const listStudents = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { data: isAdmin } = await context.supabase.rpc("has_role", {
-      _user_id: context.userId,
-      _role: "admin",
-    });
-    if (!isAdmin) throw new Error("Forbidden");
-    const { data: roles } = await context.supabase
-      .from("user_roles")
-      .select("user_id, role")
-      .eq("role", "student");
-    if (!roles?.length) return [];
-    const ids = roles.map((r) => r.user_id);
-    const { data: profs } = await context.supabase
-      .from("profiles")
-      .select("id, email, full_name")
-      .in("id", ids);
-    return profs ?? [];
+    await assertAdmin(context);
+    const { data } = await context.supabase
+      .from("students")
+      .select("id, student_code, name, email, class_name")
+      .order("created_at", { ascending: false });
+    return data ?? [];
   });
