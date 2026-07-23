@@ -156,7 +156,9 @@ export const regenerateExamCode = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ examId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    await assertOwnsExam(context, data.examId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
     let code = randomAccessCode();
     for (let i = 0; i < 5; i++) {
       const { data: exists } = await supabaseAdmin
