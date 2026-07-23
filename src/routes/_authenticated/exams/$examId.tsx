@@ -533,6 +533,25 @@ function ExamDetail() {
                 <Label>Duration (minutes)</Label>
                 <Input type="number" min={1} value={exam.duration_minutes} onChange={(e) => patchExam({ duration_minutes: Number(e.target.value) || 1 })} />
               </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label>Available from</Label>
+                  <Input
+                    type="datetime-local"
+                    value={toLocalInput(exam.start_at)}
+                    onChange={(e) => patchExam({ start_at: fromLocalInput(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label>Available until</Label>
+                  <Input
+                    type="datetime-local"
+                    value={toLocalInput(exam.end_at)}
+                    onChange={(e) => patchExam({ end_at: fromLocalInput(e.target.value) })}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">Students can only start the exam within this window. Leave blank for always-available.</p>
               <div className="flex items-center justify-between">
                 <Label>Shuffle questions</Label>
                 <Switch checked={exam.shuffle_questions} onCheckedChange={(v) => patchExam({ shuffle_questions: v })} />
