@@ -112,7 +112,7 @@ function ExamDetail() {
 
   const reload = async () => {
     const [{ data: e }, { data: q }, { data: a }] = await Promise.all([
-      supabase.from("exams").select("id, title, description, duration_minutes, shuffle_questions, shuffle_options, access_code, start_at, end_at, pattern, pattern_config, negative_mark_per_wrong").eq("id", examId).single(),
+      supabase.from("exams").select("id, title, description, duration_minutes, shuffle_questions, shuffle_options, access_code, start_at, end_at, pattern, pattern_config, negative_mark_per_wrong, show_result_after_submit, show_answer_sheet, show_answer_book").eq("id", examId).single(),
       supabase.from("questions").select("id, type, prompt, options, correct_answer, marks, topic, difficulty").eq("exam_id", examId).order("order_index"),
       supabase.from("assignments")
         .select("id, student_id, due_at, max_attempts, attempts(id, status, score, max_score)")
