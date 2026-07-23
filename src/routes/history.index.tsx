@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { getStudentHistory } from "@/lib/student.functions";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
-export const Route = createFileRoute("/history")({
+export const Route = createFileRoute("/history/")({
   head: () => ({
     meta: [
       { title: "My results — ExamPrep" },

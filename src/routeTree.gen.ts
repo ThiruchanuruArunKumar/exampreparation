@@ -10,10 +10,10 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as McpRouteImport } from './routes/mcp'
-import { Route as HistoryRouteImport } from './routes/history'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as HistoryIndexRouteImport } from './routes/history.index'
 import { Route as HistoryAttemptIdRouteImport } from './routes/history.$attemptId'
 import { Route as ExamAttemptIdRouteImport } from './routes/exam.$attemptId'
 import { Route as ExamInfoExamIdRouteImport } from './routes/exam-info.$examId'
@@ -35,11 +35,6 @@ const McpRoute = McpRouteImport.update({
   path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
-const HistoryRoute = HistoryRouteImport.update({
-  id: '/history',
-  path: '/history',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -54,10 +49,15 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HistoryIndexRoute = HistoryIndexRouteImport.update({
+  id: '/history/',
+  path: '/history/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HistoryAttemptIdRoute = HistoryAttemptIdRouteImport.update({
-  id: '/$attemptId',
-  path: '/$attemptId',
-  getParentRoute: () => HistoryRoute,
+  id: '/history/$attemptId',
+  path: '/history/$attemptId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ExamAttemptIdRoute = ExamAttemptIdRouteImport.update({
   id: '/exam/$attemptId',
@@ -140,7 +140,6 @@ const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/history': typeof HistoryRouteWithChildren
   '/mcp': typeof McpRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -150,6 +149,7 @@ export interface FileRoutesByFullPath {
   '/exam-info/$examId': typeof ExamInfoExamIdRoute
   '/exam/$attemptId': typeof ExamAttemptIdRoute
   '/history/$attemptId': typeof HistoryAttemptIdRoute
+  '/history/': typeof HistoryIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/attempt-results/$attemptId': typeof AuthenticatedAttemptResultsAttemptIdRoute
@@ -161,7 +161,6 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/history': typeof HistoryRouteWithChildren
   '/mcp': typeof McpRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -171,6 +170,7 @@ export interface FileRoutesByTo {
   '/exam-info/$examId': typeof ExamInfoExamIdRoute
   '/exam/$attemptId': typeof ExamAttemptIdRoute
   '/history/$attemptId': typeof HistoryAttemptIdRoute
+  '/history': typeof HistoryIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/attempt-results/$attemptId': typeof AuthenticatedAttemptResultsAttemptIdRoute
@@ -184,7 +184,6 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/history': typeof HistoryRouteWithChildren
   '/mcp': typeof McpRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -194,6 +193,7 @@ export interface FileRoutesById {
   '/exam-info/$examId': typeof ExamInfoExamIdRoute
   '/exam/$attemptId': typeof ExamAttemptIdRoute
   '/history/$attemptId': typeof HistoryAttemptIdRoute
+  '/history/': typeof HistoryIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/_authenticated/attempt-results/$attemptId': typeof AuthenticatedAttemptResultsAttemptIdRoute
@@ -207,7 +207,6 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
-    | '/history'
     | '/mcp'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -217,6 +216,7 @@ export interface FileRouteTypes {
     | '/exam-info/$examId'
     | '/exam/$attemptId'
     | '/history/$attemptId'
+    | '/history/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/attempt-results/$attemptId'
@@ -228,7 +228,6 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
-    | '/history'
     | '/mcp'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -238,6 +237,7 @@ export interface FileRouteTypes {
     | '/exam-info/$examId'
     | '/exam/$attemptId'
     | '/history/$attemptId'
+    | '/history'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/attempt-results/$attemptId'
@@ -250,7 +250,6 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
-    | '/history'
     | '/mcp'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
@@ -260,6 +259,7 @@ export interface FileRouteTypes {
     | '/exam-info/$examId'
     | '/exam/$attemptId'
     | '/history/$attemptId'
+    | '/history/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
     | '/_authenticated/attempt-results/$attemptId'
@@ -273,12 +273,13 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
-  HistoryRoute: typeof HistoryRouteWithChildren
   McpRoute: typeof McpRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ExamInfoExamIdRoute: typeof ExamInfoExamIdRoute
   ExamAttemptIdRoute: typeof ExamAttemptIdRoute
+  HistoryAttemptIdRoute: typeof HistoryAttemptIdRoute
+  HistoryIndexRoute: typeof HistoryIndexRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
 }
@@ -290,13 +291,6 @@ declare module '@tanstack/react-router' {
       path: '/mcp'
       fullPath: '/mcp'
       preLoaderRoute: typeof McpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/history': {
-      id: '/history'
-      path: '/history'
-      fullPath: '/history'
-      preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -320,12 +314,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/history/': {
+      id: '/history/'
+      path: '/history'
+      fullPath: '/history/'
+      preLoaderRoute: typeof HistoryIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/history/$attemptId': {
       id: '/history/$attemptId'
-      path: '/$attemptId'
+      path: '/history/$attemptId'
       fullPath: '/history/$attemptId'
       preLoaderRoute: typeof HistoryAttemptIdRouteImport
-      parentRoute: typeof HistoryRoute
+      parentRoute: typeof rootRouteImport
     }
     '/exam/$attemptId': {
       id: '/exam/$attemptId'
@@ -454,28 +455,18 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
-interface HistoryRouteChildren {
-  HistoryAttemptIdRoute: typeof HistoryAttemptIdRoute
-}
-
-const HistoryRouteChildren: HistoryRouteChildren = {
-  HistoryAttemptIdRoute: HistoryAttemptIdRoute,
-}
-
-const HistoryRouteWithChildren =
-  HistoryRoute._addFileChildren(HistoryRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
-  HistoryRoute: HistoryRouteWithChildren,
   McpRoute: McpRoute,
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ExamInfoExamIdRoute: ExamInfoExamIdRoute,
   ExamAttemptIdRoute: ExamAttemptIdRoute,
+  HistoryAttemptIdRoute: HistoryAttemptIdRoute,
+  HistoryIndexRoute: HistoryIndexRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
 }
