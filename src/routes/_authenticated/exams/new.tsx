@@ -101,6 +101,38 @@ function NewExam() {
     return () => { cancelled = true; };
   }, []);
 
+  // Keep latest state in a ref so we can flush on unmount / tab hide
+  const latest = useRef({ draftId, title, pattern, config, questions, showResult, showSheet, showBook });
+  useEffect(() => {
+    latest.current = { draftId, title, pattern, config, questions, showResult, showSheet, showBook };
+  });
+
+  const flushSave = useCallback(async () => {
+    const s = latest.current;
+    if (!s.title.trim() && s.questions.length === 0) return;
+    try {
+      const r = await saveDraft({
+        data: {
+          id: s.draftId,
+          title: s.title,
+          pattern: s.pattern,
+          pattern_config: s.config,
+          questions: s.questions,
+          show_result_after_submit: s.showResult,
+          show_answer_sheet: s.showSheet,
+          show_answer_book: s.showBook,
+        },
+      });
+      if (r?.id && r.id !== s.draftId) {
+        setDraftId(r.id);
+        latest.current.draftId = r.id;
+      }
+      setDraftStatus("saved");
+    } catch {
+      setDraftStatus("idle");
+    }
+  }, []);
+
   // Debounced cloud save on every change
   useEffect(() => {
     if (!restored) return;
@@ -109,28 +141,29 @@ function NewExam() {
     if (isEmpty) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     setDraftStatus("saving");
-    saveTimer.current = setTimeout(async () => {
-      try {
-        const r = await saveDraft({
-          data: {
-            id: draftId,
-            title,
-            pattern,
-            pattern_config: config,
-            questions,
-            show_result_after_submit: showResult,
-            show_answer_sheet: showSheet,
-            show_answer_book: showBook,
-          },
-        });
-        if (r?.id && r.id !== draftId) setDraftId(r.id);
-        setDraftStatus("saved");
-      } catch {
-        setDraftStatus("idle");
-      }
+    saveTimer.current = setTimeout(() => {
+      saveTimer.current = null;
+      flushSave();
     }, 800);
-    return () => { if (saveTimer.current) clearTimeout(saveTimer.current); };
-  }, [restored, draftId, title, pattern, config, questions, showResult, showSheet, showBook]);
+  }, [restored, draftId, title, pattern, config, questions, showResult, showSheet, showBook, flushSave]);
+
+  // Flush pending save on tab hide / navigation away / unmount
+  useEffect(() => {
+    if (!restored) return;
+    const flush = () => {
+      if (saveTimer.current) { clearTimeout(saveTimer.current); saveTimer.current = null; }
+      flushSave();
+    };
+    const onVis = () => { if (document.visibilityState === "hidden") flush(); };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVis);
+    return () => {
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onVis);
+      flush();
+    };
+  }, [restored, flushSave]);
+
 
   const clearDraft = async () => {
     if (draftId) {
