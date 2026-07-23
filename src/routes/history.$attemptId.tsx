@@ -238,7 +238,7 @@ function DetailBody({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-sm">{insight.summary}</p>
+              <RichContent className="text-sm">{insight.summary}</RichContent>
               {(insight.weak_topics?.length ?? 0) > 0 && (
                 <div>
                   <div className="mb-1 flex items-center gap-1 text-sm font-medium text-destructive">
@@ -253,18 +253,21 @@ function DetailBody({
               )}
               {(insight.strong_topics?.length ?? 0) > 0 && (
                 <div>
-                  <div className="mb-1 flex items-center gap-1 text-sm font-medium text-primary">
+                  <div className="mb-1 flex items-center gap-1 text-sm font-medium text-emerald-600 dark:text-emerald-400">
                     <TrendingUp className="h-4 w-4" /> Strong areas
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {insight.strong_topics!.map((t: string) => (
-                      <Badge key={t}>{t}</Badge>
+                      <Badge key={t} className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300">{t}</Badge>
                     ))}
                   </div>
                 </div>
               )}
               {insight.recommendations && (
-                <div className="whitespace-pre-wrap text-sm">{insight.recommendations}</div>
+                <div>
+                  <div className="mb-1 text-sm font-medium">Study plan</div>
+                  <RichContent className="text-sm">{insight.recommendations}</RichContent>
+                </div>
               )}
             </CardContent>
           </Card>
