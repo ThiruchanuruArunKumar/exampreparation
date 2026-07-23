@@ -22,6 +22,8 @@ import {
   reportStudentWarning,
   submitStudentAttempt,
 } from "@/lib/student.functions";
+import { RichContent } from "@/components/RichContent";
+
 
 export const Route = createFileRoute("/exam/$attemptId")({
   head: () => ({
