@@ -191,9 +191,18 @@ function NewExam() {
           <Button className="w-full" size="lg" onClick={save} disabled={saving}>
             {saving ? "Saving…" : `Save exam (${questions.length} questions)`}
           </Button>
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>✓ Draft auto-saved locally — safe to close and come back.</span>
+            {(title || questions.length > 0) && (
+              <button type="button" onClick={clearDraft} className="underline underline-offset-2 hover:text-destructive">
+                Discard draft
+              </button>
+            )}
+          </div>
           <p className="text-center text-xs text-muted-foreground">
             You can add more questions any time — even after publishing — from the exam page.
           </p>
+
         </div>
 
         <div className="space-y-3">
