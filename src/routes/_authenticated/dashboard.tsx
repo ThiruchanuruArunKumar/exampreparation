@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, FileText, Copy } from "lucide-react";
 import { toast } from "sonner";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({
@@ -35,16 +36,18 @@ function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [exams, setExams] = useState<Exam[]>([]);
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from("exams")
-        .select("id, title, access_code, duration_minutes, created_at, questions(count), assignments(count)")
-        .order("created_at", { ascending: false });
-      setExams((data as Exam[]) ?? []);
-      setLoading(false);
-    })();
+  const load = useCallback(async () => {
+    const { data } = await supabase
+      .from("exams")
+      .select("id, title, access_code, duration_minutes, created_at, questions(count), assignments(count)")
+      .order("created_at", { ascending: false });
+    setExams((data as Exam[]) ?? []);
+    setLoading(false);
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+  useRealtimeSync(["exams", "questions", "assignments"], load);
+
 
   const copy = (code: string) => {
     navigator.clipboard.writeText(code);

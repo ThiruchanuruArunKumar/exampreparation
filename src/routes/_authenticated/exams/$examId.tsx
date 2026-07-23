@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { listStudents } from "@/lib/exams.functions";
 import { reassignAttempt } from "@/lib/attempts.functions";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import {
   updateExam,
   saveQuestions,
@@ -114,6 +115,7 @@ function ExamDetail() {
   };
 
   useEffect(() => { reload(); /* eslint-disable-next-line */ }, [examId]);
+  useRealtimeSync(["exams", "questions", "assignments", "attempts", "students"], reload);
 
   const patchExam = (p: Partial<Exam>) => setExam((prev) => (prev ? { ...prev, ...p } : prev));
 

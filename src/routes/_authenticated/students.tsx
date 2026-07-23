@@ -15,6 +15,7 @@ import {
   updateStudent,
   deleteStudentRecord,
 } from "@/lib/admin.functions";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 export const Route = createFileRoute("/_authenticated/students")({
   head: () => ({
@@ -64,6 +65,7 @@ function StudentsPage() {
   useEffect(() => {
     load();
   }, []);
+  useRealtimeSync(["students", "attempts"], load);
 
   const create = async () => {
     if (!name.trim()) return toast.error("Name required");

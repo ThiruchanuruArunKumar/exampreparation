@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getGlobalAnalytics } from "@/lib/admin.functions";
 import { Users, FileText, ClipboardList, TrendingUp } from "lucide-react";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 export const Route = createFileRoute("/_authenticated/analytics")({
   head: () => ({
@@ -20,9 +21,12 @@ export const Route = createFileRoute("/_authenticated/analytics")({
 function AnalyticsPage() {
   const [data, setData] = useState<any>(null);
 
-  useEffect(() => {
+  const load = useCallback(() => {
     getGlobalAnalytics().then(setData).catch(() => setData({ error: true }));
   }, []);
+
+  useEffect(() => { load(); }, [load]);
+  useRealtimeSync(["exams", "students", "attempts"], load);
 
   if (!data) return <AppShell title="Analytics"><p>Loading…</p></AppShell>;
   if (data.error) return <AppShell title="Analytics"><p className="text-sm text-destructive">Admin only.</p></AppShell>;
