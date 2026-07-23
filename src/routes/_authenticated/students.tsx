@@ -33,6 +33,7 @@ type Row = {
   email: string | null;
   full_name: string | null;
   role: "admin" | "student";
+  status: "pending" | "approved" | "rejected";
   attemptCount: number;
   averagePercent: number;
   created_at: string;
