@@ -10,7 +10,8 @@ import { NumberField } from "@/components/NumberField";
 import { Upload, Sparkles, FileText, Plus } from "lucide-react";
 import { extractQuestions } from "@/lib/exams.functions";
 import { generateFromNotes, generateFromDescription } from "@/lib/admin.functions";
-import type { ExamPattern } from "@/lib/exam-patterns";
+import { PATTERN_PRESETS, type ExamPattern } from "@/lib/exam-patterns";
+
 
 export type GeneratedQuestion = {
   type: "mcq" | "multi" | "tf" | "short";
@@ -92,13 +93,38 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
         data: { pattern, count, subject: subject || null, description: description.trim() },
       });
       onQuestions(res.questions as GeneratedQuestion[]);
-      toast.success(`Generated ${res.questions.length} questions`);
+      toast.success(`Generated ${res.questions.length} questions for ${subject || "the exam"}`);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
       setBusy(false);
     }
   };
+
+  const doGenAllSubjects = async () => {
+    if (!description.trim()) return toast.error("Describe topics for the AI first");
+    const preset = pattern !== "custom" ? PATTERN_PRESETS[pattern] : null;
+    const sections = preset ? preset.sections : subjects.map((s) => ({ name: s, count, marks_per_q: 1 }));
+    if (!sections.length) return toast.error("No subjects configured");
+    setBusy(true);
+    try {
+      let total = 0;
+      for (const sec of sections) {
+        toast.info(`Generating ${sec.count} for ${sec.name}…`);
+        const res = await generateFromDescription({
+          data: { pattern, count: sec.count, subject: sec.name, description: description.trim() },
+        });
+        onQuestions(res.questions as GeneratedQuestion[]);
+        total += res.questions.length;
+      }
+      toast.success(`Generated ${total} questions across ${sections.length} subjects`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
 
   const addManual = () => {
     onQuestions([
@@ -174,10 +200,21 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
-            <Button onClick={doGenFromDesc} disabled={busy} className="w-full">
-              <Sparkles className="mr-2 h-4 w-4" />{busy ? "Generating…" : `Generate ${count} questions`}
-            </Button>
+            <p className="text-xs text-muted-foreground">
+              Tip: pick a subject above and click Generate — repeat for each subject to build the full paper. Or use “Generate for all subjects” to do it in one go.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button onClick={doGenFromDesc} disabled={busy} className="w-full">
+                <Sparkles className="mr-2 h-4 w-4" />{busy ? "Generating…" : `Generate ${count} for ${subject || "any"}`}
+              </Button>
+              {subjects.length > 1 && (
+                <Button onClick={doGenAllSubjects} disabled={busy} variant="outline" className="w-full">
+                  <Sparkles className="mr-2 h-4 w-4" />{busy ? "Generating…" : `Generate for all ${subjects.length} subjects`}
+                </Button>
+              )}
+            </div>
           </TabsContent>
+
 
           <TabsContent value="extract" className="mt-3">
             <label className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-6 text-center hover:border-primary">
