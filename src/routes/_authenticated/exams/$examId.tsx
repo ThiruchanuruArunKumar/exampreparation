@@ -14,6 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NumberField } from "@/components/NumberField";
 import { PatternPicker } from "@/components/PatternPicker";
 import { QuestionSource } from "@/components/QuestionSource";
+import { RichContent } from "@/components/RichContent";
+
 import { listStudents } from "@/lib/exams.functions";
 import { reassignAttempt } from "@/lib/attempts.functions";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
@@ -384,7 +386,14 @@ function ExamDetail() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                <Textarea placeholder="Question prompt" value={q.prompt} onChange={(e) => patchQ(i, { prompt: e.target.value })} />
+                <Textarea placeholder="Question prompt (Markdown + LaTeX supported — e.g. $x^2$, $\frac{a}{b}$, $H_2O$)" value={q.prompt} onChange={(e) => patchQ(i, { prompt: e.target.value })} />
+                {q.prompt && (
+                  <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-2">
+                    <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">Preview</div>
+                    <RichContent>{q.prompt}</RichContent>
+                  </div>
+                )}
+
                 {q.type !== "short" && q.options && (
                   <div className="space-y-2">
                     {q.options.map((opt, oi) => {
