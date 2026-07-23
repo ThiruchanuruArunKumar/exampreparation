@@ -626,14 +626,25 @@ function ResultScreen({
                     <div className="grid gap-2 sm:grid-cols-2">
                       <div className="rounded-md border border-border p-2">
                         <div className="text-xs text-muted-foreground">Your answer</div>
-                        <div>{chose.length ? chose.join(", ") : "—"}</div>
+                        <div className="flex flex-wrap gap-x-2">
+                          {chose.length
+                            ? chose.map((c, ci) => (
+                                <span key={ci}><RichContent inline>{c}</RichContent>{ci < chose.length - 1 ? "," : ""}</span>
+                              ))
+                            : "—"}
+                        </div>
                       </div>
                       <div className="rounded-md border border-border p-2">
                         <div className="text-xs text-muted-foreground">Correct answer</div>
-                        <div className="text-primary">{correct.join(", ")}</div>
+                        <div className="flex flex-wrap gap-x-2 text-primary">
+                          {correct.map((c, ci) => (
+                            <span key={ci}><RichContent inline>{c}</RichContent>{ci < correct.length - 1 ? "," : ""}</span>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   )}
+
 
                   {tab === "book" && (
                     <div className="rounded-md bg-muted/40 p-3">
