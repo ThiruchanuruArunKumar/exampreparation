@@ -79,8 +79,9 @@ function NewExam() {
         skipNextSave.current = true;
         setDraftId(d.id);
         if (d.title) setTitle(d.title);
-        if (d.pattern) setPattern(d.pattern);
-        if (d.pattern_config) setConfig(d.pattern_config);
+        if (d.pattern) setPattern(d.pattern as ExamPattern);
+        if (d.pattern_config) setConfig(d.pattern_config as PatternConfig);
+
         if (Array.isArray(d.questions)) setQuestions(d.questions as GeneratedQuestion[]);
         if (typeof d.show_result_after_submit === "boolean") setShowResult(d.show_result_after_submit);
         if (typeof d.show_answer_sheet === "boolean") setShowSheet(d.show_answer_sheet);
