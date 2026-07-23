@@ -73,6 +73,9 @@ function TakeExam() {
     maxScore: number;
     insight: Insight | null;
     auto: boolean;
+    showResult: boolean;
+    showAnswerSheet: boolean;
+    showAnswerBook: boolean;
   } | null>(null);
 
   useEffect(() => {
