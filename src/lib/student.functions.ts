@@ -770,3 +770,159 @@ export const getHistoryExplanation = createServerFn({ method: "POST" })
       );
     return { explanation: text };
   });
+
+/* ---------------- Student exam listing (ongoing / upcoming) ---------------- */
+
+export const listStudentExams = createServerFn({ method: "POST" })
+  .inputValidator((i: unknown) =>
+    z.object({ studentCode: z.string().trim().min(1).max(40) }).parse(i),
+  )
+  .handler(async ({ data }) => {
+    const sb = await admin();
+    const { data: student } = await sb
+      .from("students")
+      .select("id, name, student_code, class_name")
+      .eq("student_code", data.studentCode.trim())
+      .maybeSingle();
+    if (!student) throw new Error("Invalid student ID");
+
+    const { data: assignments } = await sb
+      .from("assignments")
+      .select("id, exam_id, due_at, max_attempts")
+      .eq("student_id", student.id);
+
+    const examIds = Array.from(new Set((assignments ?? []).map((a) => a.exam_id)));
+    const { data: exams } = examIds.length
+      ? await sb
+          .from("exams")
+          .select(
+            "id, title, description, duration_minutes, total_marks, pattern, start_at, end_at, status, negative_mark_per_wrong",
+          )
+          .in("id", examIds)
+          .eq("status", "published")
+      : { data: [] as any[] };
+
+    const attemptIds = (assignments ?? []).map((a) => a.id);
+    const { data: attempts } = attemptIds.length
+      ? await sb
+          .from("attempts")
+          .select("id, assignment_id, status, submitted_at")
+          .in("assignment_id", attemptIds)
+      : { data: [] as any[] };
+
+    const now = Date.now();
+    const list = (exams ?? []).map((exam) => {
+      const asg = assignments!.find((a) => a.exam_id === exam.id)!;
+      const mine = (attempts ?? []).filter((t) => t.assignment_id === asg.id);
+      const inProgress = mine.some((t) => t.status === "in_progress");
+      const finished = mine.filter((t) => t.status !== "in_progress").length;
+      const attemptsLeft = Math.max(0, (asg.max_attempts ?? 1) - finished);
+      const startMs = exam.start_at ? new Date(exam.start_at).getTime() : null;
+      const endMs = exam.end_at ? new Date(exam.end_at).getTime() : null;
+      const dueMs = asg.due_at ? new Date(asg.due_at).getTime() : null;
+      let state: "upcoming" | "ongoing" | "closed" | "completed";
+      if (!inProgress && attemptsLeft <= 0) state = "completed";
+      else if (startMs && now < startMs) state = "upcoming";
+      else if (endMs && now > endMs) state = "closed";
+      else if (dueMs && now > dueMs) state = "closed";
+      else state = "ongoing";
+      return {
+        assignment_id: asg.id,
+        exam: {
+          id: exam.id,
+          title: exam.title,
+          description: exam.description,
+          duration_minutes: exam.duration_minutes,
+          total_marks: exam.total_marks,
+          pattern: exam.pattern,
+          start_at: exam.start_at,
+          end_at: exam.end_at,
+          negative_mark_per_wrong: exam.negative_mark_per_wrong,
+        },
+        due_at: asg.due_at,
+        max_attempts: asg.max_attempts,
+        attempts_used: finished,
+        in_progress: inProgress,
+        state,
+      };
+    });
+
+    const order = { ongoing: 0, upcoming: 1, closed: 2, completed: 3 } as const;
+    list.sort((a, b) => {
+      const d = order[a.state] - order[b.state];
+      if (d) return d;
+      const as = a.exam.start_at ? new Date(a.exam.start_at).getTime() : 0;
+      const bs = b.exam.start_at ? new Date(b.exam.start_at).getTime() : 0;
+      return as - bs;
+    });
+
+    return { student, exams: list };
+  });
+
+export const getStudentExamInfo = createServerFn({ method: "POST" })
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        studentCode: z.string().trim().min(1).max(40),
+        examId: z.string().uuid(),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data }) => {
+    const sb = await admin();
+    const { data: student } = await sb
+      .from("students")
+      .select("id, name, student_code")
+      .eq("student_code", data.studentCode.trim())
+      .maybeSingle();
+    if (!student) throw new Error("Invalid student ID");
+
+    const { data: exam } = await sb
+      .from("exams")
+      .select(
+        "id, title, description, duration_minutes, total_marks, pattern, pattern_config, start_at, end_at, negative_mark_per_wrong, shuffle_questions, shuffle_options, show_result_after_submit, show_answer_sheet, show_answer_book, status",
+      )
+      .eq("id", data.examId)
+      .maybeSingle();
+    if (!exam || exam.status !== "published") throw new Error("Exam not available");
+
+    const { data: asg } = await sb
+      .from("assignments")
+      .select("id, due_at, max_attempts")
+      .eq("exam_id", exam.id)
+      .eq("student_id", student.id)
+      .maybeSingle();
+    if (!asg) throw new Error("You are not assigned to this exam");
+
+    const { data: attempts } = await sb
+      .from("attempts")
+      .select("id, status, score, max_score, submitted_at, started_at")
+      .eq("assignment_id", asg.id)
+      .order("started_at", { ascending: false });
+
+    const inProgress = (attempts ?? []).find((a) => a.status === "in_progress") ?? null;
+    const finished = (attempts ?? []).filter((a) => a.status !== "in_progress").length;
+    const attemptsLeft = Math.max(0, (asg.max_attempts ?? 1) - finished);
+
+    const now = Date.now();
+    const startMs = exam.start_at ? new Date(exam.start_at).getTime() : null;
+    const endMs = exam.end_at ? new Date(exam.end_at).getTime() : null;
+    const dueMs = asg.due_at ? new Date(asg.due_at).getTime() : null;
+    let state: "upcoming" | "ongoing" | "closed" | "completed";
+    if (!inProgress && attemptsLeft <= 0) state = "completed";
+    else if (startMs && now < startMs) state = "upcoming";
+    else if (endMs && now > endMs) state = "closed";
+    else if (dueMs && now > dueMs) state = "closed";
+    else state = "ongoing";
+
+    return {
+      student,
+      exam,
+      assignment: { id: asg.id, due_at: asg.due_at, max_attempts: asg.max_attempts },
+      attempts: attempts ?? [],
+      attempts_used: finished,
+      attempts_left: attemptsLeft,
+      in_progress_attempt_id: inProgress?.id ?? null,
+      state,
+    };
+  });
