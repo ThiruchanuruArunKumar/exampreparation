@@ -536,7 +536,7 @@ function ExamDetail() {
                           </div>
                           <div className="flex shrink-0 items-center gap-1">
                             {best && (
-                              <Link to="/results/$attemptId" params={{ attemptId: best.id }}>
+                              <Link to="/attempt-results/$attemptId" params={{ attemptId: best.id }}>
                                 <Button variant="outline" size="sm">View</Button>
                               </Link>
                             )}
