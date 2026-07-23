@@ -1,0 +1,1 @@
+ALTER TABLE public.exams ADD COLUMN start_at timestamptz, ADD COLUMN end_at timestamptz;

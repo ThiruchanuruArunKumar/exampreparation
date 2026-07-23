@@ -50,10 +50,18 @@ export const startStudentAttempt = createServerFn({ method: "POST" })
 
     const { data: exam } = await sb
       .from("exams")
-      .select("id, title, duration_minutes, shuffle_questions, shuffle_options")
+      .select("id, title, duration_minutes, shuffle_questions, shuffle_options, start_at, end_at")
       .eq("access_code", ac)
       .maybeSingle();
     if (!exam) throw new Error("Invalid exam password");
+    const now = new Date();
+    if (exam.start_at && now < new Date(exam.start_at)) {
+      throw new Error(`Exam opens at ${new Date(exam.start_at).toLocaleString()}`);
+    }
+    if (exam.end_at && now > new Date(exam.end_at)) {
+      throw new Error("Exam window has closed");
+    }
+
 
     let { data: asg } = await sb
       .from("assignments")
@@ -97,7 +105,9 @@ export const startStudentAttempt = createServerFn({ method: "POST" })
           : null,
     }));
     const maxScore = qs.reduce((s, q) => s + (q.marks ?? 0), 0);
-    const endsAt = new Date(Date.now() + exam.duration_minutes * 60_000).toISOString();
+    let endsAtMs = Date.now() + exam.duration_minutes * 60_000;
+    if (exam.end_at) endsAtMs = Math.min(endsAtMs, new Date(exam.end_at).getTime());
+    const endsAt = new Date(endsAtMs).toISOString();
     const token = randomToken();
 
     const { data: created, error } = await sb

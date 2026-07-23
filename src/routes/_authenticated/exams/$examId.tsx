@@ -45,7 +45,10 @@ type Exam = {
   shuffle_questions: boolean;
   shuffle_options: boolean;
   access_code: string;
+  start_at: string | null;
+  end_at: string | null;
 };
+
 type Question = {
   id?: string;
   type: "mcq" | "multi" | "tf" | "short";
@@ -64,6 +67,18 @@ type Assignment = {
   attempts: { id: string; status: string; score: number | null; max_score: number | null }[];
 };
 
+function toLocalInput(iso: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fromLocalInput(v: string): string | null {
+  if (!v) return null;
+  const d = new Date(v);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 function ExamDetail() {
   const { examId } = Route.useParams();
   const navigate = useNavigate();
@@ -81,7 +96,7 @@ function ExamDetail() {
 
   const reload = async () => {
     const [{ data: e }, { data: q }, { data: a }] = await Promise.all([
-      supabase.from("exams").select("id, title, description, duration_minutes, shuffle_questions, shuffle_options, access_code").eq("id", examId).single(),
+      supabase.from("exams").select("id, title, description, duration_minutes, shuffle_questions, shuffle_options, access_code, start_at, end_at").eq("id", examId).single(),
       supabase.from("questions").select("id, type, prompt, options, correct_answer, marks, topic, difficulty").eq("exam_id", examId).order("order_index"),
       supabase.from("assignments")
         .select("id, student_id, due_at, max_attempts, attempts(id, status, score, max_score)")
@@ -114,6 +129,8 @@ function ExamDetail() {
           duration_minutes: exam.duration_minutes,
           shuffle_questions: exam.shuffle_questions,
           shuffle_options: exam.shuffle_options,
+          start_at: exam.start_at,
+          end_at: exam.end_at,
         },
       });
       toast.success("Settings saved");
@@ -528,6 +545,25 @@ function ExamDetail() {
                 <Label>Duration (minutes)</Label>
                 <Input type="number" min={1} value={exam.duration_minutes} onChange={(e) => patchExam({ duration_minutes: Number(e.target.value) || 1 })} />
               </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label>Available from</Label>
+                  <Input
+                    type="datetime-local"
+                    value={toLocalInput(exam.start_at)}
+                    onChange={(e) => patchExam({ start_at: fromLocalInput(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label>Available until</Label>
+                  <Input
+                    type="datetime-local"
+                    value={toLocalInput(exam.end_at)}
+                    onChange={(e) => patchExam({ end_at: fromLocalInput(e.target.value) })}
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">Students can only start the exam within this window. Leave blank for always-available.</p>
               <div className="flex items-center justify-between">
                 <Label>Shuffle questions</Label>
                 <Switch checked={exam.shuffle_questions} onCheckedChange={(v) => patchExam({ shuffle_questions: v })} />

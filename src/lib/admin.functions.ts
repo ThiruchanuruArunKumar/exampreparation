@@ -139,11 +139,16 @@ export const updateExam = createServerFn({ method: "POST" })
         duration_minutes: z.number().int().min(1).max(600),
         shuffle_questions: z.boolean(),
         shuffle_options: z.boolean(),
+        start_at: z.string().nullable(),
+        end_at: z.string().nullable(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    if (data.start_at && data.end_at && new Date(data.start_at) >= new Date(data.end_at)) {
+      throw new Error("Start time must be before end time");
+    }
     const { error } = await context.supabase
       .from("exams")
       .update({
@@ -152,11 +157,14 @@ export const updateExam = createServerFn({ method: "POST" })
         duration_minutes: data.duration_minutes,
         shuffle_questions: data.shuffle_questions,
         shuffle_options: data.shuffle_options,
+        start_at: data.start_at,
+        end_at: data.end_at,
       })
       .eq("id", data.examId);
     if (error) throw error;
     return { ok: true };
   });
+
 
 export const saveQuestions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

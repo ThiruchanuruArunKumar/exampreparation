@@ -187,9 +187,11 @@ export type Database = {
           created_by: string | null
           description: string | null
           duration_minutes: number
+          end_at: string | null
           id: string
           shuffle_options: boolean
           shuffle_questions: boolean
+          start_at: string | null
           status: string
           title: string
           total_marks: number
@@ -201,9 +203,11 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           duration_minutes?: number
+          end_at?: string | null
           id?: string
           shuffle_options?: boolean
           shuffle_questions?: boolean
+          start_at?: string | null
           status?: string
           title: string
           total_marks?: number
@@ -215,9 +219,11 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           duration_minutes?: number
+          end_at?: string | null
           id?: string
           shuffle_options?: boolean
           shuffle_questions?: boolean
+          start_at?: string | null
           status?: string
           title?: string
           total_marks?: number
