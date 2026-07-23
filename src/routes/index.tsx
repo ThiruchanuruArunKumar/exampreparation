@@ -64,9 +64,11 @@ function Landing() {
   const [loadingList, setLoadingList] = useState(false);
   const [exams, setExams] = useState<ExamRow[] | null>(null);
   const [studentName, setStudentName] = useState<string>("");
+  const [lastId, setLastId] = useState<string | null>(null);
 
   useEffect(() => {
-    const saved = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+    const saved = getLastStudentId();
+    setLastId(saved);
     if (saved) {
       setLookupCode(saved);
       setStudentCode(saved);
