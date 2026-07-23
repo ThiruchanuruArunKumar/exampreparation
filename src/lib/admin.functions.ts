@@ -73,6 +73,9 @@ export const createExam = createServerFn({ method: "POST" })
         pattern: PatternEnum.default("custom"),
         pattern_config: PatternConfigSchema.optional(),
         negative_mark_per_wrong: z.number().min(0).max(100).default(0),
+        show_result_after_submit: z.boolean().default(true),
+        show_answer_sheet: z.boolean().default(false),
+        show_answer_book: z.boolean().default(false),
       })
       .parse(input),
   )
@@ -80,7 +83,6 @@ export const createExam = createServerFn({ method: "POST" })
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Ensure unique access code (retry loop)
     let access_code = randomAccessCode();
     for (let i = 0; i < 5; i++) {
       const { data: exists } = await supabaseAdmin
@@ -104,6 +106,9 @@ export const createExam = createServerFn({ method: "POST" })
         pattern: data.pattern,
         pattern_config: data.pattern_config ?? null,
         negative_mark_per_wrong: data.negative_mark_per_wrong,
+        show_result_after_submit: data.show_result_after_submit,
+        show_answer_sheet: data.show_answer_sheet,
+        show_answer_book: data.show_answer_book,
       })
       .select("id, access_code")
       .single();
