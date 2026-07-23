@@ -27,14 +27,17 @@ function StudentHistoryPage() {
 
   const load = useCallback(() => {
     adminGetStudentHistory({ data: { studentId } })
-      .then(setData)
-      .catch((e) => setErr((e as Error).message));
+      .then((d) => { setData(d); setErr(null); })
+      .catch((e) => {
+        console.error("adminGetStudentHistory failed", e);
+        setErr((e as Error)?.message || String(e) || "Failed to load");
+      });
   }, [studentId]);
 
   useEffect(() => { load(); }, [load]);
   useRealtimeSync(["attempts", "insights", "students"], load);
 
-  if (err) return <AppShell title="Student history"><p className="text-sm text-destructive">{err}</p></AppShell>;
+  if (err) return <AppShell title="Student history"><div className="space-y-3"><p className="text-sm text-destructive">{err}</p><Button size="sm" variant="outline" onClick={load}>Retry</Button></div></AppShell>;
   if (!data) return <AppShell title="Student history"><p className="text-sm text-muted-foreground">Loading…</p></AppShell>;
 
   const s = data.student;
