@@ -15,6 +15,7 @@ import {
   updateStudent,
   deleteStudentRecord,
 } from "@/lib/admin.functions";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 
 export const Route = createFileRoute("/_authenticated/students")({
   head: () => ({
