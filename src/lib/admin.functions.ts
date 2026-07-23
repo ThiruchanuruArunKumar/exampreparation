@@ -162,11 +162,6 @@ export const updateExam = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-export const updateExam = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: unknown) =>
-    z
-      .object({
         examId: z.string().uuid(),
         title: z.string().min(1).max(200),
         description: z.string().max(2000).nullable(),
