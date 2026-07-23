@@ -50,10 +50,18 @@ export const startStudentAttempt = createServerFn({ method: "POST" })
 
     const { data: exam } = await sb
       .from("exams")
-      .select("id, title, duration_minutes, shuffle_questions, shuffle_options")
+      .select("id, title, duration_minutes, shuffle_questions, shuffle_options, start_at, end_at")
       .eq("access_code", ac)
       .maybeSingle();
     if (!exam) throw new Error("Invalid exam password");
+    const now = new Date();
+    if (exam.start_at && now < new Date(exam.start_at)) {
+      throw new Error(`Exam opens at ${new Date(exam.start_at).toLocaleString()}`);
+    }
+    if (exam.end_at && now > new Date(exam.end_at)) {
+      throw new Error("Exam window has closed");
+    }
+
 
     let { data: asg } = await sb
       .from("assignments")
