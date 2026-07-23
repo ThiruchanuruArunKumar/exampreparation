@@ -565,8 +565,8 @@ async function runGenerate(prompt: string, userContent: any[]) {
     const { output } = await generateText({
       model: gateway("openai/gpt-5.5"),
       output: Output.object({ schema: GenSchema }),
+      system: prompt,
       messages: [
-        { role: "system", content: prompt },
         { role: "user", content: userContent as never },
       ] as never,
     });
@@ -578,6 +578,7 @@ async function runGenerate(prompt: string, userContent: any[]) {
     throw error;
   }
 }
+
 
 function baseGenPrompt(pattern: string, count: number, subject?: string | null) {
   const guide = PATTERN_GUIDE[pattern] ?? PATTERN_GUIDE.custom;
