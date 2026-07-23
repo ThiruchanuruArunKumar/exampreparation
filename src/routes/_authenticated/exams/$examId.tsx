@@ -60,6 +60,9 @@ type Exam = {
   pattern: ExamPattern;
   pattern_config: PatternConfig | null;
   negative_mark_per_wrong: number;
+  show_result_after_submit: boolean;
+  show_answer_sheet: boolean;
+  show_answer_book: boolean;
 };
 
 type Question = {
