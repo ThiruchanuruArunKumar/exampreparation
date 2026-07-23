@@ -93,6 +93,9 @@ function TakeExam() {
             maxScore: Number(s.attempt.maxScore ?? 0),
             insight: null,
             auto: false,
+            showResult: true,
+            showAnswerSheet: false,
+            showAnswerBook: false,
           });
           setExam(s.exam as { title: string; duration_minutes: number });
           setStudent(s.student as { name: string; student_code: string });
