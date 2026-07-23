@@ -12,9 +12,11 @@ import { NumberField } from "@/components/NumberField";
 import { PatternPicker } from "@/components/PatternPicker";
 import { QuestionSource, type GeneratedQuestion } from "@/components/QuestionSource";
 import { createExam } from "@/lib/admin.functions";
+import { getLatestDraft, saveDraft, deleteDraft } from "@/lib/drafts.functions";
 import { type ExamPattern, type PatternConfig, presetToConfig } from "@/lib/exam-patterns";
 import { RichContent } from "@/components/RichContent";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+
 
 
 function ToggleRow({
