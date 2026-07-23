@@ -161,6 +161,25 @@ function Landing() {
                     onChange={(e) => setStudentCode(e.target.value.toUpperCase())}
                     maxLength={6}
                   />
+                  {lastId && lastId !== studentCode.toUpperCase() && (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span>Last used:</span>
+                      <button
+                        type="button"
+                        onClick={() => setStudentCode(lastId)}
+                        className="rounded-md border border-border bg-muted/50 px-2 py-0.5 font-mono text-xs font-semibold text-foreground hover:bg-muted"
+                      >
+                        {lastId}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { clearLastStudentId(); setLastId(null); }}
+                        className="text-xs text-muted-foreground/80 hover:text-foreground hover:underline"
+                      >
+                        Forget
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="ac">Exam password</Label>
