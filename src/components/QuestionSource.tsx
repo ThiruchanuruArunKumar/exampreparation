@@ -200,10 +200,21 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />
-            <Button onClick={doGenFromDesc} disabled={busy} className="w-full">
-              <Sparkles className="mr-2 h-4 w-4" />{busy ? "Generating…" : `Generate ${count} questions`}
-            </Button>
+            <p className="text-xs text-muted-foreground">
+              Tip: pick a subject above and click Generate — repeat for each subject to build the full paper. Or use “Generate for all subjects” to do it in one go.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button onClick={doGenFromDesc} disabled={busy} className="w-full">
+                <Sparkles className="mr-2 h-4 w-4" />{busy ? "Generating…" : `Generate ${count} for ${subject || "any"}`}
+              </Button>
+              {subjects.length > 1 && (
+                <Button onClick={doGenAllSubjects} disabled={busy} variant="outline" className="w-full">
+                  <Sparkles className="mr-2 h-4 w-4" />{busy ? "Generating…" : `Generate for all ${subjects.length} subjects`}
+                </Button>
+              )}
+            </div>
           </TabsContent>
+
 
           <TabsContent value="extract" className="mt-3">
             <label className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-6 text-center hover:border-primary">
