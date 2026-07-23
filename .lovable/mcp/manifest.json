@@ -1,0 +1,139 @@
+{
+  "version": 1,
+  "sdk_version": "0.24.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://fkzifslbjwapfgzwsinz.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "examprep-mcp",
+      "version": "0.1.0",
+      "title": "ExamPrep"
+    },
+    "tools": [
+      {
+        "name": "list_my_exams",
+        "title": "List my exams",
+        "description": "For admins: list exams you own. For students: list exams assigned to you with due dates and attempt limits.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_exam",
+        "title": "Get exam",
+        "description": "Fetch exam metadata and its questions. Admin owners see full question data (including correct answers). Students only see it if assigned; correct answers are stripped.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "exam_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Exam UUID"
+            }
+          },
+          "required": [
+            "exam_id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_results",
+        "title": "List my exam results",
+        "description": "List the signed-in student's completed exam attempts with scores.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_attempt_insights",
+        "title": "Get AI insights for an attempt",
+        "description": "Return the AI-generated performance insights (weak/strong topics, recommendations) and per-answer breakdown for one completed attempt.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "attempt_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          "required": [
+            "attempt_id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_exam_analytics",
+        "title": "Get exam analytics (admin)",
+        "description": "Admin-only: summary analytics for one exam — attempt count, average score, and per-student results. RLS restricts to exams owned by the caller.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "exam_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          "required": [
+            "exam_id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_students",
+        "title": "List students (admin)",
+        "description": "Admin-only: list all student profiles with approval status. RLS restricts this to admins.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
