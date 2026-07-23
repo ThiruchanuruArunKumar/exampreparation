@@ -93,13 +93,38 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
         data: { pattern, count, subject: subject || null, description: description.trim() },
       });
       onQuestions(res.questions as GeneratedQuestion[]);
-      toast.success(`Generated ${res.questions.length} questions`);
+      toast.success(`Generated ${res.questions.length} questions for ${subject || "the exam"}`);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
       setBusy(false);
     }
   };
+
+  const doGenAllSubjects = async () => {
+    if (!description.trim()) return toast.error("Describe topics for the AI first");
+    const preset = pattern !== "custom" ? PATTERN_PRESETS[pattern] : null;
+    const sections = preset ? preset.sections : subjects.map((s) => ({ name: s, count, marks_per_q: 1 }));
+    if (!sections.length) return toast.error("No subjects configured");
+    setBusy(true);
+    try {
+      let total = 0;
+      for (const sec of sections) {
+        toast.info(`Generating ${sec.count} for ${sec.name}…`);
+        const res = await generateFromDescription({
+          data: { pattern, count: sec.count, subject: sec.name, description: description.trim() },
+        });
+        onQuestions(res.questions as GeneratedQuestion[]);
+        total += res.questions.length;
+      }
+      toast.success(`Generated ${total} questions across ${sections.length} subjects`);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
 
   const addManual = () => {
     onQuestions([
