@@ -32,6 +32,25 @@ export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: 
     };
     void enterFullscreen();
 
+    // Keep the screen awake for the duration of the exam.
+    let wakeLock: WakeLockSentinel | null = null;
+    const requestWakeLock = async () => {
+      try {
+        if ("wakeLock" in navigator && !document.hidden) {
+          wakeLock = await (navigator as Navigator & {
+            wakeLock: { request: (t: "screen") => Promise<WakeLockSentinel> };
+          }).wakeLock.request("screen");
+          wakeLock?.addEventListener?.("release", () => { wakeLock = null; });
+        }
+      } catch {
+        /* wake lock unavailable — silently ignore */
+      }
+    };
+    void requestWakeLock();
+    const onVisibilityWake = () => { if (!document.hidden && !wakeLock) void requestWakeLock(); };
+    document.addEventListener("visibilitychange", onVisibilityWake);
+
+
     const onVisibility = () => {
       if (document.hidden) trigger("Tab switched or window minimized");
     };
@@ -78,6 +97,7 @@ export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: 
 
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
+      document.removeEventListener("visibilitychange", onVisibilityWake);
       window.removeEventListener("blur", onBlur);
       document.removeEventListener("fullscreenchange", onFullscreenChange);
       document.removeEventListener("contextmenu", onContextMenu);
@@ -86,6 +106,7 @@ export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: 
       document.removeEventListener("cut", onCopyPaste);
       document.removeEventListener("keydown", onKey);
       window.removeEventListener("beforeunload", onBeforeUnload);
+      if (wakeLock) { void wakeLock.release().catch(() => {}); wakeLock = null; }
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
