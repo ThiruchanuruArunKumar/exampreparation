@@ -192,6 +192,9 @@ export type Database = {
           negative_mark_per_wrong: number
           pattern: string
           pattern_config: Json | null
+          show_answer_book: boolean
+          show_answer_sheet: boolean
+          show_result_after_submit: boolean
           shuffle_options: boolean
           shuffle_questions: boolean
           start_at: string | null
@@ -211,6 +214,9 @@ export type Database = {
           negative_mark_per_wrong?: number
           pattern?: string
           pattern_config?: Json | null
+          show_answer_book?: boolean
+          show_answer_sheet?: boolean
+          show_result_after_submit?: boolean
           shuffle_options?: boolean
           shuffle_questions?: boolean
           start_at?: string | null
@@ -230,6 +236,9 @@ export type Database = {
           negative_mark_per_wrong?: number
           pattern?: string
           pattern_config?: Json | null
+          show_answer_book?: boolean
+          show_answer_sheet?: boolean
+          show_result_after_submit?: boolean
           shuffle_options?: boolean
           shuffle_questions?: boolean
           start_at?: string | null
@@ -304,6 +313,35 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      question_explanations: {
+        Row: {
+          created_at: string
+          explanation: string
+          question_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          explanation: string
+          question_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          explanation?: string
+          question_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "question_explanations_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: true
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       questions: {
         Row: {
