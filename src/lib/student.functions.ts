@@ -468,7 +468,8 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
         }));
         const gateway = createLovableAiGatewayProvider(key, { structuredOutputs: true });
         const { output } = await generateText({
-          model: gateway("openai/gpt-5.5"),
+          model: gateway("openai/gpt-5.4-mini"),
+          providerOptions: { lovable: { serviceTier: "priority" } },
           output: Output.object({
             schema: z.object({
               summary: z.string(),
@@ -477,9 +478,14 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
               recommendations: z.string(),
             }),
           }),
-          prompt: `The student scored ${score}/${maxScore}. Per-topic accuracy: ${JSON.stringify(
-            topicSummary,
-          )}. Write a short encouraging summary, list weak topics (accuracy < 0.6), strong topics (>= 0.8), and personalized study recommendations with concrete next steps.`,
+          system:
+            "You give exam feedback that is CLEAN, SHORT, and ACTIONABLE. Use Markdown. Never write walls of text.",
+          prompt: `Student scored ${score}/${maxScore}. Per-topic accuracy (0-1): ${JSON.stringify(topicSummary)}.
+Return JSON:
+- summary: 2-3 crisp sentences, encouraging, no filler.
+- weak_topics: topics with accuracy < 0.6 (exact names).
+- strong_topics: topics with accuracy >= 0.8 (exact names).
+- recommendations: a Markdown bullet list ("- ..."), 3-6 bullets. Each bullet: one weak topic + ONE concrete next step (specific resource / practice count / concept to revise). No preamble, no closing paragraph — just bullets.`,
         });
         await sb.from("insights").upsert(
           {
