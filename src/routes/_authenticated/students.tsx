@@ -65,6 +65,7 @@ function StudentsPage() {
   useEffect(() => {
     load();
   }, []);
+  useRealtimeSync(["students", "attempts"], load);
 
   const create = async () => {
     if (!name.trim()) return toast.error("Name required");
