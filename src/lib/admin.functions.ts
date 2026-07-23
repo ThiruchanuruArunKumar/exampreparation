@@ -25,8 +25,26 @@ async function assertAdmin(context: { supabase: any; userId: string }) {
     _user_id: context.userId,
     _role: "admin",
   });
-  if (!data) throw new Error("Forbidden");
+  const { data: sd } = await context.supabase.rpc("has_role", {
+    _user_id: context.userId,
+    _role: "super_admin",
+  });
+  if (!data && !sd) throw new Error("Forbidden");
 }
+
+/** Throws if the caller does not own the given exam (RLS-scoped read). */
+async function assertOwnsExam(
+  context: { supabase: any; userId: string },
+  examId: string,
+) {
+  const { data } = await context.supabase
+    .from("exams")
+    .select("id")
+    .eq("id", examId)
+    .maybeSingle();
+  if (!data) throw new Error("Forbidden: exam not found or not owned by you");
+}
+
 
 const QuestionInput = z.object({
   id: z.string().uuid().optional(),
@@ -138,7 +156,9 @@ export const regenerateExamCode = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ examId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    await assertOwnsExam(context, data.examId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
     let code = randomAccessCode();
     for (let i = 0; i < 5; i++) {
       const { data: exists } = await supabaseAdmin
@@ -272,7 +292,9 @@ export const saveQuestions = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    await assertOwnsExam(context, data.examId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
     if (data.deletedIds.length) {
       await supabaseAdmin.from("questions").delete().in("id", data.deletedIds);
     }
@@ -712,7 +734,9 @@ export const appendQuestions = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
+    await assertOwnsExam(context, data.examId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
     const { data: existing } = await supabaseAdmin
       .from("questions")
       .select("order_index")
