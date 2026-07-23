@@ -152,7 +152,13 @@ function DetailBody({
   expBusy: Record<string, boolean>;
   loadExplanation: (qid: string) => void;
 }) {
-  const { exam, attempt, insight, questions, student } = detail;
+  const { exam, attempt, insight: rawInsight, questions, student } = detail;
+  const insight = rawInsight as null | {
+    summary: string;
+    weak_topics: string[] | null;
+    strong_topics: string[] | null;
+    recommendations: string | null;
+  };
   if (!exam) return null;
   const score = Number(attempt.score ?? 0);
   const maxScore = Number(attempt.max_score ?? 0);
