@@ -23,14 +23,11 @@ export function useRealtimeSync(
       timer = setTimeout(() => cbRef.current(), debounceMs);
     };
 
-    const channel = supabase.channel(`sync:${tables.join(",")}:${Math.random().toString(36).slice(2, 8)}`);
+    let channel = supabase.channel(`sync:${tables.join(",")}:${Math.random().toString(36).slice(2, 8)}`);
     for (const table of tables) {
-      channel.on(
-        // @ts-expect-error – supabase typing for postgres_changes is loose
-        "postgres_changes",
-        { event: "*", schema: "public", table },
-        fire,
-      );
+      channel = (channel as unknown as {
+        on: (t: string, f: Record<string, string>, cb: () => void) => typeof channel;
+      }).on("postgres_changes", { event: "*", schema: "public", table }, fire);
     }
     channel.subscribe();
 
