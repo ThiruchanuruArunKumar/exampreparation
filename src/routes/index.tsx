@@ -96,9 +96,10 @@ function Landing() {
                   <Input
                     id="sid"
                     autoComplete="off"
-                    placeholder="STU-XXXXX"
+                    placeholder="ABCDEF"
                     value={studentCode}
                     onChange={(e) => setStudentCode(e.target.value.toUpperCase())}
+                    maxLength={6}
                   />
                 </div>
                 <div>
