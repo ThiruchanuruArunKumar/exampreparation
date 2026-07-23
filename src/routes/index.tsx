@@ -85,7 +85,8 @@ function Landing() {
       const r = await listStudentExams({ data: { studentCode: c } });
       setExams(r.exams);
       setStudentName(r.student.name);
-      localStorage.setItem(STORAGE_KEY, c);
+      setLastStudentId(c);
+      setLastId(c);
       setStudentCode(c);
     } catch (err) {
       setExams(null);
