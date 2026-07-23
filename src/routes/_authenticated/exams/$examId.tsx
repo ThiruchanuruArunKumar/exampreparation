@@ -117,6 +117,8 @@ function ExamDetail() {
           duration_minutes: exam.duration_minutes,
           shuffle_questions: exam.shuffle_questions,
           shuffle_options: exam.shuffle_options,
+          start_at: exam.start_at,
+          end_at: exam.end_at,
         },
       });
       toast.success("Settings saved");
