@@ -151,6 +151,9 @@ function ExamDetail() {
           pattern: exam.pattern,
           pattern_config: exam.pattern_config,
           negative_mark_per_wrong: exam.negative_mark_per_wrong ?? 0,
+          show_result_after_submit: exam.show_result_after_submit,
+          show_answer_sheet: exam.show_answer_sheet,
+          show_answer_book: exam.show_answer_book,
         },
       });
       toast.success("Settings saved");
