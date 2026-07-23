@@ -6,6 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, XCircle, Sparkles, TrendingUp, TrendingDown } from "lucide-react";
+import { RichContent } from "@/components/RichContent";
+
 
 export const Route = createFileRoute("/_authenticated/attempt-results/$attemptId")({
   head: () => ({
