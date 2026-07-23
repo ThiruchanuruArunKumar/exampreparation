@@ -128,6 +128,50 @@ export const startStudentAttempt = createServerFn({ method: "POST" })
     return { attemptId: created.id, sessionToken: token };
   });
 
+export const getStudentHistory = createServerFn({ method: "POST" })
+  .inputValidator((i: unknown) =>
+    z.object({ studentCode: z.string().trim().min(1).max(40) }).parse(i),
+  )
+  .handler(async ({ data }) => {
+    const sb = await admin();
+    const { data: student } = await sb
+      .from("students")
+      .select("id, name, student_code, email, class_name")
+      .eq("student_code", data.studentCode.trim())
+      .maybeSingle();
+    if (!student) throw new Error("Invalid student ID");
+
+    const { data: attempts } = await sb
+      .from("attempts")
+      .select("id, exam_id, status, score, max_score, submitted_at, started_at, auto_submitted, warning_count")
+      .eq("student_id", student.id)
+      .order("started_at", { ascending: false });
+
+    const examIds = Array.from(new Set((attempts ?? []).map((a) => a.exam_id)));
+    const { data: exams } = examIds.length
+      ? await sb.from("exams").select("id, title, duration_minutes").in("id", examIds)
+      : { data: [] as { id: string; title: string; duration_minutes: number }[] };
+    const examMap = new Map((exams ?? []).map((e) => [e.id, e]));
+
+    const attemptIds = (attempts ?? []).map((a) => a.id);
+    const { data: insights } = attemptIds.length
+      ? await sb
+          .from("insights")
+          .select("attempt_id, summary, weak_topics, strong_topics, recommendations")
+          .in("attempt_id", attemptIds)
+      : { data: [] as any[] };
+    const insightMap = new Map((insights ?? []).map((i: any) => [i.attempt_id, i]));
+
+    return {
+      student,
+      history: (attempts ?? []).map((a) => ({
+        ...a,
+        exam: examMap.get(a.exam_id) ?? null,
+        insight: insightMap.get(a.id) ?? null,
+      })),
+    };
+  });
+
 async function loadAttempt(attemptId: string, token: string) {
   const sb = await admin();
   const { data: att, error } = await sb
