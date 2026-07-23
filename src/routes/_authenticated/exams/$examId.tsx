@@ -114,6 +114,7 @@ function ExamDetail() {
   };
 
   useEffect(() => { reload(); /* eslint-disable-next-line */ }, [examId]);
+  useRealtimeSync(["exams", "questions", "assignments", "attempts", "students"], reload);
 
   const patchExam = (p: Partial<Exam>) => setExam((prev) => (prev ? { ...prev, ...p } : prev));
 
