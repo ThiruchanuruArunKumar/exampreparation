@@ -1,7 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import {
-  Brain,
   LogOut,
   LayoutDashboard,
   Users,
@@ -87,7 +86,7 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
         <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 lg:px-8">
           <div className="flex min-w-0 items-center gap-4 lg:gap-8">
             <Link to="/dashboard" className="flex shrink-0 items-center gap-2">
-              <Brain className="h-5 w-5 text-primary" />
+              <img src="/logo.png" alt="ExamPrep" width={28} height={28} className="h-7 w-7" />
               <span className="font-semibold tracking-tight">ExamPrep</span>
             </Link>
             <nav className="hidden items-center gap-1 md:flex">{NavLinks}</nav>
