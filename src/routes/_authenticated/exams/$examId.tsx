@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { listStudents } from "@/lib/exams.functions";
 import { reassignAttempt } from "@/lib/attempts.functions";
+import { useRealtimeSync } from "@/hooks/useRealtimeSync";
 import {
   updateExam,
   saveQuestions,
