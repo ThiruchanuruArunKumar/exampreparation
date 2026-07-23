@@ -87,8 +87,9 @@ function StudentHistoryPage() {
           {history.map((h) => {
             const pct = h.max_score ? Math.round((Number(h.score) / Number(h.max_score)) * 100) : 0;
             const inProgress = h.status === "in_progress";
-            return (
-              <Card key={h.id}>
+            const clickable = !inProgress;
+            const card = (
+              <Card key={h.id} className={clickable ? "transition hover:border-primary hover:bg-accent/40" : ""}>
                 <CardHeader className="pb-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
@@ -138,6 +139,17 @@ function StudentHistoryPage() {
                 )}
               </Card>
             );
+            return clickable ? (
+              <Link
+                key={h.id}
+                to="/history/$attemptId"
+                params={{ attemptId: h.id }}
+                search={{ sid: s.student_code } as never}
+                className="block"
+              >
+                {card}
+              </Link>
+            ) : card;
           })}
         </div>
       )}

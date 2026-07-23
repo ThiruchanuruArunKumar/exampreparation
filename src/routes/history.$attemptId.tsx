@@ -238,7 +238,7 @@ function DetailBody({
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-sm">{insight.summary}</p>
+              <RichContent className="text-sm">{insight.summary}</RichContent>
               {(insight.weak_topics?.length ?? 0) > 0 && (
                 <div>
                   <div className="mb-1 flex items-center gap-1 text-sm font-medium text-destructive">
@@ -253,18 +253,21 @@ function DetailBody({
               )}
               {(insight.strong_topics?.length ?? 0) > 0 && (
                 <div>
-                  <div className="mb-1 flex items-center gap-1 text-sm font-medium text-primary">
+                  <div className="mb-1 flex items-center gap-1 text-sm font-medium text-emerald-600 dark:text-emerald-400">
                     <TrendingUp className="h-4 w-4" /> Strong areas
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {insight.strong_topics!.map((t: string) => (
-                      <Badge key={t}>{t}</Badge>
+                      <Badge key={t} className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300">{t}</Badge>
                     ))}
                   </div>
                 </div>
               )}
               {insight.recommendations && (
-                <div className="whitespace-pre-wrap text-sm">{insight.recommendations}</div>
+                <div>
+                  <div className="mb-1 text-sm font-medium">Study plan</div>
+                  <RichContent className="text-sm">{insight.recommendations}</RichContent>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -298,7 +301,7 @@ function DetailBody({
                     </div>
                     <div className="flex items-center gap-1 text-sm">
                       {q.is_correct ? (
-                        <span className="text-primary">✓ {q.marks_awarded ?? 0}/{q.marks}</span>
+                        <span className="text-emerald-600 dark:text-emerald-400">✓ {q.marks_awarded ?? 0}/{q.marks}</span>
                       ) : (
                         <span className="text-destructive">✗ {q.marks_awarded ?? 0}/{q.marks}</span>
                       )}
@@ -309,22 +312,26 @@ function DetailBody({
                   <div className="font-medium"><RichContent>{q.prompt}</RichContent></div>
                   {q.options && (
                     <ul className="ml-4 list-disc space-y-1 text-xs">
-                      {q.options.map((o: string) => (
-                        <li
-                          key={o}
-                          className={
-                            correct.includes(o)
-                              ? "font-semibold text-primary"
-                              : chose.includes(o)
-                                ? "text-destructive line-through"
-                                : ""
-                          }
-                        >
-                          <RichContent inline>{o}</RichContent>
-                          {correct.includes(o) && " ✓"}
-                          {!correct.includes(o) && chose.includes(o) && " (your answer)"}
-                        </li>
-                      ))}
+                      {q.options.map((o: string) => {
+                        const isCorrect = correct.includes(o);
+                        const isChosen = chose.includes(o);
+                        return (
+                          <li
+                            key={o}
+                            className={
+                              isCorrect
+                                ? "font-semibold text-emerald-600 dark:text-emerald-400"
+                                : isChosen
+                                  ? "text-destructive line-through"
+                                  : ""
+                            }
+                          >
+                            <RichContent inline>{o}</RichContent>
+                            {isCorrect && " ✓"}
+                            {!isCorrect && isChosen && " (your answer)"}
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
 
@@ -345,7 +352,7 @@ function DetailBody({
                       </div>
                       <div className="rounded-md border border-border p-2">
                         <div className="text-xs text-muted-foreground">Correct answer</div>
-                        <div className="flex flex-wrap gap-x-2 text-primary">
+                        <div className="flex flex-wrap gap-x-2 font-medium text-emerald-600 dark:text-emerald-400">
                           {correct.map((c: string, ci: number) => (
                             <span key={ci}>
                               <RichContent inline>{c}</RichContent>

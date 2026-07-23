@@ -468,7 +468,8 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
         }));
         const gateway = createLovableAiGatewayProvider(key, { structuredOutputs: true });
         const { output } = await generateText({
-          model: gateway("openai/gpt-5.5"),
+          model: gateway("openai/gpt-5.4-mini"),
+          providerOptions: { lovable: { serviceTier: "priority" } },
           output: Output.object({
             schema: z.object({
               summary: z.string(),
@@ -477,9 +478,14 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
               recommendations: z.string(),
             }),
           }),
-          prompt: `The student scored ${score}/${maxScore}. Per-topic accuracy: ${JSON.stringify(
-            topicSummary,
-          )}. Write a short encouraging summary, list weak topics (accuracy < 0.6), strong topics (>= 0.8), and personalized study recommendations with concrete next steps.`,
+          system:
+            "You give exam feedback that is CLEAN, SHORT, and ACTIONABLE. Use Markdown. Never write walls of text.",
+          prompt: `Student scored ${score}/${maxScore}. Per-topic accuracy (0-1): ${JSON.stringify(topicSummary)}.
+Return JSON:
+- summary: 2-3 crisp sentences, encouraging, no filler.
+- weak_topics: topics with accuracy < 0.6 (exact names).
+- strong_topics: topics with accuracy >= 0.8 (exact names).
+- recommendations: a Markdown bullet list ("- ..."), 3-6 bullets. Each bullet: one weak topic + ONE concrete next step (specific resource / practice count / concept to revise). No preamble, no closing paragraph — just bullets.`,
         });
         await sb.from("insights").upsert(
           {
@@ -595,9 +601,10 @@ export const getStudentExplanation = createServerFn({ method: "POST" })
     if (!key) throw new Error("AI not configured");
     const gateway = createLovableAiGatewayProvider(key);
     const { text } = await generateText({
-      model: gateway("openai/gpt-5.5"),
+      model: gateway("openai/gpt-5.4-mini"),
+      providerOptions: { lovable: { serviceTier: "priority" } },
       system:
-        "You are an expert tutor. Explain the answer to competitive-exam questions with maximum clarity: state the correct answer, then a rigorous step-by-step derivation. List every formula used with names, define each variable, show all substitutions, and finish with an intuition summary. Use plain text and Markdown. Be thorough — the student wants to LEARN, not just check.",
+        "You are an expert tutor writing an Answer Book entry for a competitive-exam question. Structure the reply EXACTLY as Markdown with these sections and headings:\n\n### Correct answer\nState the correct option verbatim in **bold**.\n\n### Why it's correct\n2-4 short sentences.\n\n### Step-by-step solution\nNumbered steps. Each step is ONE idea. Show every formula used with its name, define each variable, show substitutions.\n\n### Why the other options are wrong\nOne short bullet per wrong option.\n\n### Key takeaway\n1 line the student should remember.\n\nFORMATTING RULES (critical — output renders with Markdown + KaTeX + mhchem):\n- Wrap ALL math AND chemistry in $...$ (inline) or $$...$$ (display). Never leave raw \\ce{...}, \\frac, ^, _ outside of $...$ — they will not render.\n- Chemistry: $\\ce{H2SO4 -> 2H+ + SO4^{2-}}$. Never write \\ce{...} without surrounding $ signs.\n- Powers/subs: $x^2$, $H_2O$, $10^{-3}$. Units: $9.8\\,\\text{m/s}^2$.\n- Be concise. No preamble like 'Sure!' or 'Let's solve this'.",
       prompt: JSON.stringify(
         { topic: q.topic, question: q.prompt, options: q.options, correct_answer: q.correct_answer, type: q.type },
         null,
@@ -753,9 +760,10 @@ export const getHistoryExplanation = createServerFn({ method: "POST" })
     if (!key) throw new Error("AI not configured");
     const gateway = createLovableAiGatewayProvider(key);
     const { text } = await generateText({
-      model: gateway("openai/gpt-5.5"),
+      model: gateway("openai/gpt-5.4-mini"),
+      providerOptions: { lovable: { serviceTier: "priority" } },
       system:
-        "You are an expert tutor. Explain the answer to competitive-exam questions with maximum clarity: state the correct answer, then a rigorous step-by-step derivation. List every formula used with names, define each variable, show all substitutions, and finish with an intuition summary. Use plain text and Markdown. Be thorough — the student wants to LEARN, not just check.",
+        "You are an expert tutor writing an Answer Book entry for a competitive-exam question. Structure the reply EXACTLY as Markdown with these sections and headings:\n\n### Correct answer\nState the correct option verbatim in **bold**.\n\n### Why it's correct\n2-4 short sentences.\n\n### Step-by-step solution\nNumbered steps. Each step is ONE idea. Show every formula used with its name, define each variable, show substitutions.\n\n### Why the other options are wrong\nOne short bullet per wrong option.\n\n### Key takeaway\n1 line the student should remember.\n\nFORMATTING RULES (critical — output renders with Markdown + KaTeX + mhchem):\n- Wrap ALL math AND chemistry in $...$ (inline) or $$...$$ (display). Never leave raw \\ce{...}, \\frac, ^, _ outside of $...$ — they will not render.\n- Chemistry: $\\ce{H2SO4 -> 2H+ + SO4^{2-}}$. Never write \\ce{...} without surrounding $ signs.\n- Powers/subs: $x^2$, $H_2O$, $10^{-3}$. Units: $9.8\\,\\text{m/s}^2$.\n- Be concise. No preamble like 'Sure!' or 'Let's solve this'.",
       prompt: JSON.stringify(
         { topic: q.topic, question: q.prompt, options: q.options, correct_answer: q.correct_answer, type: q.type },
         null,
