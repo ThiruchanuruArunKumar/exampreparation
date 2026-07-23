@@ -16,6 +16,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as HistoryAttemptIdRouteImport } from './routes/history.$attemptId'
 import { Route as ExamAttemptIdRouteImport } from './routes/exam.$attemptId'
+import { Route as ExamInfoExamIdRouteImport } from './routes/exam-info.$examId'
 import { Route as AuthenticatedStudentsRouteImport } from './routes/_authenticated/students'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAdminsRouteImport } from './routes/_authenticated/admins'
@@ -61,6 +62,11 @@ const HistoryAttemptIdRoute = HistoryAttemptIdRouteImport.update({
 const ExamAttemptIdRoute = ExamAttemptIdRouteImport.update({
   id: '/exam/$attemptId',
   path: '/exam/$attemptId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExamInfoExamIdRoute = ExamInfoExamIdRouteImport.update({
+  id: '/exam-info/$examId',
+  path: '/exam-info/$examId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedStudentsRoute = AuthenticatedStudentsRouteImport.update({
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/admins': typeof AuthenticatedAdminsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/students': typeof AuthenticatedStudentsRoute
+  '/exam-info/$examId': typeof ExamInfoExamIdRoute
   '/exam/$attemptId': typeof ExamAttemptIdRoute
   '/history/$attemptId': typeof HistoryAttemptIdRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -161,6 +168,7 @@ export interface FileRoutesByTo {
   '/admins': typeof AuthenticatedAdminsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/students': typeof AuthenticatedStudentsRoute
+  '/exam-info/$examId': typeof ExamInfoExamIdRoute
   '/exam/$attemptId': typeof ExamAttemptIdRoute
   '/history/$attemptId': typeof HistoryAttemptIdRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -183,6 +191,7 @@ export interface FileRoutesById {
   '/_authenticated/admins': typeof AuthenticatedAdminsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/students': typeof AuthenticatedStudentsRoute
+  '/exam-info/$examId': typeof ExamInfoExamIdRoute
   '/exam/$attemptId': typeof ExamAttemptIdRoute
   '/history/$attemptId': typeof HistoryAttemptIdRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -205,6 +214,7 @@ export interface FileRouteTypes {
     | '/admins'
     | '/dashboard'
     | '/students'
+    | '/exam-info/$examId'
     | '/exam/$attemptId'
     | '/history/$attemptId'
     | '/.lovable/oauth/consent'
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
     | '/admins'
     | '/dashboard'
     | '/students'
+    | '/exam-info/$examId'
     | '/exam/$attemptId'
     | '/history/$attemptId'
     | '/.lovable/oauth/consent'
@@ -246,6 +257,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admins'
     | '/_authenticated/dashboard'
     | '/_authenticated/students'
+    | '/exam-info/$examId'
     | '/exam/$attemptId'
     | '/history/$attemptId'
     | '/.lovable/oauth/consent'
@@ -265,6 +277,7 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  ExamInfoExamIdRoute: typeof ExamInfoExamIdRoute
   ExamAttemptIdRoute: typeof ExamAttemptIdRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -319,6 +332,13 @@ declare module '@tanstack/react-router' {
       path: '/exam/$attemptId'
       fullPath: '/exam/$attemptId'
       preLoaderRoute: typeof ExamAttemptIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/exam-info/$examId': {
+      id: '/exam-info/$examId'
+      path: '/exam-info/$examId'
+      fullPath: '/exam-info/$examId'
+      preLoaderRoute: typeof ExamInfoExamIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/students': {
@@ -454,6 +474,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  ExamInfoExamIdRoute: ExamInfoExamIdRoute,
   ExamAttemptIdRoute: ExamAttemptIdRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
