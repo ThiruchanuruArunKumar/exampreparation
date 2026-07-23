@@ -53,6 +53,7 @@ export const Route = createFileRoute("/_authenticated/exams/new")({
 
 function NewExam() {
   const navigate = useNavigate();
+  const DRAFT_KEY = "examprep:new-exam-draft:v1";
   const [title, setTitle] = useState("");
   const [pattern, setPattern] = useState<ExamPattern>("neet");
   const [config, setConfig] = useState<PatternConfig | null>(presetToConfig("neet"));
@@ -61,6 +62,52 @@ function NewExam() {
   const [showResult, setShowResult] = useState(true);
   const [showSheet, setShowSheet] = useState(true);
   const [showBook, setShowBook] = useState(true);
+  const [restored, setRestored] = useState(false);
+
+  // Restore draft (once)
+  useEffect(() => {
+    try {
+      const raw = typeof window !== "undefined" ? window.localStorage.getItem(DRAFT_KEY) : null;
+      if (!raw) return;
+      const d = JSON.parse(raw);
+      if (d.title) setTitle(d.title);
+      if (d.pattern) setPattern(d.pattern);
+      if (d.config) setConfig(d.config);
+      if (Array.isArray(d.questions)) setQuestions(d.questions);
+      if (typeof d.showResult === "boolean") setShowResult(d.showResult);
+      if (typeof d.showSheet === "boolean") setShowSheet(d.showSheet);
+      if (typeof d.showBook === "boolean") setShowBook(d.showBook);
+      if (d.title || (Array.isArray(d.questions) && d.questions.length)) {
+        toast.message("Draft restored", { description: "Your unsaved exam was recovered." });
+      }
+    } catch { /* ignore */ }
+    setRestored(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist draft on every change (after initial restore)
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      const isEmpty = !title.trim() && questions.length === 0;
+      if (isEmpty) {
+        window.localStorage.removeItem(DRAFT_KEY);
+        return;
+      }
+      window.localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({ title, pattern, config, questions, showResult, showSheet, showBook, savedAt: Date.now() }),
+      );
+    } catch { /* ignore quota */ }
+  }, [restored, title, pattern, config, questions, showResult, showSheet, showBook]);
+
+  const clearDraft = () => {
+    try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
+    setTitle("");
+    setQuestions([]);
+    toast.success("Draft cleared");
+  };
+
 
   const duration = config?.duration_minutes ?? 60;
   const subjects = config?.sections.map((s) => s.name) ?? [];
