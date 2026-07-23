@@ -716,10 +716,10 @@ export const generateFromNotes = createServerFn({ method: "POST" })
               file_data: `data:${data.mimeType};base64,${data.fileBase64}`,
             },
           };
-    const questions = await runGenerate(sys, [
-      { type: "text", text: `Generate ${data.count} questions from these notes.` },
+    const questions = await runGenerateExact(sys, [
+      { type: "text", text: `Generate exactly ${data.count} questions from these notes. Do not produce more or fewer than ${data.count}.` },
       part,
-    ]);
+    ], data.count);
     return { questions };
   });
 
