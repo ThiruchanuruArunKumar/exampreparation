@@ -25,6 +25,8 @@ export const startAttempt = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => z.object({ assignmentId: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+    const { data: prof } = await supabase.from("profiles").select("status").eq("id", userId).maybeSingle();
+    if ((prof as any)?.status !== "approved") throw new Error("Your account is not approved yet. Please wait for admin approval.");
     const { data: asg, error: aErr } = await supabase
       .from("assignments")
       .select("id, exam_id, student_id, max_attempts, due_at")

@@ -225,7 +225,7 @@ export const listAllStudents = createServerFn({ method: "GET" })
     if (!ids.length) return [];
     const { data: profs } = await context.supabase
       .from("profiles")
-      .select("id, email, full_name, created_at")
+      .select("id, email, full_name, created_at, status")
       .in("id", ids);
 
     // attempts summary per student
@@ -268,6 +268,9 @@ export const inviteStudent = createServerFn({ method: "POST" })
       data: { full_name: data.fullName ?? data.email.split("@")[0] },
     });
     if (error) throw new Error(error.message);
+    if (invited.user?.id) {
+      await supabaseAdmin.from("profiles").update({ status: "approved" }).eq("id", invited.user.id);
+    }
     return { ok: true, userId: invited.user?.id };
   });
 
@@ -304,5 +307,26 @@ export const deleteStudent = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
     if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const setStudentStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        userId: z.string().uuid(),
+        status: z.enum(["pending", "approved", "rejected"]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({ status: data.status })
+      .eq("id", data.userId);
+    if (error) throw error;
     return { ok: true };
   });
