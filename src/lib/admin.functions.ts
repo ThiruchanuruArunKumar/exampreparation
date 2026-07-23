@@ -662,6 +662,12 @@ async function runGenerate(prompt: string, userContent: any[]) {
   }
 }
 
+async function runGenerateExact(prompt: string, userContent: any[], count: number) {
+  const qs = await runGenerate(prompt, userContent);
+  return qs.slice(0, count);
+}
+
+
 
 function baseGenPrompt(pattern: string, count: number, subject?: string | null) {
   const guide = PATTERN_GUIDE[pattern] ?? PATTERN_GUIDE.custom;
@@ -710,10 +716,10 @@ export const generateFromNotes = createServerFn({ method: "POST" })
               file_data: `data:${data.mimeType};base64,${data.fileBase64}`,
             },
           };
-    const questions = await runGenerate(sys, [
-      { type: "text", text: `Generate ${data.count} questions from these notes.` },
+    const questions = await runGenerateExact(sys, [
+      { type: "text", text: `Generate exactly ${data.count} questions from these notes. Do not produce more or fewer than ${data.count}.` },
       part,
-    ]);
+    ], data.count);
     return { questions };
   });
 
@@ -732,9 +738,9 @@ export const generateFromDescription = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const sys = baseGenPrompt(data.pattern, data.count, data.subject);
-    const questions = await runGenerate(sys, [
-      { type: "text", text: `Exam brief / topics from admin:\n${data.description}` },
-    ]);
+    const questions = await runGenerateExact(sys, [
+      { type: "text", text: `Exam brief / topics from admin:\n${data.description}\n\nProduce exactly ${data.count} questions — no more, no less.` },
+    ], data.count);
     return { questions };
   });
 
