@@ -73,9 +73,14 @@ function AuthPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
       <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-sm sm:p-8">
-        <div className="mb-6 flex items-center gap-2">
-          <Brain className="h-6 w-6 text-primary" />
-          <span className="text-lg font-semibold">ExamPrep</span>
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Brain className="h-6 w-6 text-primary" />
+            <span className="text-lg font-semibold">ExamPrep</span>
+          </div>
+          <Link to="/" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-3.5 w-3.5" /> Home
+          </Link>
         </div>
 
         <h1 className="text-xl font-semibold">Admin sign in</h1>
