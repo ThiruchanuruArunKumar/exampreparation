@@ -799,7 +799,6 @@ export const listStudentExams = createServerFn({ method: "POST" })
             "id, title, description, duration_minutes, total_marks, pattern, start_at, end_at, status, negative_mark_per_wrong",
           )
           .in("id", examIds)
-          .eq("status", "published")
       : { data: [] as any[] };
 
     const attemptIds = (assignments ?? []).map((a) => a.id);
@@ -884,7 +883,7 @@ export const getStudentExamInfo = createServerFn({ method: "POST" })
       )
       .eq("id", data.examId)
       .maybeSingle();
-    if (!exam || exam.status !== "published") throw new Error("Exam not available");
+    if (!exam) throw new Error("Exam not available");
 
     const { data: asg } = await sb
       .from("assignments")
