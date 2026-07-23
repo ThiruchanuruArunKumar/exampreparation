@@ -58,6 +58,7 @@ export const Route = createFileRoute("/_authenticated/exams/new")({
 
 function NewExam() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [title, setTitle] = useState("");
   const [pattern, setPattern] = useState<ExamPattern>("neet");
   const [config, setConfig] = useState<PatternConfig | null>(presetToConfig("neet"));
@@ -72,12 +73,14 @@ function NewExam() {
   const skipNextSave = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Restore draft from cloud (once)
+  // Restore draft from cloud (once): specific ?draftId= if provided, else latest
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const d = await getLatestDraft();
+        const d = search.draftId
+          ? await getDraft({ data: { id: search.draftId } })
+          : await getLatestDraft();
         if (cancelled || !d) return;
         skipNextSave.current = true;
         setDraftId(d.id);
