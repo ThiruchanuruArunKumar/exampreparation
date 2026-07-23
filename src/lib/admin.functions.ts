@@ -25,8 +25,26 @@ async function assertAdmin(context: { supabase: any; userId: string }) {
     _user_id: context.userId,
     _role: "admin",
   });
-  if (!data) throw new Error("Forbidden");
+  const { data: sd } = await context.supabase.rpc("has_role", {
+    _user_id: context.userId,
+    _role: "super_admin",
+  });
+  if (!data && !sd) throw new Error("Forbidden");
 }
+
+/** Throws if the caller does not own the given exam (RLS-scoped read). */
+async function assertOwnsExam(
+  context: { supabase: any; userId: string },
+  examId: string,
+) {
+  const { data } = await context.supabase
+    .from("exams")
+    .select("id")
+    .eq("id", examId)
+    .maybeSingle();
+  if (!data) throw new Error("Forbidden: exam not found or not owned by you");
+}
+
 
 const QuestionInput = z.object({
   id: z.string().uuid().optional(),
