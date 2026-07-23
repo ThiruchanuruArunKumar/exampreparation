@@ -43,6 +43,8 @@ function ToggleRow({
 }
 
 export const Route = createFileRoute("/_authenticated/exams/new")({
+  validateSearch: (s: Record<string, unknown>) =>
+    z.object({ draftId: z.string().uuid().optional() }).parse(s),
   head: () => ({
     meta: [
       { title: "New exam — ExamPrep" },
