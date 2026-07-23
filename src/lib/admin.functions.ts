@@ -225,7 +225,7 @@ export const listAllStudents = createServerFn({ method: "GET" })
     if (!ids.length) return [];
     const { data: profs } = await context.supabase
       .from("profiles")
-      .select("id, email, full_name, created_at")
+      .select("id, email, full_name, created_at, status")
       .in("id", ids);
 
     // attempts summary per student
