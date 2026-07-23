@@ -130,7 +130,9 @@ function NewExam() {
         },
       });
       toast.success(`Exam created — password ${r.access_code}`);
+      try { window.localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ }
       navigate({ to: "/exams/$examId", params: { examId: r.id } });
+
     } catch (e) {
       toast.error((e as Error).message);
       setSaving(false);
