@@ -6,12 +6,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Trash2 } from "lucide-react";
 import { NumberField } from "@/components/NumberField";
 import { PatternPicker } from "@/components/PatternPicker";
 import { QuestionSource, type GeneratedQuestion } from "@/components/QuestionSource";
 import { createExam } from "@/lib/admin.functions";
 import { type ExamPattern, type PatternConfig, presetToConfig } from "@/lib/exam-patterns";
+
+function ToggleRow({
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <div className="text-sm font-medium">{label}</div>
+        {hint && <div className="text-xs text-muted-foreground">{hint}</div>}
+      </div>
+      <Switch checked={checked} onCheckedChange={onChange} />
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/_authenticated/exams/new")({
   head: () => ({
@@ -32,6 +55,9 @@ function NewExam() {
   const [config, setConfig] = useState<PatternConfig | null>(presetToConfig("neet"));
   const [questions, setQuestions] = useState<GeneratedQuestion[]>([]);
   const [saving, setSaving] = useState(false);
+  const [showResult, setShowResult] = useState(true);
+  const [showSheet, setShowSheet] = useState(true);
+  const [showBook, setShowBook] = useState(true);
 
   const duration = config?.duration_minutes ?? 60;
   const subjects = config?.sections.map((s) => s.name) ?? [];
@@ -48,6 +74,9 @@ function NewExam() {
           pattern,
           pattern_config: config,
           negative_mark_per_wrong: config?.negative_mark_per_wrong ?? 0,
+          show_result_after_submit: showResult,
+          show_answer_sheet: showSheet,
+          show_answer_book: showBook,
         },
       });
       toast.success(`Exam created — password ${r.access_code}`);
@@ -64,16 +93,23 @@ function NewExam() {
         <div className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Details</CardTitle>
+              <CardTitle className="text-base">Exam details</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="t">Title</Label>
                 <Input id="t" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. NEET Mock 1 — Aug" />
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  A 6-character exam password is generated automatically.
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                A 6-character exam password is generated automatically. Share it with your students along with their ID.
-              </p>
+
+              <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">After submission</div>
+                <ToggleRow label="Show result to student" hint="Score, %, and AI feedback." checked={showResult} onChange={setShowResult} />
+                <ToggleRow label="Show answer sheet" hint="Reveals correct answers alongside the student's response." checked={showSheet} onChange={setShowSheet} />
+                <ToggleRow label="Show answer book" hint="Detailed AI explanations with formulas & steps." checked={showBook} onChange={setShowBook} />
+              </div>
             </CardContent>
           </Card>
 

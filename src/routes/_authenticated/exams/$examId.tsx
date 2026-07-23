@@ -60,6 +60,9 @@ type Exam = {
   pattern: ExamPattern;
   pattern_config: PatternConfig | null;
   negative_mark_per_wrong: number;
+  show_result_after_submit: boolean;
+  show_answer_sheet: boolean;
+  show_answer_book: boolean;
 };
 
 type Question = {
@@ -109,7 +112,7 @@ function ExamDetail() {
 
   const reload = async () => {
     const [{ data: e }, { data: q }, { data: a }] = await Promise.all([
-      supabase.from("exams").select("id, title, description, duration_minutes, shuffle_questions, shuffle_options, access_code, start_at, end_at, pattern, pattern_config, negative_mark_per_wrong").eq("id", examId).single(),
+      supabase.from("exams").select("id, title, description, duration_minutes, shuffle_questions, shuffle_options, access_code, start_at, end_at, pattern, pattern_config, negative_mark_per_wrong, show_result_after_submit, show_answer_sheet, show_answer_book").eq("id", examId).single(),
       supabase.from("questions").select("id, type, prompt, options, correct_answer, marks, topic, difficulty").eq("exam_id", examId).order("order_index"),
       supabase.from("assignments")
         .select("id, student_id, due_at, max_attempts, attempts(id, status, score, max_score)")
@@ -148,6 +151,9 @@ function ExamDetail() {
           pattern: exam.pattern,
           pattern_config: exam.pattern_config,
           negative_mark_per_wrong: exam.negative_mark_per_wrong ?? 0,
+          show_result_after_submit: exam.show_result_after_submit,
+          show_answer_sheet: exam.show_answer_sheet,
+          show_answer_book: exam.show_answer_book,
         },
       });
       toast.success("Settings saved");
@@ -655,6 +661,32 @@ function ExamDetail() {
                 <Label>Shuffle options</Label>
                 <Switch checked={exam.shuffle_options} onCheckedChange={(v) => patchExam({ shuffle_options: v })} />
               </div>
+
+              <div className="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">After submission</div>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-medium">Show result to student</div>
+                    <div className="text-xs text-muted-foreground">Score, %, and AI feedback right after submitting.</div>
+                  </div>
+                  <Switch checked={exam.show_result_after_submit} onCheckedChange={(v) => patchExam({ show_result_after_submit: v })} />
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-medium">Show answer sheet</div>
+                    <div className="text-xs text-muted-foreground">Correct answers alongside the student's response.</div>
+                  </div>
+                  <Switch checked={exam.show_answer_sheet} onCheckedChange={(v) => patchExam({ show_answer_sheet: v })} />
+                </div>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-medium">Show answer book</div>
+                    <div className="text-xs text-muted-foreground">Detailed AI explanations with formulas & step-by-step working.</div>
+                  </div>
+                  <Switch checked={exam.show_answer_book} onCheckedChange={(v) => patchExam({ show_answer_book: v })} />
+                </div>
+              </div>
+
               <Button onClick={saveSettings} disabled={savingSettings}>
                 <Save className="mr-2 h-4 w-4" />{savingSettings ? "Saving…" : "Save settings"}
               </Button>
