@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { listStudentExams, startStudentAttempt } from "@/lib/student.functions";
+import { getLastStudentId, setLastStudentId, clearLastStudentId } from "@/lib/lastStudentId";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -33,7 +34,7 @@ export const Route = createFileRoute("/")({
 
 type ExamRow = Awaited<ReturnType<typeof listStudentExams>>["exams"][number];
 
-const STORAGE_KEY = "examprep:studentCode";
+
 
 function stateBadge(state: ExamRow["state"]) {
   switch (state) {
@@ -63,9 +64,11 @@ function Landing() {
   const [loadingList, setLoadingList] = useState(false);
   const [exams, setExams] = useState<ExamRow[] | null>(null);
   const [studentName, setStudentName] = useState<string>("");
+  const [lastId, setLastId] = useState<string | null>(null);
 
   useEffect(() => {
-    const saved = typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+    const saved = getLastStudentId();
+    setLastId(saved);
     if (saved) {
       setLookupCode(saved);
       setStudentCode(saved);
@@ -82,7 +85,8 @@ function Landing() {
       const r = await listStudentExams({ data: { studentCode: c } });
       setExams(r.exams);
       setStudentName(r.student.name);
-      localStorage.setItem(STORAGE_KEY, c);
+      setLastStudentId(c);
+      setLastId(c);
       setStudentCode(c);
     } catch (err) {
       setExams(null);
@@ -157,6 +161,25 @@ function Landing() {
                     onChange={(e) => setStudentCode(e.target.value.toUpperCase())}
                     maxLength={6}
                   />
+                  {lastId && lastId !== studentCode.toUpperCase() && (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                      <span>Last used:</span>
+                      <button
+                        type="button"
+                        onClick={() => setStudentCode(lastId)}
+                        className="rounded-md border border-border bg-muted/50 px-2 py-0.5 font-mono text-xs font-semibold text-foreground hover:bg-muted"
+                      >
+                        {lastId}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { clearLastStudentId(); setLastId(null); }}
+                        className="text-xs text-muted-foreground/80 hover:text-foreground hover:underline"
+                      >
+                        Forget
+                      </button>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label htmlFor="ac">Exam password</Label>
@@ -202,17 +225,31 @@ function Landing() {
                 e.preventDefault();
                 void fetchExams(lookupCode);
               }}
-              className="flex w-full max-w-sm gap-2"
+              className="flex w-full max-w-sm flex-col gap-1.5"
             >
-              <Input
-                placeholder="Student ID (ABCDEF)"
-                value={lookupCode}
-                onChange={(e) => setLookupCode(e.target.value.toUpperCase())}
-                maxLength={6}
-              />
-              <Button type="submit" disabled={loadingList}>
-                {loadingList ? <Loader2 className="h-4 w-4 animate-spin" /> : "Show"}
-              </Button>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Student ID (ABCDEF)"
+                  value={lookupCode}
+                  onChange={(e) => setLookupCode(e.target.value.toUpperCase())}
+                  maxLength={6}
+                />
+                <Button type="submit" disabled={loadingList}>
+                  {loadingList ? <Loader2 className="h-4 w-4 animate-spin" /> : "Show"}
+                </Button>
+              </div>
+              {lastId && lastId !== lookupCode.toUpperCase() && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span>Last used:</span>
+                  <button
+                    type="button"
+                    onClick={() => { setLookupCode(lastId); void fetchExams(lastId); }}
+                    className="rounded-md border border-border bg-muted/50 px-2 py-0.5 font-mono text-xs font-semibold text-foreground hover:bg-muted"
+                  >
+                    {lastId}
+                  </button>
+                </div>
+              )}
             </form>
           </div>
 

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Brain, History, ArrowLeft, CheckCircle2, AlertTriangle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { getStudentHistory } from "@/lib/student.functions";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { getLastStudentId, setLastStudentId, clearLastStudentId } from "@/lib/lastStudentId";
 
 export const Route = createFileRoute("/history/")({
   head: () => ({
@@ -49,12 +50,25 @@ function HistoryPage() {
   const [busy, setBusy] = useState(false);
   const [student, setStudent] = useState<StudentInfo | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [lastId, setLastId] = useState<string | null>(null);
 
   const fetchFor = useCallback(async (code: string) => {
     const r = await getStudentHistory({ data: { studentCode: code } });
     setStudent(r.student as StudentInfo);
     setHistory(r.history as HistoryItem[]);
+    setLastStudentId(code);
+    setLastId(code.toUpperCase());
     return r;
+  }, []);
+
+  useEffect(() => {
+    const saved = getLastStudentId();
+    if (saved) {
+      setLastId(saved);
+      setStudentCode(saved);
+      void fetchFor(saved).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const load = async (e: React.FormEvent) => {
@@ -62,7 +76,7 @@ function HistoryPage() {
     if (!studentCode.trim()) return toast.error("Enter your student ID");
     setBusy(true);
     try {
-      const r = await fetchFor(studentCode.trim());
+      const r = await fetchFor(studentCode.trim().toUpperCase());
       if (!r.history.length) toast.info("No exam attempts yet");
     } catch (err) {
       toast.error((err as Error).message);
@@ -113,6 +127,25 @@ function HistoryPage() {
                   onChange={(e) => setStudentCode(e.target.value.toUpperCase())}
                   maxLength={6}
                 />
+                {lastId && lastId !== studentCode.toUpperCase() && (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <span>Last used:</span>
+                    <button
+                      type="button"
+                      onClick={() => setStudentCode(lastId)}
+                      className="rounded-md border border-border bg-muted/50 px-2 py-0.5 font-mono text-xs font-semibold text-foreground hover:bg-muted"
+                    >
+                      {lastId}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { clearLastStudentId(); setLastId(null); }}
+                      className="text-xs text-muted-foreground/80 hover:text-foreground hover:underline"
+                    >
+                      Forget
+                    </button>
+                  </div>
+                )}
               </div>
               <Button type="submit" disabled={busy} size="lg">
                 {busy ? "Loading…" : "View results"}
