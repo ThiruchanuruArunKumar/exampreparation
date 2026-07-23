@@ -45,7 +45,10 @@ type Exam = {
   shuffle_questions: boolean;
   shuffle_options: boolean;
   access_code: string;
+  start_at: string | null;
+  end_at: string | null;
 };
+
 type Question = {
   id?: string;
   type: "mcq" | "multi" | "tf" | "short";
