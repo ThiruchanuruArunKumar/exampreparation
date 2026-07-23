@@ -303,13 +303,24 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { sb, att } = await loadAttempt(data.attemptId, data.sessionToken);
+    const { data: examFlags } = await sb
+      .from("exams")
+      .select("title, show_result_after_submit, show_answer_sheet, show_answer_book, negative_mark_per_wrong")
+      .eq("id", att.exam_id)
+      .maybeSingle();
+    const flags = {
+      showResult: examFlags?.show_result_after_submit ?? true,
+      showAnswerSheet: examFlags?.show_answer_sheet ?? false,
+      showAnswerBook: examFlags?.show_answer_book ?? false,
+      examTitle: examFlags?.title ?? "",
+    };
     if (att.status !== "in_progress") {
       const { data: existing } = await sb
         .from("insights")
         .select("summary, weak_topics, strong_topics, recommendations")
         .eq("attempt_id", att.id)
         .maybeSingle();
-      return { ok: true, alreadySubmitted: true, score: att.score, maxScore: att.max_score, insight: existing };
+      return { ok: true, alreadySubmitted: true, score: att.score, maxScore: att.max_score, insight: existing, ...flags };
     }
 
     const { data: examRow } = await sb
