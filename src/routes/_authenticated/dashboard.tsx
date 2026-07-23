@@ -38,6 +38,7 @@ type Exam = {
 function Dashboard() {
   const navigate = useNavigate();
   const [role, setRole] = useState<"admin" | "student" | null>(null);
+  const [status, setStatus] = useState<"pending" | "approved" | "rejected">("approved");
   const [loading, setLoading] = useState(true);
   const [exams, setExams] = useState<Exam[]>([]);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
@@ -54,13 +55,21 @@ function Dashboard() {
       const myRole = (r?.role as "admin" | "student") ?? "student";
       setRole(myRole);
 
+      const { data: p } = await supabase
+        .from("profiles")
+        .select("status")
+        .eq("id", u.user.id)
+        .maybeSingle();
+      const myStatus = ((p as any)?.status as "pending" | "approved" | "rejected") ?? "approved";
+      setStatus(myStatus);
+
       if (myRole === "admin") {
         const { data } = await supabase
           .from("exams")
           .select("id, title, created_at, questions(count), assignments(count)")
           .order("created_at", { ascending: false });
         setExams((data as Exam[]) ?? []);
-      } else {
+      } else if (myStatus === "approved") {
         const { data } = await supabase
           .from("assignments")
           .select(
@@ -80,6 +89,27 @@ function Dashboard() {
         <p className="text-sm text-muted-foreground">Loading…</p>
       </AppShell>
     );
+
+  if (role === "student" && status !== "approved") {
+    return (
+      <AppShell title="Student">
+        <Card>
+          <CardContent className="py-12 text-center">
+            <GraduationCap className="mx-auto h-10 w-10 text-muted-foreground" />
+            <h2 className="mt-3 text-lg font-semibold">
+              {status === "pending" ? "Waiting for approval" : "Access denied"}
+            </h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {status === "pending"
+                ? "Your account is pending admin approval. You'll be able to take exams once an admin approves you."
+                : "Your account was rejected. Please contact your admin if you believe this is a mistake."}
+            </p>
+          </CardContent>
+        </Card>
+      </AppShell>
+    );
+  }
+
 
   if (role === "admin") {
     return (
