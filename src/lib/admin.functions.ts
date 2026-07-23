@@ -667,7 +667,18 @@ function baseGenPrompt(pattern: string, count: number, subject?: string | null) 
   const guide = PATTERN_GUIDE[pattern] ?? PATTERN_GUIDE.custom;
   return `You are an expert exam question setter. ${guide}
 Generate exactly ${count} high-quality questions${subject ? ` on subject/topic: ${subject}` : ""}.
-Return JSON matching the schema. For MCQ use type "mcq" with 4 options and one correct answer in correct_answer array. For true/false use "tf" with options ["True","False"]. For numerical/short use "short" with options null and correct_answer as accepted answers. Set topic to the subject or sub-topic. Set difficulty (easy/medium/hard) mixed. Do not repeat questions.`;
+Return JSON matching the schema. For MCQ use type "mcq" with 4 options and one correct answer in correct_answer array. For true/false use "tf" with options ["True","False"]. For numerical/short use "short" with options null and correct_answer as accepted answers. Set topic to the subject or sub-topic. Set difficulty (easy/medium/hard) mixed. Do not repeat questions.
+
+FORMATTING (CRITICAL — questions render with Markdown + KaTeX):
+- Wrap ALL math, chemistry, physics formulas in LaTeX: inline as $...$ and display as $$...$$. Never use unicode fake-math like x² or H₂O plain text.
+- Powers/subscripts: $x^2$, $a_{ij}$, $H_2O$, $CO_2$, $10^{-3}$.
+- Fractions/roots: $\\frac{a}{b}$, $\\sqrt{x}$, $\\sqrt[3]{x}$.
+- Greek/symbols: $\\alpha, \\beta, \\pi, \\theta, \\Delta, \\rightarrow, \\leq, \\geq, \\neq, \\pm, \\times, \\cdot, \\infty$.
+- Vectors/units: $\\vec{F} = m\\vec{a}$, $9.8\\,\\text{m/s}^2$.
+- Chemistry: use $\\ce{...}$ style where possible, e.g. $\\ce{H2SO4 -> H+ + HSO4-}$, or plain LaTeX like $H_2SO_4 \\rightarrow 2H^+ + SO_4^{2-}$.
+- Preserve line breaks in the prompt using \\n. Options must be pure text of the choice (no "A)"/"B)" prefixes) and may contain LaTeX the same way.
+- Do NOT wrap the whole question in a code block. Do NOT escape backslashes twice.`;
+
 }
 
 export const generateFromNotes = createServerFn({ method: "POST" })
