@@ -883,7 +883,7 @@ export const getStudentExamInfo = createServerFn({ method: "POST" })
       )
       .eq("id", data.examId)
       .maybeSingle();
-    if (!exam || exam.status !== "published") throw new Error("Exam not available");
+    if (!exam) throw new Error("Exam not available");
 
     const { data: asg } = await sb
       .from("assignments")
