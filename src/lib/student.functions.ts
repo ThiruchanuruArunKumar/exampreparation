@@ -612,3 +612,161 @@ export const getStudentExplanation = createServerFn({ method: "POST" })
       );
     return { explanation: text };
   });
+
+/* ---------------- History detail (auth via studentCode) ---------------- */
+
+async function loadAttemptByStudent(attemptId: string, studentCode: string) {
+  const sb = await admin();
+  const { data: student } = await sb
+    .from("students")
+    .select("id, name, student_code, class_name, email")
+    .eq("student_code", studentCode.trim())
+    .maybeSingle();
+  if (!student) throw new Error("Invalid student ID");
+  const { data: att, error } = await sb
+    .from("attempts")
+    .select(
+      "id, exam_id, student_id, status, score, max_score, submitted_at, started_at, auto_submitted, warning_count, question_order",
+    )
+    .eq("id", attemptId)
+    .eq("student_id", student.id)
+    .maybeSingle();
+  if (error || !att) throw new Error("Attempt not found");
+  return { sb, att, student };
+}
+
+export const getHistoryAttemptDetail = createServerFn({ method: "POST" })
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        attemptId: z.string().uuid(),
+        studentCode: z.string().trim().min(1).max(40),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data }) => {
+    const { sb, att, student } = await loadAttemptByStudent(data.attemptId, data.studentCode);
+    const { data: exam } = await sb
+      .from("exams")
+      .select("id, title, duration_minutes, show_result_after_submit, show_answer_sheet, show_answer_book")
+      .eq("id", att.exam_id)
+      .single();
+    const { data: insight } = await sb
+      .from("insights")
+      .select("summary, weak_topics, strong_topics, recommendations")
+      .eq("attempt_id", att.id)
+      .maybeSingle();
+
+    let questions: any[] = [];
+    if (exam?.show_answer_sheet || exam?.show_answer_book) {
+      const order = (att.question_order as { qid: string; options_order: number[] | null }[]) ?? [];
+      const qids = order.map((o) => o.qid);
+      const [{ data: qs }, { data: ans }] = await Promise.all([
+        sb.from("questions").select("id, type, prompt, options, correct_answer, marks, topic").in("id", qids),
+        sb.from("answers").select("question_id, response, is_correct, marks_awarded").eq("attempt_id", att.id),
+      ]);
+      const ansMap = new Map((ans ?? []).map((a) => [a.question_id, a]));
+      const qMap = new Map((qs ?? []).map((q) => [q.id, q]));
+      questions = order
+        .map((o) => {
+          const q = qMap.get(o.qid);
+          if (!q) return null;
+          const a = ansMap.get(q.id);
+          return {
+            id: q.id,
+            type: q.type,
+            prompt: q.prompt,
+            options: q.options,
+            correct_answer: q.correct_answer,
+            marks: q.marks,
+            topic: q.topic,
+            response: (a?.response as string[] | null) ?? [],
+            is_correct: a?.is_correct ?? null,
+            marks_awarded: a?.marks_awarded ?? 0,
+          };
+        })
+        .filter(Boolean);
+    }
+
+    return {
+      student,
+      exam: exam
+        ? {
+            id: exam.id,
+            title: exam.title,
+            duration_minutes: exam.duration_minutes,
+            showResult: !!exam.show_result_after_submit,
+            showAnswerSheet: !!exam.show_answer_sheet,
+            showAnswerBook: !!exam.show_answer_book,
+          }
+        : null,
+      attempt: {
+        id: att.id,
+        status: att.status,
+        score: att.score,
+        max_score: att.max_score,
+        submitted_at: att.submitted_at,
+        started_at: att.started_at,
+        auto_submitted: att.auto_submitted,
+        warning_count: att.warning_count,
+      },
+      insight: insight ?? null,
+      questions,
+    };
+  });
+
+export const getHistoryExplanation = createServerFn({ method: "POST" })
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        attemptId: z.string().uuid(),
+        studentCode: z.string().trim().min(1).max(40),
+        questionId: z.string().uuid(),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data }) => {
+    const { sb, att } = await loadAttemptByStudent(data.attemptId, data.studentCode);
+    const { data: exam } = await sb
+      .from("exams")
+      .select("show_answer_book")
+      .eq("id", att.exam_id)
+      .single();
+    if (!exam?.show_answer_book) throw new Error("Answer book is disabled for this exam");
+    const order = (att.question_order as { qid: string }[]) ?? [];
+    if (!order.some((o) => o.qid === data.questionId)) throw new Error("Question not part of this attempt");
+
+    const { data: cached } = await sb
+      .from("question_explanations")
+      .select("explanation")
+      .eq("question_id", data.questionId)
+      .maybeSingle();
+    if (cached?.explanation) return { explanation: cached.explanation as string };
+
+    const { data: q } = await sb
+      .from("questions")
+      .select("prompt, options, correct_answer, type, topic")
+      .eq("id", data.questionId)
+      .single();
+    if (!q) throw new Error("Question not found");
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("AI not configured");
+    const gateway = createLovableAiGatewayProvider(key);
+    const { text } = await generateText({
+      model: gateway("openai/gpt-5.5"),
+      system:
+        "You are an expert tutor. Explain the answer to competitive-exam questions with maximum clarity: state the correct answer, then a rigorous step-by-step derivation. List every formula used with names, define each variable, show all substitutions, and finish with an intuition summary. Use plain text and Markdown. Be thorough — the student wants to LEARN, not just check.",
+      prompt: JSON.stringify(
+        { topic: q.topic, question: q.prompt, options: q.options, correct_answer: q.correct_answer, type: q.type },
+        null,
+        2,
+      ),
+    });
+    await sb
+      .from("question_explanations")
+      .upsert(
+        { question_id: data.questionId, explanation: text, updated_at: new Date().toISOString() },
+        { onConflict: "question_id" },
+      );
+    return { explanation: text };
+  });

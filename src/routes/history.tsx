@@ -138,7 +138,7 @@ function HistoryPage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {history.map((h) => {
                   const pct =
                     h.score != null && h.max_score
@@ -146,74 +146,52 @@ function HistoryPage() {
                       : null;
                   const done = h.status !== "in_progress";
                   return (
-                    <Card key={h.id}>
-                      <CardHeader className="pb-3">
-                        <div className="flex flex-wrap items-start justify-between gap-2">
-                          <div>
-                            <CardTitle className="text-base">
-                              {h.exam?.title ?? "Exam"}
-                            </CardTitle>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {new Date(h.submitted_at ?? h.started_at).toLocaleString()}
-                            </p>
-                          </div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            {done ? (
-                              <Badge variant="secondary" className="gap-1">
-                                <CheckCircle2 className="h-3 w-3" />
-                                {h.score ?? 0} / {h.max_score ?? 0}
-                                {pct != null && ` (${pct}%)`}
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline">In progress</Badge>
-                            )}
-                            {h.auto_submitted && (
-                              <Badge variant="destructive" className="gap-1">
-                                <AlertTriangle className="h-3 w-3" /> Auto-submitted
-                              </Badge>
-                            )}
-                            {(h.warning_count ?? 0) > 0 && (
-                              <Badge variant="outline">
-                                {h.warning_count} warning{h.warning_count === 1 ? "" : "s"}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                      </CardHeader>
-                      {h.insight && (
-                        <CardContent className="space-y-3 pt-0 text-sm">
-                          <p>{h.insight.summary}</p>
-                          {h.insight.strong_topics?.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              <span className="text-xs text-muted-foreground">Strong:</span>
-                              {h.insight.strong_topics.map((t) => (
-                                <Badge key={t} variant="secondary" className="text-xs">
-                                  {t}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                          {h.insight.weak_topics?.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              <span className="text-xs text-muted-foreground">To improve:</span>
-                              {h.insight.weak_topics.map((t) => (
-                                <Badge key={t} variant="outline" className="text-xs">
-                                  {t}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-                          {h.insight.recommendations && (
-                            <div className="rounded-md bg-muted/50 p-3 text-xs">
-                              <div className="mb-1 font-medium">Recommendations</div>
-                              <p className="whitespace-pre-wrap text-muted-foreground">
-                                {h.insight.recommendations}
+                    <Link
+                      key={h.id}
+                      to="/history/$attemptId"
+                      params={{ attemptId: h.id }}
+                      search={{ sid: student.student_code }}
+                      className="block"
+                    >
+                      <Card className="transition hover:border-primary/50 hover:shadow-md">
+                        <CardHeader className="pb-3">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <CardTitle className="text-base">
+                                {h.exam?.title ?? "Exam"}
+                              </CardTitle>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {new Date(h.submitted_at ?? h.started_at).toLocaleString()}
                               </p>
                             </div>
-                          )}
+                            <div className="flex flex-wrap items-center gap-2">
+                              {done ? (
+                                <Badge variant="secondary" className="gap-1">
+                                  <CheckCircle2 className="h-3 w-3" />
+                                  {h.score ?? 0} / {h.max_score ?? 0}
+                                  {pct != null && ` (${pct}%)`}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline">In progress</Badge>
+                              )}
+                              {h.auto_submitted && (
+                                <Badge variant="destructive" className="gap-1">
+                                  <AlertTriangle className="h-3 w-3" /> Auto-submitted
+                                </Badge>
+                              )}
+                              {(h.warning_count ?? 0) > 0 && (
+                                <Badge variant="outline">
+                                  {h.warning_count} warning{h.warning_count === 1 ? "" : "s"}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pt-0 text-xs text-muted-foreground">
+                          Tap to view detailed results, answer sheet & answer book →
                         </CardContent>
-                      )}
-                    </Card>
+                      </Card>
+                    </Link>
                   );
                 })}
               </div>
