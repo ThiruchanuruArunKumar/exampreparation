@@ -50,14 +50,19 @@ function HistoryPage() {
   const [student, setStudent] = useState<StudentInfo | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
 
+  const fetchFor = useCallback(async (code: string) => {
+    const r = await getStudentHistory({ data: { studentCode: code } });
+    setStudent(r.student as StudentInfo);
+    setHistory(r.history as HistoryItem[]);
+    return r;
+  }, []);
+
   const load = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!studentCode.trim()) return toast.error("Enter your student ID");
     setBusy(true);
     try {
-      const r = await getStudentHistory({ data: { studentCode: studentCode.trim() } });
-      setStudent(r.student as StudentInfo);
-      setHistory(r.history as HistoryItem[]);
+      const r = await fetchFor(studentCode.trim());
       if (!r.history.length) toast.info("No exam attempts yet");
     } catch (err) {
       toast.error((err as Error).message);
@@ -65,6 +70,12 @@ function HistoryPage() {
       setBusy(false);
     }
   };
+
+  useRealtimeSync(
+    ["attempts", "insights"],
+    () => { if (student) fetchFor(student.student_code).catch(() => {}); },
+    { enabled: !!student },
+  );
 
   return (
     <div className="min-h-screen bg-background text-foreground">
