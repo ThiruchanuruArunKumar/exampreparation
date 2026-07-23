@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Upload, Sparkles, Trash2 } from "lucide-react";
 import { extractQuestions } from "@/lib/exams.functions";
+import { createExam } from "@/lib/admin.functions";
 
 export const Route = createFileRoute("/_authenticated/exams/new")({
   head: () => ({
@@ -75,32 +75,11 @@ function NewExam() {
     if (questions.length === 0) return toast.error("Add at least one question");
     setSaving(true);
     try {
-      const { data: u } = await supabase.auth.getUser();
-      const { data: exam, error } = await supabase
-        .from("exams")
-        .insert({
-          title,
-          duration_minutes: duration,
-          created_by: u.user!.id,
-        })
-        .select("id")
-        .single();
-      if (error) throw error;
-      const rows = questions.map((q, i) => ({
-        exam_id: exam.id,
-        type: q.type,
-        prompt: q.prompt,
-        options: q.options,
-        correct_answer: q.correct_answer,
-        marks: q.marks,
-        topic: q.topic,
-        difficulty: q.difficulty,
-        order_index: i,
-      }));
-      const { error: qErr } = await supabase.from("questions").insert(rows);
-      if (qErr) throw qErr;
-      toast.success("Exam created");
-      navigate({ to: "/exams/$examId", params: { examId: exam.id } });
+      const r = await createExam({
+        data: { title: title.trim(), duration_minutes: duration, questions },
+      });
+      toast.success(`Exam created — password ${r.access_code}`);
+      navigate({ to: "/exams/$examId", params: { examId: r.id } });
     } catch (e) {
       toast.error((e as Error).message);
       setSaving(false);
@@ -130,6 +109,9 @@ function NewExam() {
                   onChange={(e) => setDuration(Number(e.target.value))}
                 />
               </div>
+              <p className="text-xs text-muted-foreground">
+                A 6-character exam password is generated automatically. Share it with your students along with their ID.
+              </p>
             </CardContent>
           </Card>
 
