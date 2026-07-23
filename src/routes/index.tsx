@@ -34,7 +34,7 @@ export const Route = createFileRoute("/")({
 
 type ExamRow = Awaited<ReturnType<typeof listStudentExams>>["exams"][number];
 
-const STORAGE_KEY = "examprep:studentCode";
+const STORAGE_KEY = LAST_STUDENT_ID_KEY;
 
 function stateBadge(state: ExamRow["state"]) {
   switch (state) {
