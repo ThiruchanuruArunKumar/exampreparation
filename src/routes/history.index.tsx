@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { getStudentHistory } from "@/lib/student.functions";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { getLastStudentId, setLastStudentId, clearLastStudentId } from "@/lib/lastStudentId";
 
 export const Route = createFileRoute("/history/")({
   head: () => ({
