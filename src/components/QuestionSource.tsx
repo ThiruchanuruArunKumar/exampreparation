@@ -115,15 +115,18 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
     if (!sections.length) return toast.error("No subjects configured");
     setBusy(true);
     try {
-      let total = 0;
-      for (const sec of sections) {
-        toast.info(`Generating ${sec.count} for ${sec.name}…`);
-        const res = await generateFromDescription({
-          data: { pattern, count: sec.count, subject: sec.name, description: description.trim() },
-        });
-        onQuestions(res.questions as GeneratedQuestion[]);
-        total += res.questions.length;
-      }
+      toast.info(`Generating ${sections.length} subjects in parallel…`);
+      const results = await Promise.all(
+        sections.map((sec) =>
+          generateFromDescription({
+            data: { pattern, count: sec.count, subject: sec.name, description: description.trim() },
+          }).then((res) => {
+            onQuestions(res.questions as GeneratedQuestion[]);
+            return res.questions.length;
+          }),
+        ),
+      );
+      const total = results.reduce((a, b) => a + b, 0);
       toast.success(`Generated ${total} questions across ${sections.length} subjects`);
     } catch (e) {
       toast.error((e as Error).message);
