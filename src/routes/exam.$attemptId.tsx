@@ -66,6 +66,7 @@ function TakeExam() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [current, setCurrent] = useState(0);
+  const [showPalette, setShowPalette] = useState(false);
   const [endsAt, setEndsAt] = useState<string>("");
   const [remaining, setRemaining] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -264,32 +265,45 @@ function TakeExam() {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-5xl gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:grid-cols-[200px_1fr]">
-        <div className="space-y-1">
-          <div className="mb-2 text-xs text-muted-foreground">
-            {answered}/{questions.length} answered
+      <div className="mx-auto grid max-w-5xl gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:grid-cols-[220px_1fr]">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs text-muted-foreground">
+              {answered}/{questions.length} answered
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowPalette((v) => !v)}
+              className="h-7 px-2 text-xs"
+            >
+              {showPalette ? "Hide" : "Show"} all
+            </Button>
           </div>
-          <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 lg:grid-cols-4">
-            {questions.map((qq, i) => {
-              const done = (answers[qq.id] ?? []).length > 0;
-              return (
-                <button
-                  key={qq.id}
-                  onClick={() => setCurrent(i)}
-                  className={`rounded-md border p-2 text-xs ${
-                    i === current
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : done
-                        ? "border-primary/40 bg-primary/10"
-                        : "border-border"
-                  }`}
-                >
-                  {i + 1}
-                </button>
-              );
-            })}
-          </div>
+          {showPalette && (
+            <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 lg:grid-cols-5">
+              {questions.map((qq, i) => {
+                const done = (answers[qq.id] ?? []).length > 0;
+                return (
+                  <button
+                    key={qq.id}
+                    onClick={() => setCurrent(i)}
+                    className={`rounded-md border p-2 text-xs ${
+                      i === current
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : done
+                          ? "border-primary/40 bg-primary/10"
+                          : "border-border"
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
+
 
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
@@ -489,15 +503,22 @@ function ResultScreen({
     <div className="mx-auto max-w-4xl space-y-4">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
-            <CheckCircle2 className="h-6 w-6 text-primary" />
-            {result.auto ? "Auto-submitted" : "Exam submitted"}
-          </CardTitle>
-          {student && exam && (
-            <p className="text-sm text-muted-foreground">
-              {student.name} · {student.student_code} · {exam.title}
-            </p>
-          )}
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
+                <CheckCircle2 className="h-6 w-6 text-primary" />
+                {result.auto ? "Auto-submitted" : "Exam submitted"}
+              </CardTitle>
+              {student && exam && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {student.name} · {student.student_code} · {exam.title}
+                </p>
+              )}
+            </div>
+            <Link to="/">
+              <Button variant="outline" size="sm">← Back to home</Button>
+            </Link>
+          </div>
         </CardHeader>
         <CardContent>
           {!result.showResult ? (
@@ -520,6 +541,7 @@ function ResultScreen({
           )}
         </CardContent>
       </Card>
+
 
       {result.showResult && hasAnyReview && (
         <div className="flex flex-wrap gap-2">

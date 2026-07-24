@@ -497,8 +497,9 @@ function ExamDetail() {
                     <Input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} />
                   </div>
                   <div>
-                    <Label>Max attempts</Label>
+                    <Label>Max attempts per student</Label>
                     <NumberField value={maxAttempts} onChange={setMaxAttempts} min={1} fallback={1} />
+                    <p className="mt-1 text-xs text-muted-foreground">Each selected student gets this many attempts.</p>
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
