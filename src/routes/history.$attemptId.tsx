@@ -6,6 +6,7 @@ import {
   Brain,
   ArrowLeft,
   CheckCircle2,
+  XCircle,
   AlertTriangle,
   Sparkles,
   TrendingUp,
