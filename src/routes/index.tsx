@@ -198,12 +198,6 @@ function Landing() {
                 <div className="text-center text-xs text-muted-foreground">
                   Your teacher provides both the ID and the password.
                 </div>
-                <Link
-                  to="/history"
-                  className="block text-center text-sm text-primary hover:underline"
-                >
-                  View my past results →
-                </Link>
               </form>
             </CardContent>
           </Card>
