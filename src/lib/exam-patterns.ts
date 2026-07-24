@@ -1,4 +1,4 @@
-export type ExamPattern = "neet" | "eamcet" | "mains" | "custom";
+export type ExamPattern = "neet" | "eamcet" | "ts_eamcet_bipc" | "mains" | "custom";
 
 export type PatternSection = {
   name: string;
@@ -38,6 +38,19 @@ export const PATTERN_PRESETS: Record<Exclude<ExamPattern, "custom">, PatternConf
       { name: "Chemistry", count: 40, marks_per_q: 1 },
     ],
     notes: "EAMCET (Engineering) single-correct MCQs. Intermediate 1st & 2nd year syllabus. 4 options each.",
+  },
+  ts_eamcet_bipc: {
+    label: "TS EAMCET (BIPC)",
+    description: "180 min · 160 questions · +1 / 0 · Botany 40, Zoology 40, Physics 40, Chemistry 40",
+    duration_minutes: 180,
+    negative_mark_per_wrong: 0,
+    sections: [
+      { name: "Botany", count: 40, marks_per_q: 1 },
+      { name: "Zoology", count: 40, marks_per_q: 1 },
+      { name: "Physics", count: 40, marks_per_q: 1 },
+      { name: "Chemistry", count: 40, marks_per_q: 1 },
+    ],
+    notes: "TS EAMCET (Agriculture & Medical / BIPC stream) single-correct MCQs. Intermediate 1st & 2nd year syllabus. 4 options each.",
   },
   mains: {
     label: "JEE Main",

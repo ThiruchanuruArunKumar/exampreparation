@@ -21,7 +21,8 @@ type Props = {
 
 const OPTIONS: { id: ExamPattern; label: string; desc: string }[] = [
   { id: "neet", label: "NEET", desc: PATTERN_PRESETS.neet.description },
-  { id: "eamcet", label: "EAMCET", desc: PATTERN_PRESETS.eamcet.description },
+  { id: "eamcet", label: "AP/TS EAMCET (Engg)", desc: PATTERN_PRESETS.eamcet.description },
+  { id: "ts_eamcet_bipc", label: "TS EAMCET (BIPC)", desc: PATTERN_PRESETS.ts_eamcet_bipc.description },
   { id: "mains", label: "JEE Main", desc: PATTERN_PRESETS.mains.description },
   { id: "custom", label: "Custom", desc: "Set your own subjects, marks, timing, negatives." },
 ];
@@ -74,7 +75,7 @@ export function PatternPicker({ pattern, config, onChange }: Props) {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">
-              {pattern === "custom" ? "Custom configuration" : `${PATTERN_PRESETS[pattern as "neet" | "eamcet" | "mains"].label} configuration`}
+              {pattern === "custom" ? "Custom configuration" : `${PATTERN_PRESETS[pattern as Exclude<ExamPattern, "custom">].label} configuration`}
               <span className="ml-2 text-xs font-normal text-muted-foreground">
                 {totalQuestions(config)} questions · {totalMarks(config)} marks
               </span>
@@ -141,7 +142,7 @@ export function PatternPicker({ pattern, config, onChange }: Props) {
             </div>
             {readonly && (
               <p className="text-xs text-muted-foreground">
-                Preset locked to match the real {PATTERN_PRESETS[pattern as "neet" | "eamcet" | "mains"].label} environment. Switch to Custom to edit.
+                Preset locked to match the real {PATTERN_PRESETS[pattern as Exclude<ExamPattern, "custom">].label} environment. Switch to Custom to edit.
               </p>
             )}
           </CardContent>
