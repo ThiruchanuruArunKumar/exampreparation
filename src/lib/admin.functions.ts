@@ -708,16 +708,26 @@ export const generateFromNotes = createServerFn({ method: "POST" })
     const sys =
       baseGenPrompt(data.pattern, data.count, data.subject) +
       `\n\nBase the questions strictly on the notes/material in the attached file (${data.fileName}). Cross-reference with the style, difficulty, and pattern of PAST ${data.pattern.toUpperCase()} papers on these topics. Do not invent facts outside the notes.`;
-    const part =
-      data.mimeType.startsWith("image/")
-        ? { type: "image_url", image_url: { url: `data:${data.mimeType};base64,${data.fileBase64}` } }
-        : {
-            type: "file",
-            file: {
-              filename: data.fileName,
-              file_data: `data:${data.mimeType};base64,${data.fileBase64}`,
-            },
-          };
+    const isImage = data.mimeType.startsWith("image/");
+    const isText =
+      data.mimeType.startsWith("text/") ||
+      data.mimeType === "application/json" ||
+      /\.(md|markdown|txt|csv|json)$/i.test(data.fileName);
+    let part: Record<string, unknown>;
+    if (isImage) {
+      part = { type: "image_url", image_url: { url: `data:${data.mimeType};base64,${data.fileBase64}` } };
+    } else if (isText) {
+      const text = Buffer.from(data.fileBase64, "base64").toString("utf-8").slice(0, 200_000);
+      part = { type: "text", text: `--- FILE: ${data.fileName} ---\n${text}\n--- END FILE ---` };
+    } else {
+      part = {
+        type: "file",
+        file: {
+          filename: data.fileName,
+          file_data: `data:${data.mimeType};base64,${data.fileBase64}`,
+        },
+      };
+    }
     const questions = await runGenerateExact(sys, [
       { type: "text", text: `Generate exactly ${data.count} questions from these notes. Do not produce more or fewer than ${data.count}.` },
       part,
