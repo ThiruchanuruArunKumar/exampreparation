@@ -65,6 +65,8 @@ function TakeExam() {
   const [student, setStudent] = useState<{ name: string; student_code: string } | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
+  const [visited, setVisited] = useState<Set<string>>(new Set());
+  const [reviewed, setReviewed] = useState<Set<string>>(new Set());
   const [current, setCurrent] = useState(0);
   const [showPalette, setShowPalette] = useState(false);
   const [endsAt, setEndsAt] = useState<string>("");
