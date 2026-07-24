@@ -505,46 +505,94 @@ function ResultScreen({
 
   return (
     <div className="mx-auto max-w-4xl space-y-4">
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
-                <CheckCircle2 className="h-6 w-6 text-primary" />
-                {result.auto ? "Auto-submitted" : "Exam submitted"}
-              </CardTitle>
-              {student && exam && (
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {student.name} · {student.student_code} · {exam.title}
-                </p>
-              )}
-            </div>
-            <Link to="/">
-              <Button variant="outline" size="sm">← Back to home</Button>
-            </Link>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {!result.showResult ? (
-            <p className="text-sm text-muted-foreground">
-              Your responses have been recorded. Your teacher will share results when they are ready.
-            </p>
-          ) : (
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <div className="text-5xl font-bold sm:text-6xl">
-                  {result.score}
-                  <span className="text-2xl text-muted-foreground">/{result.maxScore}</span>
-                </div>
-                <div className="mt-1 text-base text-muted-foreground">{pct}%</div>
+      {result.terminated ? (
+        <Card className="border-destructive/50">
+          <CardHeader className="pb-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <CardTitle className="flex flex-wrap items-center gap-2 text-lg text-destructive">
+                  <ShieldAlert className="h-6 w-6" />
+                  Exam terminated
+                </CardTitle>
+                {student && exam && (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {student.name} · {student.student_code} · {exam.title}
+                  </p>
+                )}
               </div>
               <Link to="/">
-                <Button variant="outline">Done</Button>
+                <Button variant="outline" size="sm">← Back to home</Button>
               </Link>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm">
+            <p>
+              Your exam was <strong>auto-submitted</strong> after 3 proctoring warnings
+              (tab switch, screenshot attempt, or exiting fullscreen).
+            </p>
+            <p className="text-muted-foreground">
+              Whatever you answered so far has been saved. Please contact your teacher if
+              you believe this was a mistake.
+            </p>
+            <div className="pt-1">
+              <Link to="/">
+                <Button>Back to home</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="min-w-0">
+                <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
+                  <CheckCircle2 className="h-6 w-6 text-primary" />
+                  {result.auto ? "Time's up — auto-submitted" : "Thank you — exam submitted"}
+                </CardTitle>
+                {student && exam && (
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    {student.name} · {student.student_code} · {exam.title}
+                  </p>
+                )}
+              </div>
+              <Link to="/">
+                <Button variant="outline" size="sm">← Back to home</Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-md border border-primary/30 bg-primary/5 p-4 text-sm">
+              <p className="font-medium text-foreground">
+                {result.auto
+                  ? "Your time ran out and we submitted your answers automatically."
+                  : "Great job finishing the exam! Your answers have been recorded."}
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                Thanks for taking the exam — best of luck with your results.
+              </p>
+            </div>
+            {!result.showResult ? (
+              <p className="text-sm text-muted-foreground">
+                Your responses have been recorded. Your teacher will share results when they are ready.
+              </p>
+            ) : (
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <div className="text-5xl font-bold sm:text-6xl">
+                    {result.score}
+                    <span className="text-2xl text-muted-foreground">/{result.maxScore}</span>
+                  </div>
+                  <div className="mt-1 text-base text-muted-foreground">{pct}%</div>
+                </div>
+                <Link to="/">
+                  <Button variant="outline">Done</Button>
+                </Link>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
 
       {result.showResult && hasAnyReview && (
