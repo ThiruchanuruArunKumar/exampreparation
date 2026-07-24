@@ -153,8 +153,6 @@ function NewExam() {
   useEffect(() => {
     if (!restored) return;
     if (skipNextSave.current) { skipNextSave.current = false; return; }
-    const isEmpty = !title.trim() && questions.length === 0;
-    if (isEmpty) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     setDraftStatus("saving");
     saveTimer.current = setTimeout(() => {
