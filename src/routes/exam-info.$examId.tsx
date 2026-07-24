@@ -364,19 +364,9 @@ function ExamInfoPage() {
               <CardContent>
                 {info.state === "ongoing" ? (
                   <form onSubmit={start} className="space-y-3">
-                    {!info.in_progress_attempt_id && (
-                      <div>
-                        <Label htmlFor="ac">Exam password</Label>
-                        <Input
-                          id="ac"
-                          autoComplete="off"
-                          placeholder="6-character code"
-                          value={accessCode}
-                          onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
-                          maxLength={10}
-                        />
-                      </div>
-                    )}
+                    <p className="text-xs text-muted-foreground">
+                      You are assigned to this exam — no password required.
+                    </p>
                     <Button type="submit" className="w-full" size="lg" disabled={starting}>
                       {starting ? (
                         <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting…</>
@@ -387,6 +377,7 @@ function ExamInfoPage() {
                       )}
                     </Button>
                   </form>
+
                 ) : info.state === "upcoming" ? (
                   <div className="rounded-md bg-muted p-3 text-sm">
                     <Info className="mr-1 inline h-4 w-4 text-sky-500" />
