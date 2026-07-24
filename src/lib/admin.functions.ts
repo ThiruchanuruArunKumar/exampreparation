@@ -4,7 +4,7 @@ import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createLovableAiGatewayProvider } from "./ai-gateway.server";
 
-const PatternEnum = z.enum(["neet", "eamcet", "mains", "custom"]);
+const PatternEnum = z.enum(["neet", "eamcet", "ts_eamcet_bipc", "mains", "custom"]);
 const PatternConfigSchema = z
   .object({
     sections: z.array(
