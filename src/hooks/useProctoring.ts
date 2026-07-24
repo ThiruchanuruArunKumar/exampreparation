@@ -109,6 +109,7 @@ export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: 
     document.addEventListener("paste", onCopyPaste);
     document.addEventListener("cut", onCopyPaste);
     document.addEventListener("keydown", onKey);
+    document.addEventListener("keyup", onKey);
     window.addEventListener("beforeunload", onBeforeUnload);
 
     return () => {
