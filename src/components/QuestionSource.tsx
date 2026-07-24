@@ -32,6 +32,13 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+function detectMime(file: File): string {
+  if (file.type) return file.type;
+  const n = file.name.toLowerCase();
+  if (n.endsWith(".md") || n.endsWith(".markdown")) return "text/markdown";
+  return "application/octet-stream";
+}
+
 type Props = {
   pattern: ExamPattern;
   subjects: string[];
@@ -50,7 +57,7 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
     try {
       const b64 = await fileToBase64(file);
       const res = await extractQuestions({
-        data: { fileBase64: b64, mimeType: file.type || "application/pdf", fileName: file.name },
+        data: { fileBase64: b64, mimeType: detectMime(file), fileName: file.name },
       });
       if (onTitleSuggested && res.title) onTitleSuggested(res.title);
       onQuestions(res.questions as GeneratedQuestion[]);
@@ -72,7 +79,7 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
           count,
           subject: subject || null,
           fileBase64: b64,
-          mimeType: file.type || "application/pdf",
+          mimeType: detectMime(file),
           fileName: file.name,
         },
       });
@@ -186,7 +193,7 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
               <input
                 type="file"
                 className="hidden"
-                accept=".pdf,.doc,.docx,.ppt,.pptx,image/*,text/*"
+                accept=".pdf,.doc,.docx,.ppt,.pptx,.md,.markdown,image/*,text/*"
                 disabled={busy}
                 onChange={(e) => e.target.files?.[0] && doGenFromNotes(e.target.files[0])}
               />
@@ -224,7 +231,7 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
               <input
                 type="file"
                 className="hidden"
-                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,image/*,text/*"
+                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.md,.markdown,image/*,text/*"
                 disabled={busy}
                 onChange={(e) => e.target.files?.[0] && doExtract(e.target.files[0])}
               />

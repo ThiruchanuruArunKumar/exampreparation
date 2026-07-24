@@ -61,13 +61,20 @@ export const extractQuestions = createServerFn({ method: "POST" })
                     type: "image_url",
                     image_url: { url: `data:${data.mimeType};base64,${data.fileBase64}` },
                   }
-                : {
-                    type: "file",
-                    file: {
-                      filename: data.fileName,
-                      file_data: `data:${data.mimeType};base64,${data.fileBase64}`,
+                : data.mimeType.startsWith("text/") ||
+                    data.mimeType === "application/json" ||
+                    /\.(md|markdown|txt|csv|json)$/i.test(data.fileName)
+                  ? {
+                      type: "text",
+                      text: `--- FILE: ${data.fileName} ---\n${Buffer.from(data.fileBase64, "base64").toString("utf-8").slice(0, 200_000)}\n--- END FILE ---`,
+                    }
+                  : {
+                      type: "file",
+                      file: {
+                        filename: data.fileName,
+                        file_data: `data:${data.mimeType};base64,${data.fileBase64}`,
+                      },
                     },
-                  },
             ] as never,
           },
         ] as never,
