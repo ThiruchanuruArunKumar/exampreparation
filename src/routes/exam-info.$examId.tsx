@@ -313,16 +313,34 @@ function ExamInfoPage() {
                   <>
                     <Separator className="my-2" />
                     <ul className="space-y-1 text-xs">
-                      {info.attempts.map((a) => (
-                        <li key={a.id} className="flex items-center justify-between">
-                          <span>{fmt(a.started_at)}</span>
-                          <span className="font-mono">
-                            {a.status === "in_progress"
-                              ? "in progress"
-                              : `${a.score ?? 0}/${a.max_score ?? 0}`}
-                          </span>
-                        </li>
-                      ))}
+                      {info.attempts.map((a) => {
+                        const label =
+                          a.status === "in_progress"
+                            ? "in progress"
+                            : `${a.score ?? 0}/${a.max_score ?? 0}`;
+                        return (
+                          <li key={a.id}>
+                            {a.status === "in_progress" ? (
+                              <div className="flex items-center justify-between">
+                                <span>{fmt(a.started_at)}</span>
+                                <span className="font-mono">{label}</span>
+                              </div>
+                            ) : (
+                              <Link
+                                to="/history/$attemptId"
+                                params={{ attemptId: a.id }}
+                                search={{ sid: studentCode }}
+                                className="flex items-center justify-between rounded-md px-2 py-1 hover:bg-muted"
+                              >
+                                <span>{fmt(a.started_at)}</span>
+                                <span className="inline-flex items-center gap-1 font-mono text-primary">
+                                  {label} <ArrowLeft className="h-3 w-3 rotate-180" />
+                                </span>
+                              </Link>
+                            )}
+                          </li>
+                        );
+                      })}
                     </ul>
                   </>
                 )}

@@ -814,8 +814,9 @@ export const listStudentExams = createServerFn({ method: "POST" })
     const { data: attempts } = attemptIds.length
       ? await sb
           .from("attempts")
-          .select("id, assignment_id, status, submitted_at")
+          .select("id, assignment_id, status, submitted_at, score, max_score")
           .in("assignment_id", attemptIds)
+          .order("submitted_at", { ascending: false })
       : { data: [] as any[] };
 
     const now = Date.now();
@@ -823,7 +824,9 @@ export const listStudentExams = createServerFn({ method: "POST" })
       const asg = assignments!.find((a) => a.exam_id === exam.id)!;
       const mine = (attempts ?? []).filter((t) => t.assignment_id === asg.id);
       const inProgress = mine.some((t) => t.status === "in_progress");
-      const finished = mine.filter((t) => t.status !== "in_progress").length;
+      const finishedList = mine.filter((t) => t.status !== "in_progress");
+      const finished = finishedList.length;
+      const latest = finishedList[0] ?? null;
       const attemptsLeft = Math.max(0, (asg.max_attempts ?? 1) - finished);
       const startMs = exam.start_at ? new Date(exam.start_at).getTime() : null;
       const endMs = exam.end_at ? new Date(exam.end_at).getTime() : null;
@@ -851,6 +854,14 @@ export const listStudentExams = createServerFn({ method: "POST" })
         max_attempts: asg.max_attempts,
         attempts_used: finished,
         in_progress: inProgress,
+        latest_attempt: latest
+          ? {
+              id: latest.id,
+              score: latest.score,
+              max_score: latest.max_score,
+              submitted_at: latest.submitted_at,
+            }
+          : null,
         state,
       };
     });

@@ -198,12 +198,6 @@ function Landing() {
                 <div className="text-center text-xs text-muted-foreground">
                   Your teacher provides both the ID and the password.
                 </div>
-                <Link
-                  to="/history"
-                  className="block text-center text-sm text-primary hover:underline"
-                >
-                  View my past results →
-                </Link>
               </form>
             </CardContent>
           </Card>
@@ -271,15 +265,13 @@ function Landing() {
                 Signed in as <span className="font-medium text-foreground">{studentName}</span>
               </p>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {exams.map((row) => (
-                  <Link
-                    key={row.exam.id}
-                    to="/exam-info/$examId"
-                    params={{ examId: row.exam.id }}
-                    search={{ student: studentCode }}
-                    className="group"
-                  >
-                    <Card className="h-full transition hover:border-primary/50 hover:shadow-md">
+                {exams.map((row) => {
+                  const latest = row.latest_attempt;
+                  return (
+                    <Card
+                      key={row.exam.id}
+                      className="flex h-full flex-col transition hover:border-primary/50 hover:shadow-md"
+                    >
                       <CardHeader className="pb-2">
                         <div className="flex items-start justify-between gap-2">
                           <CardTitle className="text-base leading-tight">
@@ -293,38 +285,60 @@ function Landing() {
                           </div>
                         )}
                       </CardHeader>
-                      <CardContent className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <Clock className="h-3.5 w-3.5" />
-                          {row.exam.duration_minutes} min · {row.exam.total_marks ?? 0} marks
-                        </div>
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <CalendarDays className="h-3.5 w-3.5" />
-                          {row.exam.start_at ? fmt(row.exam.start_at) : "Anytime"}
-                        </div>
-                        {row.state === "upcoming" && row.exam.start_at && (
-                          <div className="text-xs text-sky-600 dark:text-sky-400">
-                            Opens {fmt(row.exam.start_at)}
+                      <CardContent className="flex flex-1 flex-col gap-3 text-sm">
+                        <div className="space-y-1.5">
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Clock className="h-3.5 w-3.5" />
+                            {row.exam.duration_minutes} min · {row.exam.total_marks ?? 0} marks
                           </div>
-                        )}
-                        {row.state === "ongoing" && (
-                          <div className="text-xs text-emerald-600 dark:text-emerald-400">
-                            Available now
-                            {row.exam.end_at ? ` · closes ${fmt(row.exam.end_at)}` : ""}
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <CalendarDays className="h-3.5 w-3.5" />
+                            {row.exam.start_at ? fmt(row.exam.start_at) : "Anytime"}
                           </div>
-                        )}
-                        <div className="flex items-center justify-between pt-1 text-xs text-muted-foreground">
-                          <span>
+                          {row.state === "upcoming" && row.exam.start_at && (
+                            <div className="text-xs text-sky-600 dark:text-sky-400">
+                              Opens {fmt(row.exam.start_at)}
+                            </div>
+                          )}
+                          {row.state === "ongoing" && (
+                            <div className="text-xs text-emerald-600 dark:text-emerald-400">
+                              Available now
+                              {row.exam.end_at ? ` · closes ${fmt(row.exam.end_at)}` : ""}
+                            </div>
+                          )}
+                          <div className="text-xs text-muted-foreground">
                             Attempts {row.attempts_used}/{row.max_attempts}
-                          </span>
-                          <span className="inline-flex items-center gap-1 text-primary group-hover:underline">
-                            Details <ArrowRight className="h-3 w-3" />
-                          </span>
+                          </div>
+                        </div>
+
+                        <div className="mt-auto flex flex-col gap-2 border-t border-border pt-3">
+                          <Link
+                            to="/exam-info/$examId"
+                            params={{ examId: row.exam.id }}
+                            search={{ student: studentCode }}
+                            className="inline-flex items-center justify-between text-xs font-medium text-primary hover:underline"
+                          >
+                            Exam details <ArrowRight className="h-3 w-3" />
+                          </Link>
+                          {latest ? (
+                            <Link
+                              to="/history/$attemptId"
+                              params={{ attemptId: latest.id }}
+                              search={{ sid: studentCode }}
+                              className="inline-flex items-center justify-between rounded-md border border-primary/40 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10"
+                            >
+                              View result <ArrowRight className="h-3 w-3" />
+                            </Link>
+                          ) : (
+                            <div className="rounded-md border border-dashed border-border px-3 py-1.5 text-center text-xs text-muted-foreground">
+                              No attempt yet
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
-                  </Link>
-                ))}
+                  );
+                })}
               </div>
             </>
           )}
