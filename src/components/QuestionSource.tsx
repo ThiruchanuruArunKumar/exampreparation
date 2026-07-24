@@ -57,7 +57,7 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
     try {
       const b64 = await fileToBase64(file);
       const res = await extractQuestions({
-        data: { fileBase64: b64, mimeType: file.type || "application/pdf", fileName: file.name },
+        data: { fileBase64: b64, mimeType: detectMime(file), fileName: file.name },
       });
       if (onTitleSuggested && res.title) onTitleSuggested(res.title);
       onQuestions(res.questions as GeneratedQuestion[]);
