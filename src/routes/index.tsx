@@ -310,12 +310,13 @@ function Landing() {
                 Signed in as <span className="font-medium text-foreground">{studentName}</span>
               </p>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {exams.map((row) => {
+                {exams.map((row, idx) => {
                   const latest = row.latest_attempt;
                   return (
                     <Card
                       key={row.exam.id}
-                      className="flex h-full flex-col transition hover:border-primary/50 hover:shadow-md"
+                      style={{ animationDelay: `${idx * 60}ms` }}
+                      className="flex h-full animate-fade-in-up flex-col border-border/60 card-glass hover-lift"
                     >
                       <CardHeader className="pb-2">
                         <div className="flex items-start justify-between gap-2">
