@@ -142,7 +142,7 @@ export function PatternPicker({ pattern, config, onChange }: Props) {
             </div>
             {readonly && (
               <p className="text-xs text-muted-foreground">
-                Preset locked to match the real {PATTERN_PRESETS[pattern as "neet" | "eamcet" | "mains"].label} environment. Switch to Custom to edit.
+                Preset locked to match the real {PATTERN_PRESETS[pattern as Exclude<ExamPattern, "custom">].label} environment. Switch to Custom to edit.
               </p>
             )}
           </CardContent>
