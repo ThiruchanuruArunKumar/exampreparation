@@ -870,3 +870,149 @@ export const appendQuestions = createServerFn({ method: "POST" })
     return { added: rows.length };
   });
 
+
+/* ---------------- Admin attempt detail & explanation ---------------- */
+
+export const adminGetAttemptDetail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ attemptId: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { data: att } = await context.supabase
+      .from("attempts")
+      .select("id, exam_id, student_id, status, score, max_score, warning_count, started_at, submitted_at, auto_submitted, question_order")
+      .eq("id", data.attemptId)
+      .maybeSingle();
+    if (!att) throw new Error("Attempt not found");
+    // Ownership: caller must own the exam (RLS-scoped read).
+    await assertOwnsExam(context, att.exam_id);
+
+    const [{ data: exam }, { data: student }, { data: insight }] = await Promise.all([
+      context.supabase
+        .from("exams")
+        .select("id, title, duration_minutes, show_result_after_submit, show_answer_sheet, show_answer_book")
+        .eq("id", att.exam_id)
+        .single(),
+      context.supabase
+        .from("students")
+        .select("id, name, student_code, class_name, email")
+        .eq("id", att.student_id)
+        .maybeSingle(),
+      context.supabase
+        .from("insights")
+        .select("summary, weak_topics, strong_topics, recommendations")
+        .eq("attempt_id", att.id)
+        .maybeSingle(),
+    ]);
+
+    const order = (att.question_order as { qid: string; options_order: number[] | null }[]) ?? [];
+    const qids = order.map((o) => o.qid);
+    let questions: any[] = [];
+    if (qids.length) {
+      const [{ data: qs }, { data: ans }] = await Promise.all([
+        context.supabase.from("questions").select("id, type, prompt, options, correct_answer, marks, topic").in("id", qids),
+        context.supabase.from("answers").select("question_id, response, is_correct, marks_awarded").eq("attempt_id", att.id),
+      ]);
+      const ansMap = new Map((ans ?? []).map((a: any) => [a.question_id, a]));
+      const qMap = new Map((qs ?? []).map((q: any) => [q.id, q]));
+      questions = order
+        .map((o) => {
+          const q: any = qMap.get(o.qid);
+          if (!q) return null;
+          const a: any = ansMap.get(q.id);
+          return {
+            id: q.id,
+            type: q.type,
+            prompt: q.prompt,
+            options: q.options,
+            correct_answer: q.correct_answer,
+            marks: q.marks,
+            topic: q.topic,
+            response: (a?.response as string[] | null) ?? [],
+            is_correct: a?.is_correct ?? null,
+            marks_awarded: a?.marks_awarded ?? 0,
+          };
+        })
+        .filter(Boolean);
+    }
+
+    return {
+      student,
+      exam: exam
+        ? {
+            id: exam.id,
+            title: exam.title,
+            duration_minutes: exam.duration_minutes,
+            showResult: !!exam.show_result_after_submit,
+            showAnswerSheet: !!exam.show_answer_sheet,
+            showAnswerBook: !!exam.show_answer_book,
+          }
+        : null,
+      attempt: {
+        id: att.id,
+        status: att.status,
+        score: att.score,
+        max_score: att.max_score,
+        submitted_at: att.submitted_at,
+        started_at: att.started_at,
+        auto_submitted: att.auto_submitted,
+        warning_count: att.warning_count,
+      },
+      insight: insight ?? null,
+      questions,
+    };
+  });
+
+export const adminGetAttemptExplanation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({ attemptId: z.string().uuid(), questionId: z.string().uuid() }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { data: att } = await context.supabase
+      .from("attempts")
+      .select("id, exam_id, question_order")
+      .eq("id", data.attemptId)
+      .maybeSingle();
+    if (!att) throw new Error("Attempt not found");
+    await assertOwnsExam(context, att.exam_id);
+    const order = (att.question_order as { qid: string }[]) ?? [];
+    if (!order.some((o) => o.qid === data.questionId)) throw new Error("Question not part of this attempt");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: cached } = await supabaseAdmin
+      .from("question_explanations")
+      .select("explanation")
+      .eq("question_id", data.questionId)
+      .maybeSingle();
+    if (cached?.explanation) return { explanation: cached.explanation as string };
+
+    const { data: q } = await supabaseAdmin
+      .from("questions")
+      .select("prompt, options, correct_answer, type, topic")
+      .eq("id", data.questionId)
+      .single();
+    if (!q) throw new Error("Question not found");
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("AI not configured");
+    const gateway = createLovableAiGatewayProvider(key);
+    const { text } = await generateText({
+      model: gateway("openai/gpt-5.4-mini"),
+      providerOptions: { lovable: { service_tier: "priority" } },
+      instructions:
+        "You are an expert tutor writing an Answer Book entry for a competitive-exam question, in the clean, well-organized style of ChatGPT. Structure the reply EXACTLY as Markdown with these sections in this order, using these exact headings:\n\n### Correct answer\nOne line only. State the correct option verbatim in **bold**. Do NOT repeat it.\n\n### Why it is correct\n2-4 short sentences of plain-language reasoning. No formulas here.\n\n### Step-by-step solution\nA numbered Markdown list (1., 2., 3., ...). Each step = ONE idea, ONE sentence + at most ONE formula on its own display line. For each formula: name it, define every variable, then show the substitution. Use $$...$$ on its own line for any formula that stands alone.\n\n### Why the other options are wrong\nA Markdown bullet list (\"- \"). One short bullet per wrong option, starting with the option text in **bold**.\n\n### Key takeaway\nOne single line the student should memorize.\n\nSTRICT FORMATTING RULES — the output renders with Markdown + KaTeX + mhchem:\n- Use ONLY $...$ for inline math and $$...$$ for display math. NEVER use \\( \\), \\[ \\], plain parentheses, or plain brackets around LaTeX.\n- Every \\ce{...}, \\frac{...}{...}, \\sqrt{...}, ^, _ MUST be inside $...$ or $$...$$. Never write bare \\ce{AgCl} — write $\\ce{AgCl}$.\n- Chemistry example: $\\ce{H2SO4 -> 2H+ + SO4^{2-}}$. Powers/subs: $x^2$, $H_2O$, $10^{-3}$. Units: $9.8\\,\\text{m/s}^2$.\n- No emojis, no ASCII art, no horizontal rules, no walls of text, no preamble like \"Sure!\" or \"Let us solve this\". Get straight to the answer.",
+      prompt: JSON.stringify(
+        { topic: q.topic, question: q.prompt, options: q.options, correct_answer: q.correct_answer, type: q.type },
+        null,
+        2,
+      ),
+    });
+    await supabaseAdmin
+      .from("question_explanations")
+      .upsert(
+        { question_id: data.questionId, explanation: text, updated_at: new Date().toISOString() },
+        { onConflict: "question_id" },
+      );
+    return { explanation: text };
+  });
