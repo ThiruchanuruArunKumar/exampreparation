@@ -265,32 +265,45 @@ function TakeExam() {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-5xl gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:grid-cols-[200px_1fr]">
-        <div className="space-y-1">
-          <div className="mb-2 text-xs text-muted-foreground">
-            {answered}/{questions.length} answered
+      <div className="mx-auto grid max-w-5xl gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:grid-cols-[220px_1fr]">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs text-muted-foreground">
+              {answered}/{questions.length} answered
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowPalette((v) => !v)}
+              className="h-7 px-2 text-xs"
+            >
+              {showPalette ? "Hide" : "Show"} all
+            </Button>
           </div>
-          <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 lg:grid-cols-4">
-            {questions.map((qq, i) => {
-              const done = (answers[qq.id] ?? []).length > 0;
-              return (
-                <button
-                  key={qq.id}
-                  onClick={() => setCurrent(i)}
-                  className={`rounded-md border p-2 text-xs ${
-                    i === current
-                      ? "border-primary bg-primary text-primary-foreground"
-                      : done
-                        ? "border-primary/40 bg-primary/10"
-                        : "border-border"
-                  }`}
-                >
-                  {i + 1}
-                </button>
-              );
-            })}
-          </div>
+          {showPalette && (
+            <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 lg:grid-cols-5">
+              {questions.map((qq, i) => {
+                const done = (answers[qq.id] ?? []).length > 0;
+                return (
+                  <button
+                    key={qq.id}
+                    onClick={() => setCurrent(i)}
+                    className={`rounded-md border p-2 text-xs ${
+                      i === current
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : done
+                          ? "border-primary/40 bg-primary/10"
+                          : "border-border"
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
+
 
         <Card>
           <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
