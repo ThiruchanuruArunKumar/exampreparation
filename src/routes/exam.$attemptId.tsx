@@ -250,6 +250,8 @@ function TakeExam() {
   const q = questions[current];
   const resp = answers[q.id] ?? [];
   const answered = Object.values(answers).filter((v) => v.length > 0).length;
+  const reviewCount = reviewed.size;
+  const isReviewed = reviewed.has(q.id);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -270,11 +272,11 @@ function TakeExam() {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-5xl gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:grid-cols-[220px_1fr]">
+      <div className="mx-auto grid max-w-5xl gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:grid-cols-[240px_1fr]">
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <div className="text-xs text-muted-foreground">
-              {answered}/{questions.length} answered
+              {answered}/{questions.length} answered · {reviewCount} marked
             </div>
             <Button
               size="sm"
@@ -286,28 +288,47 @@ function TakeExam() {
             </Button>
           </div>
           {showPalette && (
-            <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 lg:grid-cols-5">
-              {questions.map((qq, i) => {
-                const done = (answers[qq.id] ?? []).length > 0;
-                return (
-                  <button
-                    key={qq.id}
-                    onClick={() => setCurrent(i)}
-                    className={`rounded-md border p-2 text-xs ${
-                      i === current
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : done
-                          ? "border-primary/40 bg-primary/10"
-                          : "border-border"
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                );
-              })}
-            </div>
+            <>
+              <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 lg:grid-cols-5">
+                {questions.map((qq, i) => {
+                  const done = (answers[qq.id] ?? []).length > 0;
+                  const rev = reviewed.has(qq.id);
+                  const seen = visited.has(qq.id);
+                  // Priority: reviewed+answered → purple w/ green dot; reviewed → purple;
+                  // answered → green; visited-not-answered → red; else neutral.
+                  let cls = "border-border bg-background text-foreground";
+                  if (rev && done) cls = "border-purple-500 bg-purple-500 text-white";
+                  else if (rev) cls = "border-purple-500 bg-purple-500 text-white";
+                  else if (done) cls = "border-green-500 bg-green-500 text-white";
+                  else if (seen) cls = "border-red-500 bg-red-500 text-white";
+                  const isCurrent = i === current;
+                  return (
+                    <button
+                      key={qq.id}
+                      onClick={() => setCurrent(i)}
+                      className={`relative rounded-md border p-2 text-xs font-medium transition ${cls} ${
+                        isCurrent ? "ring-2 ring-offset-1 ring-primary" : ""
+                      }`}
+                    >
+                      {i + 1}
+                      {rev && done && (
+                        <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-green-400 ring-1 ring-white" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-1 text-[10px] text-muted-foreground">
+                <Legend color="bg-green-500" label="Answered" />
+                <Legend color="bg-red-500" label="Not answered" />
+                <Legend color="bg-purple-500" label="Marked for review" />
+                <Legend color="bg-purple-500" label="Review + answered" dot />
+              </div>
+            </>
           )}
         </div>
+
+
 
 
         <Card>
