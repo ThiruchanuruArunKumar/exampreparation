@@ -21,7 +21,8 @@ type Props = {
 
 const OPTIONS: { id: ExamPattern; label: string; desc: string }[] = [
   { id: "neet", label: "NEET", desc: PATTERN_PRESETS.neet.description },
-  { id: "eamcet", label: "EAMCET", desc: PATTERN_PRESETS.eamcet.description },
+  { id: "eamcet", label: "AP/TS EAMCET (Engg)", desc: PATTERN_PRESETS.eamcet.description },
+  { id: "ts_eamcet_bipc", label: "TS EAMCET (BIPC)", desc: PATTERN_PRESETS.ts_eamcet_bipc.description },
   { id: "mains", label: "JEE Main", desc: PATTERN_PRESETS.mains.description },
   { id: "custom", label: "Custom", desc: "Set your own subjects, marks, timing, negatives." },
 ];
