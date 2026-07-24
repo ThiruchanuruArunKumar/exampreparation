@@ -32,14 +32,18 @@ export const startStudentAttempt = createServerFn({ method: "POST" })
     z
       .object({
         studentCode: z.string().trim().min(1).max(40),
-        accessCode: z.string().trim().min(1).max(20),
+        accessCode: z.string().trim().min(1).max(20).optional(),
+        examId: z.string().uuid().optional(),
+      })
+      .refine((v) => !!v.accessCode || !!v.examId, {
+        message: "Enter the exam password",
       })
       .parse(i),
   )
   .handler(async ({ data }) => {
     const sb = await admin();
     const code = data.studentCode.trim();
-    const ac = data.accessCode.trim().toUpperCase();
+    const ac = data.accessCode?.trim().toUpperCase();
 
     const { data: student } = await sb
       .from("students")
@@ -48,12 +52,25 @@ export const startStudentAttempt = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!student) throw new Error("Invalid student ID");
 
-    const { data: exam } = await sb
+    // Password-less start requires an existing assignment for this exam.
+    if (data.examId) {
+      const { data: preAsg } = await sb
+        .from("assignments")
+        .select("id")
+        .eq("exam_id", data.examId)
+        .eq("student_id", student.id)
+        .maybeSingle();
+      if (!preAsg) throw new Error("You are not assigned to this exam");
+    }
+
+    const examQuery = sb
       .from("exams")
-      .select("id, title, duration_minutes, shuffle_questions, shuffle_options, start_at, end_at")
-      .eq("access_code", ac)
-      .maybeSingle();
-    if (!exam) throw new Error("Invalid exam password");
+      .select("id, title, duration_minutes, shuffle_questions, shuffle_options, start_at, end_at");
+    const { data: exam } = await (data.examId
+      ? examQuery.eq("id", data.examId)
+      : examQuery.eq("access_code", ac!)
+    ).maybeSingle();
+    if (!exam) throw new Error(data.examId ? "Exam not available" : "Invalid exam password");
     const now = new Date();
     if (exam.start_at && now < new Date(exam.start_at)) {
       throw new Error(`Exam opens at ${new Date(exam.start_at).toLocaleString()}`);
