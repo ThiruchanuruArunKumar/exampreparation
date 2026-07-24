@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Brain, GraduationCap, LogIn, ListChecks, Clock, CalendarDays, ArrowRight, Loader2, ShieldCheck, Sparkles, Zap } from "lucide-react";
+import { GraduationCap, LogIn, ListChecks, Clock, CalendarDays, ArrowRight, Loader2, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
