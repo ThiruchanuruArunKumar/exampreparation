@@ -465,6 +465,8 @@ function Legend({ color, label, dot }: { color: string; label: string; dot?: boo
       <span>{label}</span>
     </div>
   );
+}
+
 
 function Frame({ children }: { children: React.ReactNode }) {
   return (
