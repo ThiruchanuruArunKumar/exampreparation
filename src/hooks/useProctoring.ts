@@ -10,10 +10,16 @@ type Options = {
 export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: Options) {
   const [warnings, setWarnings] = useState(0);
   const warnRef = useRef(0);
+  const lastTriggerRef = useRef(0);
   const cbRef = useRef({ onWarning, onLimit });
   cbRef.current = { onWarning, onLimit };
 
   const trigger = (reason: string) => {
+    // Debounce: a single tab-switch fires visibilitychange + blur + fullscreenchange
+    // in quick succession. Coalesce anything within 1500ms into a single warning.
+    const now = Date.now();
+    if (now - lastTriggerRef.current < 1500) return;
+    lastTriggerRef.current = now;
     warnRef.current += 1;
     setWarnings(warnRef.current);
     cbRef.current.onWarning(warnRef.current, reason);
