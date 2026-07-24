@@ -12,7 +12,7 @@ import { NumberField } from "@/components/NumberField";
 import { PatternPicker } from "@/components/PatternPicker";
 import { QuestionSource, type GeneratedQuestion } from "@/components/QuestionSource";
 import { createExam } from "@/lib/admin.functions";
-import { getLatestDraft, getDraft, saveDraft, deleteDraft } from "@/lib/drafts.functions";
+import { getDraft, saveDraft, deleteDraft } from "@/lib/drafts.functions";
 import { z } from "zod";
 import { type ExamPattern, type PatternConfig, presetToConfig } from "@/lib/exam-patterns";
 import { RichContent } from "@/components/RichContent";
@@ -73,27 +73,44 @@ function NewExam() {
   const skipNextSave = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Restore draft from cloud (once): specific ?draftId= if provided, else latest
+  // Restore existing draft when ?draftId= is provided; otherwise
+  // immediately create a fresh draft row so it shows up in the Exams
+  // drafts list right away.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const d = search.draftId
-          ? await getDraft({ data: { id: search.draftId } })
-          : await getLatestDraft();
-        if (cancelled || !d) return;
-        skipNextSave.current = true;
-        setDraftId(d.id);
-        if (d.title) setTitle(d.title);
-        if (d.pattern) setPattern(d.pattern as ExamPattern);
-        if (d.pattern_config) setConfig(d.pattern_config as PatternConfig);
-
-        if (Array.isArray(d.questions)) setQuestions(d.questions as GeneratedQuestion[]);
-        if (typeof d.show_result_after_submit === "boolean") setShowResult(d.show_result_after_submit);
-        if (typeof d.show_answer_sheet === "boolean") setShowSheet(d.show_answer_sheet);
-        if (typeof d.show_answer_book === "boolean") setShowBook(d.show_answer_book);
-        if (d.title || (Array.isArray(d.questions) && d.questions.length)) {
-          toast.message("Draft restored", { description: "Your unsaved exam was recovered from the cloud." });
+        if (search.draftId) {
+          const d = await getDraft({ data: { id: search.draftId } });
+          if (cancelled || !d) return;
+          skipNextSave.current = true;
+          setDraftId(d.id);
+          if (d.title) setTitle(d.title);
+          if (d.pattern) setPattern(d.pattern as ExamPattern);
+          if (d.pattern_config) setConfig(d.pattern_config as PatternConfig);
+          if (Array.isArray(d.questions)) setQuestions(d.questions as GeneratedQuestion[]);
+          if (typeof d.show_result_after_submit === "boolean") setShowResult(d.show_result_after_submit);
+          if (typeof d.show_answer_sheet === "boolean") setShowSheet(d.show_answer_sheet);
+          if (typeof d.show_answer_book === "boolean") setShowBook(d.show_answer_book);
+          if (d.title || (Array.isArray(d.questions) && d.questions.length)) {
+            toast.message("Draft restored", { description: "Your unsaved exam was recovered from the cloud." });
+          }
+        } else {
+          skipNextSave.current = true;
+          const r = await saveDraft({
+            data: {
+              title: "",
+              pattern: "neet",
+              pattern_config: presetToConfig("neet"),
+              questions: [],
+              show_result_after_submit: true,
+              show_answer_sheet: true,
+              show_answer_book: true,
+            },
+          });
+          if (cancelled) return;
+          if (r?.id) setDraftId(r.id);
+          setDraftStatus("saved");
         }
       } catch { /* ignore */ }
       if (!cancelled) setRestored(true);
@@ -109,7 +126,6 @@ function NewExam() {
 
   const flushSave = useCallback(async () => {
     const s = latest.current;
-    if (!s.title.trim() && s.questions.length === 0) return;
     try {
       const r = await saveDraft({
         data: {
@@ -137,8 +153,6 @@ function NewExam() {
   useEffect(() => {
     if (!restored) return;
     if (skipNextSave.current) { skipNextSave.current = false; return; }
-    const isEmpty = !title.trim() && questions.length === 0;
-    if (isEmpty) return;
     if (saveTimer.current) clearTimeout(saveTimer.current);
     setDraftStatus("saving");
     saveTimer.current = setTimeout(() => {
