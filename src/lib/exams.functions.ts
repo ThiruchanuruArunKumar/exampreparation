@@ -73,7 +73,8 @@ LANGUAGE (CRITICAL): Every question prompt, every option, and every correct_answ
 
     try {
       const { output } = await generateText({
-        model: gateway("openai/gpt-5.5"),
+        model: gateway("openai/gpt-5.4-mini"),
+        providerOptions: { lovable: { service_tier: "priority" } },
         output: Output.object({ schema: ExtractedSchema }),
         instructions: system,
         messages: [
