@@ -6,6 +6,7 @@ import {
   Brain,
   ArrowLeft,
   CheckCircle2,
+  XCircle,
   AlertTriangle,
   Sparkles,
   TrendingUp,
@@ -391,29 +392,40 @@ function QuestionList({
             <CardContent className="space-y-3 pt-0 text-sm">
               <div className="font-medium"><RichContent>{q.prompt}</RichContent></div>
               {q.options && (
-                <ul className="ml-4 list-disc space-y-1 text-xs">
+                <ul className="space-y-1.5 text-xs">
                   {q.options.map((o: string) => {
                     const isCorrect = correct.includes(o);
                     const isChosen = chose.includes(o);
                     return (
                       <li
                         key={o}
-                        className={
+                        className={`flex items-start gap-2 rounded-md border px-2.5 py-1.5 ${
                           isCorrect
-                            ? "font-semibold text-emerald-600 dark:text-emerald-400"
+                            ? "border-emerald-500/40 bg-emerald-500/10 font-semibold text-emerald-700 dark:text-emerald-300"
                             : isChosen
-                              ? "text-destructive line-through"
-                              : ""
-                        }
+                              ? "border-destructive/40 bg-destructive/5 text-destructive line-through"
+                              : "border-border/60"
+                        }`}
                       >
-                        <RichContent inline>{o}</RichContent>
-                        {isCorrect && " ✓"}
-                        {!isCorrect && isChosen && " (your answer)"}
+                        {isCorrect ? (
+                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                        ) : isChosen ? (
+                          <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-destructive" />
+                        ) : (
+                          <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/50" />
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <RichContent inline>{o}</RichContent>
+                          {!isCorrect && isChosen && (
+                            <span className="ml-1 text-[10px] font-normal uppercase tracking-wide opacity-70">(your answer)</span>
+                          )}
+                        </div>
                       </li>
                     );
                   })}
                 </ul>
               )}
+
 
               {(q.type === "short" || q.type === "tf") && (
                 <div className="grid gap-2 sm:grid-cols-2">

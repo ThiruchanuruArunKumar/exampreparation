@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Brain, GraduationCap, LogIn, ListChecks, Clock, CalendarDays, ArrowRight, Loader2, ShieldCheck, Sparkles, Zap } from "lucide-react";
+import { GraduationCap, LogIn, ListChecks, Clock, CalendarDays, ArrowRight, Loader2, Sparkles } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -159,17 +159,8 @@ function Landing() {
               Enter the student ID your teacher gave you and the exam password to begin.
               Secure, fair, and instant — no account needed.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3 text-sm">
-              <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-card/60 px-3 py-2 backdrop-blur">
-                <ShieldCheck className="h-4 w-4 text-primary" /> Proctored
-              </div>
-              <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-card/60 px-3 py-2 backdrop-blur">
-                <Zap className="h-4 w-4 text-primary" /> Realtime sync
-              </div>
-              <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-card/60 px-3 py-2 backdrop-blur">
-                <Brain className="h-4 w-4 text-primary" /> AI feedback
-              </div>
-            </div>
+            <div className="mt-8" />
+
           </div>
 
           <Card className="relative animate-scale-in overflow-hidden border-border/60 shadow-elegant card-glass">
