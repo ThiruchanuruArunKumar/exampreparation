@@ -66,6 +66,7 @@ function TakeExam() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
   const [current, setCurrent] = useState(0);
+  const [showPalette, setShowPalette] = useState(false);
   const [endsAt, setEndsAt] = useState<string>("");
   const [remaining, setRemaining] = useState(0);
   const [submitting, setSubmitting] = useState(false);
