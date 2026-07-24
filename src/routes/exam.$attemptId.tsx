@@ -195,6 +195,14 @@ function TakeExam() {
     return `${m}:${s.toString().padStart(2, "0")}`;
   }, [remaining]);
 
+  // Track visited questions as the student navigates.
+  useEffect(() => {
+    if (!started || !questions.length) return;
+    const q = questions[current];
+    if (!q) return;
+    setVisited((s) => (s.has(q.id) ? s : new Set(s).add(q.id)));
+  }, [current, started, questions]);
+
   if (loading) return <Frame><p>Loading exam…</p></Frame>;
   if (error) return <Frame><ErrorCard message={error} /></Frame>;
 
