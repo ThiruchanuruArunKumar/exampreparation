@@ -503,15 +503,22 @@ function ResultScreen({
     <div className="mx-auto max-w-4xl space-y-4">
       <Card>
         <CardHeader className="pb-3">
-          <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
-            <CheckCircle2 className="h-6 w-6 text-primary" />
-            {result.auto ? "Auto-submitted" : "Exam submitted"}
-          </CardTitle>
-          {student && exam && (
-            <p className="text-sm text-muted-foreground">
-              {student.name} · {student.student_code} · {exam.title}
-            </p>
-          )}
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="min-w-0">
+              <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
+                <CheckCircle2 className="h-6 w-6 text-primary" />
+                {result.auto ? "Auto-submitted" : "Exam submitted"}
+              </CardTitle>
+              {student && exam && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {student.name} · {student.student_code} · {exam.title}
+                </p>
+              )}
+            </div>
+            <Link to="/">
+              <Button variant="outline" size="sm">← Back to home</Button>
+            </Link>
+          </div>
         </CardHeader>
         <CardContent>
           {!result.showResult ? (
@@ -534,6 +541,7 @@ function ResultScreen({
           )}
         </CardContent>
       </Card>
+
 
       {result.showResult && hasAnyReview && (
         <div className="flex flex-wrap gap-2">
