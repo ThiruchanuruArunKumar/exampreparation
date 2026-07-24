@@ -147,11 +147,10 @@ function ExamInfoPage() {
         return;
       }
     }
-    if (!accessCode.trim()) return toast.error("Enter the exam password");
     setStarting(true);
     try {
       const r = await startStudentAttempt({
-        data: { studentCode, accessCode: accessCode.trim() },
+        data: { studentCode, examId },
       });
       sessionStorage.setItem(`exam:${r.attemptId}`, r.sessionToken);
       navigate({ to: "/exam/$attemptId", params: { attemptId: r.attemptId } });
