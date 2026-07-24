@@ -136,7 +136,7 @@ function TakeExam() {
   }, [endsAt, result]);
 
   const handleSubmit = useCallback(
-    async (auto = false) => {
+    async (auto = false, terminated = false) => {
       if (submittingRef.current || !token) return;
       submittingRef.current = true;
       setSubmitting(true);
@@ -149,6 +149,7 @@ function TakeExam() {
           maxScore: Number(r.maxScore ?? 0),
           insight: (r.insight as Insight | null) ?? null,
           auto,
+          terminated,
           showResult: r.showResult ?? true,
           showAnswerSheet: r.showAnswerSheet ?? false,
           showAnswerBook: r.showAnswerBook ?? false,
@@ -171,8 +172,8 @@ function TakeExam() {
       if (token) reportStudentWarning({ data: { attemptId, sessionToken: token, count } }).catch(() => {});
     },
     onLimit: () => {
-      toast.error("3 warnings reached — submitting exam");
-      handleSubmit(true);
+      toast.error("3 warnings reached — exam terminated");
+      handleSubmit(true, true);
     },
   });
 
