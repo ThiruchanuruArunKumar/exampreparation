@@ -454,6 +454,18 @@ function TakeExam() {
   );
 }
 
+function Legend({ color, label, dot }: { color: string; label: string; dot?: boolean }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className={`relative inline-block h-3 w-3 rounded-sm ${color}`}>
+        {dot && (
+          <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-green-400 ring-1 ring-white" />
+        )}
+      </span>
+      <span>{label}</span>
+    </div>
+  );
+
 function Frame({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background text-foreground">
