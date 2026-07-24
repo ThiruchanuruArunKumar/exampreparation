@@ -17,8 +17,8 @@ function sanitizeRich(input: string): string {
   let s = input;
 
   // 1. Normalize LaTeX-style delimiters to Markdown-math dollars.
-  s = s.replace(/\\\[/g, "$$").replace(/\\\]/g, "$$");
-  s = s.replace(/\\\(/g, "$").replace(/\\\)/g, "$");
+  s = s.replace(/\\\[/g, () => "$$").replace(/\\\]/g, () => "$$");
+  s = s.replace(/\\\(/g, () => "$").replace(/\\\)/g, () => "$");
 
   // 2. Split into math vs non-math regions so we only touch prose.
   const parts: Array<{ math: boolean; text: string }> = [];
