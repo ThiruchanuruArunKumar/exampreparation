@@ -10,10 +10,16 @@ type Options = {
 export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: Options) {
   const [warnings, setWarnings] = useState(0);
   const warnRef = useRef(0);
+  const lastTriggerRef = useRef(0);
   const cbRef = useRef({ onWarning, onLimit });
   cbRef.current = { onWarning, onLimit };
 
   const trigger = (reason: string) => {
+    // Debounce: a single tab-switch fires visibilitychange + blur + fullscreenchange
+    // in quick succession. Coalesce anything within 1500ms into a single warning.
+    const now = Date.now();
+    if (now - lastTriggerRef.current < 1500) return;
+    lastTriggerRef.current = now;
     warnRef.current += 1;
     setWarnings(warnRef.current);
     cbRef.current.onWarning(warnRef.current, reason);
@@ -70,6 +76,16 @@ export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: 
       trigger("Copy/paste blocked");
     };
     const onKey = (e: KeyboardEvent) => {
+      // Screenshot keys — PrintScreen, macOS Cmd+Shift+3/4/5, Win+Shift+S
+      const isScreenshot =
+        e.key === "PrintScreen" ||
+        (e.metaKey && e.shiftKey && ["3", "4", "5"].includes(e.key)) ||
+        (e.getModifierState?.("Meta") && e.shiftKey && e.key.toLowerCase() === "s");
+      if (isScreenshot) {
+        e.preventDefault();
+        trigger("Screenshot attempt detected");
+        return;
+      }
       const bad =
         e.key === "F12" ||
         (e.ctrlKey && ["c", "v", "x", "t", "w", "n", "u", "p", "s"].includes(e.key.toLowerCase())) ||
@@ -93,6 +109,7 @@ export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: 
     document.addEventListener("paste", onCopyPaste);
     document.addEventListener("cut", onCopyPaste);
     document.addEventListener("keydown", onKey);
+    document.addEventListener("keyup", onKey);
     window.addEventListener("beforeunload", onBeforeUnload);
 
     return () => {
@@ -105,6 +122,7 @@ export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: 
       document.removeEventListener("paste", onCopyPaste);
       document.removeEventListener("cut", onCopyPaste);
       document.removeEventListener("keydown", onKey);
+      document.removeEventListener("keyup", onKey);
       window.removeEventListener("beforeunload", onBeforeUnload);
       if (wakeLock) { void wakeLock.release().catch(() => {}); wakeLock = null; }
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});

@@ -51,6 +51,12 @@ function sanitizeRich(input: string): string {
     );
     // Wrap any remaining bare LaTeX macros in inline math.
     t = t.replace(bareLatexRe, (match) => `$${match}$`);
+    // Strip LaTeX spacing macros that leak into prose: \, \; \: \! \quad \qquad
+    t = t.replace(/\\[,;:!]/g, " ").replace(/\\q?quad\b/g, " ");
+    // Unescape common LaTeX-escaped punctuation in prose (\% \$ \# \& \_)
+    t = t.replace(/\\([%$#&_])/g, "$1");
+    // Collapse literal double-backslash line breaks used by LaTeX (\\ at EOL)
+    t = t.replace(/\\\\(?=\s|$)/g, "  \n");
     return t;
   });
 
