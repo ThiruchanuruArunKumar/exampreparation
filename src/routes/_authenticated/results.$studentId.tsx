@@ -142,9 +142,8 @@ function StudentHistoryPage() {
             return clickable ? (
               <Link
                 key={h.id}
-                to="/history/$attemptId"
+                to="/attempt-results/$attemptId"
                 params={{ attemptId: h.id }}
-                search={{ sid: s.student_code } as never}
                 className="block"
               >
                 {card}

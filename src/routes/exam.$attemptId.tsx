@@ -65,6 +65,8 @@ function TakeExam() {
   const [student, setStudent] = useState<{ name: string; student_code: string } | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
+  const [visited, setVisited] = useState<Set<string>>(new Set());
+  const [reviewed, setReviewed] = useState<Set<string>>(new Set());
   const [current, setCurrent] = useState(0);
   const [showPalette, setShowPalette] = useState(false);
   const [endsAt, setEndsAt] = useState<string>("");
@@ -193,6 +195,14 @@ function TakeExam() {
     return `${m}:${s.toString().padStart(2, "0")}`;
   }, [remaining]);
 
+  // Track visited questions as the student navigates.
+  useEffect(() => {
+    if (!started || !questions.length) return;
+    const q = questions[current];
+    if (!q) return;
+    setVisited((s) => (s.has(q.id) ? s : new Set(s).add(q.id)));
+  }, [current, started, questions]);
+
   if (loading) return <Frame><p>Loading exam…</p></Frame>;
   if (error) return <Frame><ErrorCard message={error} /></Frame>;
 
@@ -248,6 +258,8 @@ function TakeExam() {
   const q = questions[current];
   const resp = answers[q.id] ?? [];
   const answered = Object.values(answers).filter((v) => v.length > 0).length;
+  const reviewCount = reviewed.size;
+  const isReviewed = reviewed.has(q.id);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -268,11 +280,11 @@ function TakeExam() {
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-5xl gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:grid-cols-[220px_1fr]">
+      <div className="mx-auto grid max-w-5xl gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:grid-cols-[240px_1fr]">
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <div className="text-xs text-muted-foreground">
-              {answered}/{questions.length} answered
+              {answered}/{questions.length} answered · {reviewCount} marked
             </div>
             <Button
               size="sm"
@@ -284,28 +296,47 @@ function TakeExam() {
             </Button>
           </div>
           {showPalette && (
-            <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 lg:grid-cols-5">
-              {questions.map((qq, i) => {
-                const done = (answers[qq.id] ?? []).length > 0;
-                return (
-                  <button
-                    key={qq.id}
-                    onClick={() => setCurrent(i)}
-                    className={`rounded-md border p-2 text-xs ${
-                      i === current
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : done
-                          ? "border-primary/40 bg-primary/10"
-                          : "border-border"
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                );
-              })}
-            </div>
+            <>
+              <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 lg:grid-cols-5">
+                {questions.map((qq, i) => {
+                  const done = (answers[qq.id] ?? []).length > 0;
+                  const rev = reviewed.has(qq.id);
+                  const seen = visited.has(qq.id);
+                  // Priority: reviewed+answered → purple w/ green dot; reviewed → purple;
+                  // answered → green; visited-not-answered → red; else neutral.
+                  let cls = "border-border bg-background text-foreground";
+                  if (rev && done) cls = "border-purple-500 bg-purple-500 text-white";
+                  else if (rev) cls = "border-purple-500 bg-purple-500 text-white";
+                  else if (done) cls = "border-green-500 bg-green-500 text-white";
+                  else if (seen) cls = "border-red-500 bg-red-500 text-white";
+                  const isCurrent = i === current;
+                  return (
+                    <button
+                      key={qq.id}
+                      onClick={() => setCurrent(i)}
+                      className={`relative rounded-md border p-2 text-xs font-medium transition ${cls} ${
+                        isCurrent ? "ring-2 ring-offset-1 ring-primary" : ""
+                      }`}
+                    >
+                      {i + 1}
+                      {rev && done && (
+                        <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-green-400 ring-1 ring-white" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-1 text-[10px] text-muted-foreground">
+                <Legend color="bg-green-500" label="Answered" />
+                <Legend color="bg-red-500" label="Not answered" />
+                <Legend color="bg-purple-500" label="Marked for review" />
+                <Legend color="bg-purple-500" label="Review + answered" dot />
+              </div>
+            </>
           )}
         </div>
+
+
 
 
         <Card>
@@ -375,21 +406,46 @@ function TakeExam() {
               />
             )}
 
-            <div className="flex justify-between pt-4">
+            <div className="flex flex-wrap items-center gap-2 pt-4">
               <Button
                 variant="outline"
-                onClick={() => setCurrent((c) => Math.max(0, c - 1))}
-                disabled={current === 0}
+                size="sm"
+                onClick={() => setResp(q.id, [])}
+                disabled={resp.length === 0}
               >
-                Previous
+                Clear
               </Button>
-              {current < questions.length - 1 ? (
-                <Button onClick={() => setCurrent((c) => c + 1)}>Next</Button>
-              ) : (
-                <Button onClick={() => handleSubmit(false)} disabled={submitting}>
-                  {submitting ? "Submitting…" : "Submit exam"}
+              <Button
+                variant={isReviewed ? "default" : "outline"}
+                size="sm"
+                className={isReviewed ? "bg-purple-600 text-white hover:bg-purple-700" : "border-purple-500 text-purple-700 hover:bg-purple-500/10 dark:text-purple-300"}
+                onClick={() =>
+                  setReviewed((s) => {
+                    const n = new Set(s);
+                    if (n.has(q.id)) n.delete(q.id);
+                    else n.add(q.id);
+                    return n;
+                  })
+                }
+              >
+                {isReviewed ? "Unmark review" : "Mark for review"}
+              </Button>
+              <div className="ml-auto flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrent((c) => Math.max(0, c - 1))}
+                  disabled={current === 0}
+                >
+                  Previous
                 </Button>
-              )}
+                {current < questions.length - 1 ? (
+                  <Button onClick={() => setCurrent((c) => c + 1)}>Next</Button>
+                ) : (
+                  <Button onClick={() => handleSubmit(false)} disabled={submitting}>
+                    {submitting ? "Submitting…" : "Submit exam"}
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -397,6 +453,20 @@ function TakeExam() {
     </div>
   );
 }
+
+function Legend({ color, label, dot }: { color: string; label: string; dot?: boolean }) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className={`relative inline-block h-3 w-3 rounded-sm ${color}`}>
+        {dot && (
+          <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-green-400 ring-1 ring-white" />
+        )}
+      </span>
+      <span>{label}</span>
+    </div>
+  );
+}
+
 
 function Frame({ children }: { children: React.ReactNode }) {
   return (
@@ -470,6 +540,7 @@ function ResultScreen({
   const [reviewLoading, setReviewLoading] = useState(false);
   const [explanations, setExplanations] = useState<Record<string, string>>({});
   const [expBusy, setExpBusy] = useState<Record<string, boolean>>({});
+  const [revealed, setRevealed] = useState(false);
 
   const hasAnyReview = result.showAnswerSheet || result.showAnswerBook;
   useEffect(() => {
@@ -542,13 +613,16 @@ function ResultScreen({
           </CardContent>
         </Card>
       ) : (
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader className="pb-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
-                  <CheckCircle2 className="h-6 w-6 text-primary" />
-                  {result.auto ? "Time's up — auto-submitted" : "Thank you — exam submitted"}
+                  <span className="relative inline-flex">
+                    <CheckCircle2 className="h-8 w-8 text-primary animate-scale-in" />
+                    <span className="absolute inset-0 rounded-full bg-primary/30 blur-lg animate-pulse" aria-hidden />
+                  </span>
+                  {result.auto ? "Time's up — exam auto-submitted" : "Congratulations! Exam submitted"}
                 </CardTitle>
                 {student && exam && (
                   <p className="mt-1 text-sm text-muted-foreground">
@@ -562,22 +636,37 @@ function ResultScreen({
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-md border border-primary/30 bg-primary/5 p-4 text-sm">
-              <p className="font-medium text-foreground">
+            <div className="animate-fade-in rounded-lg border border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6 text-center">
+              <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-primary/15 animate-scale-in">
+                <Sparkles className="h-8 w-8 text-primary" />
+              </div>
+              <h2 className="text-2xl font-semibold">Thank you for submitting!</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
                 {result.auto
                   ? "Your time ran out and we submitted your answers automatically."
-                  : "Great job finishing the exam! Your answers have been recorded."}
+                  : "Your answers have been recorded successfully. Well done on finishing the exam!"}
               </p>
-              <p className="mt-1 text-muted-foreground">
-                Thanks for taking the exam — best of luck with your results.
+              <p className="mt-1 text-xs text-muted-foreground">
+                Best of luck — your teacher will review your responses.
               </p>
             </div>
-            {!result.showResult ? (
-              <p className="text-sm text-muted-foreground">
-                Your responses have been recorded. Your teacher will share results when they are ready.
-              </p>
-            ) : (
-              <div className="flex flex-wrap items-end justify-between gap-4">
+
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+              {result.showResult && !revealed && (
+                <Button onClick={() => setRevealed(true)}>View result</Button>
+              )}
+              {!result.showResult && (
+                <p className="text-sm text-muted-foreground">
+                  Results are not published yet. You will be able to view them once your teacher enables it.
+                </p>
+              )}
+              <Link to="/">
+                <Button variant="outline">Back to home</Button>
+              </Link>
+            </div>
+
+            {result.showResult && revealed && (
+              <div className="animate-fade-in flex flex-wrap items-end justify-between gap-4 border-t border-border pt-4">
                 <div>
                   <div className="text-5xl font-bold sm:text-6xl">
                     {result.score}
@@ -585,9 +674,6 @@ function ResultScreen({
                   </div>
                   <div className="mt-1 text-base text-muted-foreground">{pct}%</div>
                 </div>
-                <Link to="/">
-                  <Button variant="outline">Done</Button>
-                </Link>
               </div>
             )}
           </CardContent>
@@ -595,7 +681,7 @@ function ResultScreen({
       )}
 
 
-      {result.showResult && hasAnyReview && (
+      {result.showResult && revealed && hasAnyReview && (
         <div className="flex flex-wrap gap-2">
           <Button variant={tab === "summary" ? "default" : "outline"} size="sm" onClick={() => setTab("summary")}>
             Summary
@@ -613,7 +699,7 @@ function ResultScreen({
         </div>
       )}
 
-      {result.showResult && tab === "summary" && result.insight && (
+      {result.showResult && revealed && tab === "summary" && result.insight && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -656,7 +742,7 @@ function ResultScreen({
         </Card>
       )}
 
-      {result.showResult && tab !== "summary" && (
+      {result.showResult && revealed && tab !== "summary" && (
         <div className="space-y-3">
           {reviewLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
           {review?.map((q, i) => {
