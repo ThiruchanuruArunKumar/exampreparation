@@ -92,7 +92,7 @@ function ExamInfoPage() {
   );
   const [info, setInfo] = useState<InfoResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [accessCode, setAccessCode] = useState("");
+  
   const [starting, setStarting] = useState(false);
 
   const load = async (code: string) => {
