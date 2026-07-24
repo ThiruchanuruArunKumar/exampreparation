@@ -652,8 +652,8 @@ async function runGenerate(prompt: string, userContent: any[]) {
       output: Output.object({ schema: GenSchema }),
       system: prompt,
       messages: [
-        { role: "user", content: userContent as never },
-      ] as never,
+        { role: "user", content: userContent as any },
+      ],
     });
     return output.questions;
   } catch (error) {
