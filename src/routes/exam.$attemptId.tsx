@@ -97,6 +97,7 @@ function TakeExam() {
             maxScore: Number(s.attempt.maxScore ?? 0),
             insight: null,
             auto: false,
+            terminated: false,
             showResult: true,
             showAnswerSheet: false,
             showAnswerBook: false,
