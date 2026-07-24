@@ -613,13 +613,16 @@ function ResultScreen({
           </CardContent>
         </Card>
       ) : (
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader className="pb-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="min-w-0">
                 <CardTitle className="flex flex-wrap items-center gap-2 text-lg">
-                  <CheckCircle2 className="h-6 w-6 text-primary" />
-                  {result.auto ? "Time's up — auto-submitted" : "Thank you — exam submitted"}
+                  <span className="relative inline-flex">
+                    <CheckCircle2 className="h-8 w-8 text-primary animate-scale-in" />
+                    <span className="absolute inset-0 rounded-full bg-primary/30 blur-lg animate-pulse" aria-hidden />
+                  </span>
+                  {result.auto ? "Time's up — exam auto-submitted" : "Congratulations! Exam submitted"}
                 </CardTitle>
                 {student && exam && (
                   <p className="mt-1 text-sm text-muted-foreground">
@@ -633,22 +636,37 @@ function ResultScreen({
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="rounded-md border border-primary/30 bg-primary/5 p-4 text-sm">
-              <p className="font-medium text-foreground">
+            <div className="animate-fade-in rounded-lg border border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6 text-center">
+              <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-primary/15 animate-scale-in">
+                <Sparkles className="h-8 w-8 text-primary" />
+              </div>
+              <h2 className="text-2xl font-semibold">Thank you for submitting!</h2>
+              <p className="mt-2 text-sm text-muted-foreground">
                 {result.auto
                   ? "Your time ran out and we submitted your answers automatically."
-                  : "Great job finishing the exam! Your answers have been recorded."}
+                  : "Your answers have been recorded successfully. Well done on finishing the exam!"}
               </p>
-              <p className="mt-1 text-muted-foreground">
-                Thanks for taking the exam — best of luck with your results.
+              <p className="mt-1 text-xs text-muted-foreground">
+                Best of luck — your teacher will review your responses.
               </p>
             </div>
-            {!result.showResult ? (
-              <p className="text-sm text-muted-foreground">
-                Your responses have been recorded. Your teacher will share results when they are ready.
-              </p>
-            ) : (
-              <div className="flex flex-wrap items-end justify-between gap-4">
+
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+              {result.showResult && !revealed && (
+                <Button onClick={() => setRevealed(true)}>View result</Button>
+              )}
+              {!result.showResult && (
+                <p className="text-sm text-muted-foreground">
+                  Results are not published yet. You will be able to view them once your teacher enables it.
+                </p>
+              )}
+              <Link to="/">
+                <Button variant="outline">Back to home</Button>
+              </Link>
+            </div>
+
+            {result.showResult && revealed && (
+              <div className="animate-fade-in flex flex-wrap items-end justify-between gap-4 border-t border-border pt-4">
                 <div>
                   <div className="text-5xl font-bold sm:text-6xl">
                     {result.score}
@@ -656,9 +674,6 @@ function ResultScreen({
                   </div>
                   <div className="mt-1 text-base text-muted-foreground">{pct}%</div>
                 </div>
-                <Link to="/">
-                  <Button variant="outline">Done</Button>
-                </Link>
               </div>
             )}
           </CardContent>
