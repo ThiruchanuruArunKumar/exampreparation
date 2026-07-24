@@ -76,6 +76,16 @@ export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: 
       trigger("Copy/paste blocked");
     };
     const onKey = (e: KeyboardEvent) => {
+      // Screenshot keys — PrintScreen, macOS Cmd+Shift+3/4/5, Win+Shift+S
+      const isScreenshot =
+        e.key === "PrintScreen" ||
+        (e.metaKey && e.shiftKey && ["3", "4", "5"].includes(e.key)) ||
+        (e.getModifierState?.("Meta") && e.shiftKey && e.key.toLowerCase() === "s");
+      if (isScreenshot) {
+        e.preventDefault();
+        trigger("Screenshot attempt detected");
+        return;
+      }
       const bad =
         e.key === "F12" ||
         (e.ctrlKey && ["c", "v", "x", "t", "w", "n", "u", "p", "s"].includes(e.key.toLowerCase())) ||
