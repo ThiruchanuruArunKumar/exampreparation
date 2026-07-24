@@ -224,7 +224,7 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
               <input
                 type="file"
                 className="hidden"
-                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,image/*,text/*"
+                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.md,.markdown,image/*,text/*"
                 disabled={busy}
                 onChange={(e) => e.target.files?.[0] && doExtract(e.target.files[0])}
               />
