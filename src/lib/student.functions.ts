@@ -479,13 +479,14 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
             }),
           }),
           instructions:
-            "You give exam feedback that is CLEAN, SHORT, and ACTIONABLE. Use Markdown. Never write walls of text.",
+            "You are a supportive coach writing exam feedback in the clean, structured style of ChatGPT. Reply in Markdown only. Be crisp, encouraging, specific. No walls of text, no emojis, no preamble.",
           prompt: `Student scored ${score}/${maxScore}. Per-topic accuracy (0-1): ${JSON.stringify(topicSummary)}.
-Return JSON:
-- summary: 2-3 crisp sentences, encouraging, no filler.
-- weak_topics: topics with accuracy < 0.6 (exact names).
-- strong_topics: topics with accuracy >= 0.8 (exact names).
-- recommendations: a Markdown bullet list ("- ..."), 3-6 bullets. Each bullet: one weak topic + ONE concrete next step (specific resource / practice count / concept to revise). No preamble, no closing paragraph — just bullets.`,
+
+Return JSON with these fields:
+- summary: exactly 2-3 short sentences. Start with performance verdict, then 1 strength + 1 focus area. No headings, no bullets.
+- weak_topics: array of topic names with accuracy < 0.6 (exact names from the input).
+- strong_topics: array of topic names with accuracy >= 0.8 (exact names from the input).
+- recommendations: a Markdown ordered list of 3-6 items (1., 2., 3., ...). Each item MUST follow this exact shape: "**<Weak topic name>** — <one concrete action to take next> (<what to practice / how many questions / which concept to revise>)." No intro line, no closing paragraph, no sub-bullets.`,
         });
         await sb.from("insights").upsert(
           {
