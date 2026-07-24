@@ -681,7 +681,7 @@ function ResultScreen({
       )}
 
 
-      {result.showResult && hasAnyReview && (
+      {result.showResult && revealed && hasAnyReview && (
         <div className="flex flex-wrap gap-2">
           <Button variant={tab === "summary" ? "default" : "outline"} size="sm" onClick={() => setTab("summary")}>
             Summary
@@ -699,7 +699,7 @@ function ResultScreen({
         </div>
       )}
 
-      {result.showResult && tab === "summary" && result.insight && (
+      {result.showResult && revealed && tab === "summary" && result.insight && (
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -742,7 +742,7 @@ function ResultScreen({
         </Card>
       )}
 
-      {result.showResult && tab !== "summary" && (
+      {result.showResult && revealed && tab !== "summary" && (
         <div className="space-y-3">
           {reviewLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
           {review?.map((q, i) => {
