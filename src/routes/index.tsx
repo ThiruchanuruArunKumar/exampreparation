@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { Brain, GraduationCap, LogIn, ListChecks, Clock, CalendarDays, ArrowRight, Loader2 } from "lucide-react";
+import { Brain, GraduationCap, LogIn, ListChecks, Clock, CalendarDays, ArrowRight, Loader2, ShieldCheck, Sparkles, Zap } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { listStudentExams, startStudentAttempt } from "@/lib/student.functions";
 import { getLastStudentId, setLastStudentId, clearLastStudentId } from "@/lib/lastStudentId";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -115,38 +116,70 @@ function Landing() {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-2">
-            <Brain className="h-6 w-6 text-primary" />
-            <span className="text-lg font-semibold">ExamPrep</span>
+    <div className="relative min-h-screen bg-background text-foreground">
+      {/* Ambient hero backdrop */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 bg-gradient-hero" />
+      <div
+        aria-hidden
+        className="pointer-events-none fixed left-1/2 top-[-15%] -z-10 h-[520px] w-[520px] -translate-x-1/2 rounded-full bg-gradient-mesh opacity-30 blur-3xl"
+      />
+
+      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/70 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-2.5">
+            <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-primary shadow-elegant">
+              <GraduationCap className="h-5 w-5 text-primary-foreground" />
+            </span>
+            <span className="font-display text-lg font-semibold tracking-tight">
+              Exam<span className="text-gradient">Prep</span>
+            </span>
           </div>
-          <Link
-            to="/auth"
-            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-sm hover:bg-muted"
-          >
-            <LogIn className="h-4 w-4" /> Admin sign in
-          </Link>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Link
+              to="/auth"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-background/50 px-3 py-1.5 text-sm font-medium transition-colors hover:border-primary/50 hover:bg-muted hover:text-primary"
+            >
+              <LogIn className="h-4 w-4" /> Admin sign in
+            </Link>
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
-              Take your proctored exam
+      <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-16">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:items-center">
+          <div className="animate-fade-in-up">
+            <Badge className="mb-5 gap-1.5 border border-primary/20 bg-primary/10 text-primary hover:bg-primary/10">
+              <Sparkles className="h-3 w-3" /> AI-proctored exam platform
+            </Badge>
+            <h1 className="font-display text-4xl font-bold tracking-tight sm:text-6xl">
+              Take your <span className="text-gradient">proctored exam</span> with confidence
             </h1>
-            <p className="mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">
-              Enter the student ID your teacher gave you and the exam password to begin. No account
-              needed.
+            <p className="mt-6 max-w-xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+              Enter the student ID your teacher gave you and the exam password to begin.
+              Secure, fair, and instant — no account needed.
             </p>
+            <div className="mt-8 flex flex-wrap gap-3 text-sm">
+              <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-card/60 px-3 py-2 backdrop-blur">
+                <ShieldCheck className="h-4 w-4 text-primary" /> Proctored
+              </div>
+              <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-card/60 px-3 py-2 backdrop-blur">
+                <Zap className="h-4 w-4 text-primary" /> Realtime sync
+              </div>
+              <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-card/60 px-3 py-2 backdrop-blur">
+                <Brain className="h-4 w-4 text-primary" /> AI feedback
+              </div>
+            </div>
           </div>
 
-          <Card className="border-primary/30 shadow-lg">
+          <Card className="relative animate-scale-in overflow-hidden border-border/60 shadow-elegant card-glass">
+            <div aria-hidden className="absolute inset-x-0 top-0 h-1 bg-gradient-primary" />
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <GraduationCap className="h-5 w-5 text-primary" /> Start your exam
+              <CardTitle className="flex items-center gap-2 font-display text-lg">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <GraduationCap className="h-4 w-4" />
+                </span>
+                Start your exam
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -160,6 +193,7 @@ function Landing() {
                     value={studentCode}
                     onChange={(e) => setStudentCode(e.target.value.toUpperCase())}
                     maxLength={6}
+                    className="font-mono tracking-widest"
                   />
                   {lastId && lastId !== studentCode.toUpperCase() && (
                     <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -167,7 +201,7 @@ function Landing() {
                       <button
                         type="button"
                         onClick={() => setStudentCode(lastId)}
-                        className="rounded-md border border-border bg-muted/50 px-2 py-0.5 font-mono text-xs font-semibold text-foreground hover:bg-muted"
+                        className="rounded-md border border-border bg-muted/50 px-2 py-0.5 font-mono text-xs font-semibold text-foreground transition-colors hover:border-primary/50 hover:bg-muted hover:text-primary"
                       >
                         {lastId}
                       </button>
@@ -190,10 +224,20 @@ function Landing() {
                     value={accessCode}
                     onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
                     maxLength={10}
+                    className="font-mono tracking-widest"
                   />
                 </div>
-                <Button type="submit" className="w-full" size="lg" disabled={busy}>
-                  {busy ? "Starting…" : "Start exam"}
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-primary shadow-elegant transition-transform hover:scale-[1.01] hover:shadow-glow"
+                  size="lg"
+                  disabled={busy}
+                >
+                  {busy ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting…</>
+                  ) : (
+                    <>Start exam <ArrowRight className="ml-2 h-4 w-4" /></>
+                  )}
                 </Button>
                 <div className="text-center text-xs text-muted-foreground">
                   Your teacher provides both the ID and the password.
@@ -202,6 +246,7 @@ function Landing() {
             </CardContent>
           </Card>
         </div>
+
 
         {/* My exams */}
         <section className="mt-14">
@@ -265,12 +310,13 @@ function Landing() {
                 Signed in as <span className="font-medium text-foreground">{studentName}</span>
               </p>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {exams.map((row) => {
+                {exams.map((row, idx) => {
                   const latest = row.latest_attempt;
                   return (
                     <Card
                       key={row.exam.id}
-                      className="flex h-full flex-col transition hover:border-primary/50 hover:shadow-md"
+                      style={{ animationDelay: `${idx * 60}ms` }}
+                      className="flex h-full animate-fade-in-up flex-col border-border/60 card-glass hover-lift"
                     >
                       <CardHeader className="pb-2">
                         <div className="flex items-start justify-between gap-2">
