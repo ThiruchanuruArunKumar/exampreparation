@@ -122,6 +122,7 @@ export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: 
       document.removeEventListener("paste", onCopyPaste);
       document.removeEventListener("cut", onCopyPaste);
       document.removeEventListener("keydown", onKey);
+      document.removeEventListener("keyup", onKey);
       window.removeEventListener("beforeunload", onBeforeUnload);
       if (wakeLock) { void wakeLock.release().catch(() => {}); wakeLock = null; }
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
