@@ -186,7 +186,7 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
               <input
                 type="file"
                 className="hidden"
-                accept=".pdf,.doc,.docx,.ppt,.pptx,image/*,text/*"
+                accept=".pdf,.doc,.docx,.ppt,.pptx,.md,.markdown,image/*,text/*"
                 disabled={busy}
                 onChange={(e) => e.target.files?.[0] && doGenFromNotes(e.target.files[0])}
               />
