@@ -540,6 +540,7 @@ function ResultScreen({
   const [reviewLoading, setReviewLoading] = useState(false);
   const [explanations, setExplanations] = useState<Record<string, string>>({});
   const [expBusy, setExpBusy] = useState<Record<string, boolean>>({});
+  const [revealed, setRevealed] = useState(false);
 
   const hasAnyReview = result.showAnswerSheet || result.showAnswerBook;
   useEffect(() => {
