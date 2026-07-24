@@ -23,6 +23,7 @@ export const Route = createFileRoute("/_authenticated/attempt-results/$attemptId
 
 type Attempt = {
   id: string;
+  student_id: string;
   score: number | null;
   max_score: number | null;
   status: string;
@@ -64,7 +65,7 @@ function Results() {
       const [{ data: a }, { data: ans }, { data: ins }] = await Promise.all([
         supabase
           .from("attempts")
-          .select("id, score, max_score, status, warning_count, auto_submitted, submitted_at, exams(title)")
+          .select("id, student_id, score, max_score, status, warning_count, auto_submitted, submitted_at, exams(title)")
           .eq("id", attemptId)
           .single(),
         supabase
@@ -96,8 +97,8 @@ function Results() {
             {attempt.warning_count > 0 && ` · ${attempt.warning_count} warning${attempt.warning_count === 1 ? "" : "s"}`}
           </p>
         </div>
-        <Link to="/dashboard">
-          <Button variant="outline" size="sm">Back</Button>
+        <Link to="/results/$studentId" params={{ studentId: attempt.student_id }}>
+          <Button variant="outline" size="sm">← Back to student history</Button>
         </Link>
       </div>
 
