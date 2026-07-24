@@ -75,8 +75,8 @@ LANGUAGE (CRITICAL): Every question prompt, every option, and every correct_answ
       const { output } = await generateText({
         model: gateway("openai/gpt-5.5"),
         output: Output.object({ schema: ExtractedSchema }),
+        instructions: system,
         messages: [
-          { role: "system", content: system },
           {
             role: "user",
             content: [
