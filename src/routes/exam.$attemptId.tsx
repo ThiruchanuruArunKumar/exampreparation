@@ -457,6 +457,7 @@ function ResultScreen({
     maxScore: number;
     insight: Insight | null;
     auto: boolean;
+    terminated: boolean;
     showResult: boolean;
     showAnswerSheet: boolean;
     showAnswerBook: boolean;
