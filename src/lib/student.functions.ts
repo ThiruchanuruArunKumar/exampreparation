@@ -479,13 +479,14 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
             }),
           }),
           instructions:
-            "You give exam feedback that is CLEAN, SHORT, and ACTIONABLE. Use Markdown. Never write walls of text.",
+            "You are a supportive coach writing exam feedback in the clean, structured style of ChatGPT. Reply in Markdown only. Be crisp, encouraging, specific. No walls of text, no emojis, no preamble.",
           prompt: `Student scored ${score}/${maxScore}. Per-topic accuracy (0-1): ${JSON.stringify(topicSummary)}.
-Return JSON:
-- summary: 2-3 crisp sentences, encouraging, no filler.
-- weak_topics: topics with accuracy < 0.6 (exact names).
-- strong_topics: topics with accuracy >= 0.8 (exact names).
-- recommendations: a Markdown bullet list ("- ..."), 3-6 bullets. Each bullet: one weak topic + ONE concrete next step (specific resource / practice count / concept to revise). No preamble, no closing paragraph — just bullets.`,
+
+Return JSON with these fields:
+- summary: exactly 2-3 short sentences. Start with performance verdict, then 1 strength + 1 focus area. No headings, no bullets.
+- weak_topics: array of topic names with accuracy < 0.6 (exact names from the input).
+- strong_topics: array of topic names with accuracy >= 0.8 (exact names from the input).
+- recommendations: a Markdown ordered list of 3-6 items (1., 2., 3., ...). Each item MUST follow this exact shape: "**<Weak topic name>** — <one concrete action to take next> (<what to practice / how many questions / which concept to revise>)." No intro line, no closing paragraph, no sub-bullets.`,
         });
         await sb.from("insights").upsert(
           {
@@ -604,7 +605,7 @@ export const getStudentExplanation = createServerFn({ method: "POST" })
       model: gateway("openai/gpt-5.4-mini"),
       providerOptions: { lovable: { service_tier: "priority" } },
       instructions:
-        "You are an expert tutor writing an Answer Book entry for a competitive-exam question. Structure the reply EXACTLY as Markdown with these sections and headings:\n\n### Correct answer\nState the correct option verbatim in **bold**.\n\n### Why it's correct\n2-4 short sentences.\n\n### Step-by-step solution\nNumbered steps. Each step is ONE idea. Show every formula used with its name, define each variable, show substitutions.\n\n### Why the other options are wrong\nOne short bullet per wrong option.\n\n### Key takeaway\n1 line the student should remember.\n\nFORMATTING RULES (critical — output renders with Markdown + KaTeX + mhchem):\n- Wrap ALL math AND chemistry in $...$ (inline) or $$...$$ (display). Never leave raw \\ce{...}, \\frac, ^, _ outside of $...$ — they will not render.\n- Chemistry: $\\ce{H2SO4 -> 2H+ + SO4^{2-}}$. Never write \\ce{...} without surrounding $ signs.\n- Powers/subs: $x^2$, $H_2O$, $10^{-3}$. Units: $9.8\\,\\text{m/s}^2$.\n- Be concise. No preamble like 'Sure!' or 'Let's solve this'.",
+        "You are an expert tutor writing an Answer Book entry for a competitive-exam question, in the clean, well-organized style of ChatGPT. Structure the reply EXACTLY as Markdown with these sections in this order, using these exact headings:\n\n### Correct answer\nOne line only. State the correct option verbatim in **bold**. Do NOT repeat it.\n\n### Why it is correct\n2-4 short sentences of plain-language reasoning. No formulas here.\n\n### Step-by-step solution\nA numbered Markdown list (1., 2., 3., ...). Each step = ONE idea, ONE sentence + at most ONE formula on its own display line. For each formula: name it, define every variable, then show the substitution. Use $$...$$ on its own line for any formula that stands alone.\n\n### Why the other options are wrong\nA Markdown bullet list (\"- \"). One short bullet per wrong option, starting with the option text in **bold**.\n\n### Key takeaway\nOne single line the student should memorize.\n\nSTRICT FORMATTING RULES — the output renders with Markdown + KaTeX + mhchem:\n- Use ONLY $...$ for inline math and $$...$$ for display math. NEVER use \\( \\), \\[ \\], plain parentheses, or plain brackets around LaTeX.\n- Every \\ce{...}, \\frac{...}{...}, \\sqrt{...}, ^, _ MUST be inside $...$ or $$...$$. Never write bare \\ce{AgCl} — write $\\ce{AgCl}$.\n- Chemistry example: $\\ce{H2SO4 -> 2H+ + SO4^{2-}}$. Powers/subs: $x^2$, $H_2O$, $10^{-3}$. Units: $9.8\\,\\text{m/s}^2$.\n- No emojis, no ASCII art, no horizontal rules, no walls of text, no preamble like \"Sure!\" or \"Let us solve this\". Get straight to the answer.",
       prompt: JSON.stringify(
         { topic: q.topic, question: q.prompt, options: q.options, correct_answer: q.correct_answer, type: q.type },
         null,
@@ -763,7 +764,7 @@ export const getHistoryExplanation = createServerFn({ method: "POST" })
       model: gateway("openai/gpt-5.4-mini"),
       providerOptions: { lovable: { service_tier: "priority" } },
       instructions:
-        "You are an expert tutor writing an Answer Book entry for a competitive-exam question. Structure the reply EXACTLY as Markdown with these sections and headings:\n\n### Correct answer\nState the correct option verbatim in **bold**.\n\n### Why it's correct\n2-4 short sentences.\n\n### Step-by-step solution\nNumbered steps. Each step is ONE idea. Show every formula used with its name, define each variable, show substitutions.\n\n### Why the other options are wrong\nOne short bullet per wrong option.\n\n### Key takeaway\n1 line the student should remember.\n\nFORMATTING RULES (critical — output renders with Markdown + KaTeX + mhchem):\n- Wrap ALL math AND chemistry in $...$ (inline) or $$...$$ (display). Never leave raw \\ce{...}, \\frac, ^, _ outside of $...$ — they will not render.\n- Chemistry: $\\ce{H2SO4 -> 2H+ + SO4^{2-}}$. Never write \\ce{...} without surrounding $ signs.\n- Powers/subs: $x^2$, $H_2O$, $10^{-3}$. Units: $9.8\\,\\text{m/s}^2$.\n- Be concise. No preamble like 'Sure!' or 'Let's solve this'.",
+        "You are an expert tutor writing an Answer Book entry for a competitive-exam question, in the clean, well-organized style of ChatGPT. Structure the reply EXACTLY as Markdown with these sections in this order, using these exact headings:\n\n### Correct answer\nOne line only. State the correct option verbatim in **bold**. Do NOT repeat it.\n\n### Why it is correct\n2-4 short sentences of plain-language reasoning. No formulas here.\n\n### Step-by-step solution\nA numbered Markdown list (1., 2., 3., ...). Each step = ONE idea, ONE sentence + at most ONE formula on its own display line. For each formula: name it, define every variable, then show the substitution. Use $$...$$ on its own line for any formula that stands alone.\n\n### Why the other options are wrong\nA Markdown bullet list (\"- \"). One short bullet per wrong option, starting with the option text in **bold**.\n\n### Key takeaway\nOne single line the student should memorize.\n\nSTRICT FORMATTING RULES — the output renders with Markdown + KaTeX + mhchem:\n- Use ONLY $...$ for inline math and $$...$$ for display math. NEVER use \\( \\), \\[ \\], plain parentheses, or plain brackets around LaTeX.\n- Every \\ce{...}, \\frac{...}{...}, \\sqrt{...}, ^, _ MUST be inside $...$ or $$...$$. Never write bare \\ce{AgCl} — write $\\ce{AgCl}$.\n- Chemistry example: $\\ce{H2SO4 -> 2H+ + SO4^{2-}}$. Powers/subs: $x^2$, $H_2O$, $10^{-3}$. Units: $9.8\\,\\text{m/s}^2$.\n- No emojis, no ASCII art, no horizontal rules, no walls of text, no preamble like \"Sure!\" or \"Let us solve this\". Get straight to the answer.",
       prompt: JSON.stringify(
         { topic: q.topic, question: q.prompt, options: q.options, correct_answer: q.correct_answer, type: q.type },
         null,

@@ -546,20 +546,8 @@ function ResultScreen({
               <Sparkles className="h-4 w-4 text-primary" /> AI feedback
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <p className="text-sm">{result.insight.summary}</p>
-            {result.insight.weak_topics.length > 0 && (
-              <div>
-                <div className="mb-1 flex items-center gap-1 text-sm font-medium text-destructive">
-                  <TrendingDown className="h-4 w-4" /> Needs work
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {result.insight.weak_topics.map((t) => (
-                    <Badge key={t} variant="destructive">{t}</Badge>
-                  ))}
-                </div>
-              </div>
-            )}
+          <CardContent className="space-y-4">
+            <RichContent className="text-sm">{result.insight.summary}</RichContent>
             {result.insight.strong_topics.length > 0 && (
               <div>
                 <div className="mb-1 flex items-center gap-1 text-sm font-medium text-primary">
@@ -572,7 +560,24 @@ function ResultScreen({
                 </div>
               </div>
             )}
-            <div className="whitespace-pre-wrap text-sm">{result.insight.recommendations}</div>
+            {result.insight.weak_topics.length > 0 && (
+              <div>
+                <div className="mb-1 flex items-center gap-1 text-sm font-medium text-destructive">
+                  <TrendingDown className="h-4 w-4" /> Needs work
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  {result.insight.weak_topics.map((t) => (
+                    <Badge key={t} variant="destructive">{t}</Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {result.insight.recommendations && (
+              <div>
+                <div className="mb-1 text-sm font-medium">Study plan</div>
+                <RichContent className="text-sm">{result.insight.recommendations}</RichContent>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
