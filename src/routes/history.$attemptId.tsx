@@ -182,9 +182,13 @@ function DetailBody({
         </CardHeader>
         <CardContent>
           {!exam.showResult ? (
-            <p className="text-sm text-muted-foreground">
-              Your teacher has not released the score for this exam yet.
-            </p>
+            <div className="rounded-md border border-dashed border-border bg-muted/40 p-4 text-sm text-muted-foreground">
+              <div className="font-medium text-foreground">Result — Not published</div>
+              <p className="mt-1">
+                Your teacher has not released the score for this exam yet. It will appear here
+                automatically once published.
+              </p>
+            </div>
           ) : (
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
@@ -211,26 +215,25 @@ function DetailBody({
         </CardContent>
       </Card>
 
-      {exam.showResult && hasReview && (
-        <div className="flex flex-wrap gap-2">
-          <Button variant={tab === "summary" ? "default" : "outline"} size="sm" onClick={() => setTab("summary")}>
-            Summary
-          </Button>
-          {exam.showAnswerSheet && (
-            <Button variant={tab === "sheet" ? "default" : "outline"} size="sm" onClick={() => setTab("sheet")}>
-              Answer sheet
-            </Button>
-          )}
-          {exam.showAnswerBook && (
-            <Button variant={tab === "book" ? "default" : "outline"} size="sm" onClick={() => setTab("book")}>
-              Answer book
-            </Button>
-          )}
-        </div>
-      )}
+      <div className="flex flex-wrap gap-2">
+        <Button variant={tab === "summary" ? "default" : "outline"} size="sm" onClick={() => setTab("summary")}>
+          Summary
+        </Button>
+        <Button variant={tab === "sheet" ? "default" : "outline"} size="sm" onClick={() => setTab("sheet")}>
+          Answer sheet {exam.showAnswerSheet ? "" : "· Not published"}
+        </Button>
+        <Button variant={tab === "book" ? "default" : "outline"} size="sm" onClick={() => setTab("book")}>
+          Answer book {exam.showAnswerBook ? "" : "· Not published"}
+        </Button>
+      </div>
 
-      {exam.showResult && tab === "summary" && (
-        insight ? (
+      {tab === "summary" && (
+        !exam.showResult ? (
+          <NotPublishedCard
+            title="AI feedback — Not published"
+            message="The score and AI feedback for this exam have not been released yet."
+          />
+        ) : insight ? (
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-2 text-base">
@@ -239,18 +242,6 @@ function DetailBody({
             </CardHeader>
             <CardContent className="space-y-3">
               <RichContent className="text-sm">{insight.summary}</RichContent>
-              {(insight.weak_topics?.length ?? 0) > 0 && (
-                <div>
-                  <div className="mb-1 flex items-center gap-1 text-sm font-medium text-destructive">
-                    <TrendingDown className="h-4 w-4" /> Needs work
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {insight.weak_topics!.map((t: string) => (
-                      <Badge key={t} variant="destructive">{t}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
               {(insight.strong_topics?.length ?? 0) > 0 && (
                 <div>
                   <div className="mb-1 flex items-center gap-1 text-sm font-medium text-emerald-600 dark:text-emerald-400">
@@ -259,6 +250,18 @@ function DetailBody({
                   <div className="flex flex-wrap gap-1">
                     {insight.strong_topics!.map((t: string) => (
                       <Badge key={t} className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300">{t}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(insight.weak_topics?.length ?? 0) > 0 && (
+                <div>
+                  <div className="mb-1 flex items-center gap-1 text-sm font-medium text-destructive">
+                    <TrendingDown className="h-4 w-4" /> Needs work
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {insight.weak_topics!.map((t: string) => (
+                      <Badge key={t} variant="destructive">{t}</Badge>
                     ))}
                   </div>
                 </div>
@@ -280,115 +283,190 @@ function DetailBody({
         )
       )}
 
-      {exam.showResult && tab !== "summary" && (
-        <div className="space-y-3">
-          {questions.length === 0 && (
-            <Card>
-              <CardContent className="py-6 text-sm text-muted-foreground">
-                Detailed review is not enabled for this exam.
-              </CardContent>
-            </Card>
-          )}
-          {questions.map((q: any, i: number) => {
-            const correct = q.correct_answer ?? [];
-            const chose = q.response ?? [];
-            return (
-              <Card key={q.id}>
-                <CardHeader className="pb-2">
-                  <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Q{i + 1} · {q.type} · {q.marks}m{q.topic ? ` · ${q.topic}` : ""}
-                    </div>
-                    <div className="flex items-center gap-1 text-sm">
-                      {q.is_correct ? (
-                        <span className="text-emerald-600 dark:text-emerald-400">✓ {q.marks_awarded ?? 0}/{q.marks}</span>
-                      ) : (
-                        <span className="text-destructive">✗ {q.marks_awarded ?? 0}/{q.marks}</span>
-                      )}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3 pt-0 text-sm">
-                  <div className="font-medium"><RichContent>{q.prompt}</RichContent></div>
-                  {q.options && (
-                    <ul className="ml-4 list-disc space-y-1 text-xs">
-                      {q.options.map((o: string) => {
-                        const isCorrect = correct.includes(o);
-                        const isChosen = chose.includes(o);
-                        return (
-                          <li
-                            key={o}
-                            className={
-                              isCorrect
-                                ? "font-semibold text-emerald-600 dark:text-emerald-400"
-                                : isChosen
-                                  ? "text-destructive line-through"
-                                  : ""
-                            }
-                          >
-                            <RichContent inline>{o}</RichContent>
-                            {isCorrect && " ✓"}
-                            {!isCorrect && isChosen && " (your answer)"}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  )}
+      {tab === "sheet" && (
+        !exam.showAnswerSheet ? (
+          <NotPublishedCard
+            title="Answer sheet — Not published"
+            message="Your teacher has not released the answer sheet for this exam yet."
+          />
+        ) : (
+          <QuestionList
+            questions={questions}
+            mode="sheet"
+            explanations={explanations}
+            expBusy={expBusy}
+            loadExplanation={loadExplanation}
+            showBook={false}
+          />
+        )
+      )}
 
-                  {(q.type === "short" || q.type === "tf") && (
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <div className="rounded-md border border-border p-2">
-                        <div className="text-xs text-muted-foreground">Your answer</div>
-                        <div className="flex flex-wrap gap-x-2">
-                          {chose.length
-                            ? chose.map((c: string, ci: number) => (
-                                <span key={ci}>
-                                  <RichContent inline>{c}</RichContent>
-                                  {ci < chose.length - 1 ? "," : ""}
-                                </span>
-                              ))
-                            : "—"}
-                        </div>
-                      </div>
-                      <div className="rounded-md border border-border p-2">
-                        <div className="text-xs text-muted-foreground">Correct answer</div>
-                        <div className="flex flex-wrap gap-x-2 font-medium text-emerald-600 dark:text-emerald-400">
-                          {correct.map((c: string, ci: number) => (
-                            <span key={ci}>
-                              <RichContent inline>{c}</RichContent>
-                              {ci < correct.length - 1 ? "," : ""}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
+      {tab === "book" && (
+        !exam.showAnswerBook ? (
+          <NotPublishedCard
+            title="Answer book — Not published"
+            message="Step-by-step explanations for this exam have not been released yet."
+          />
+        ) : (
+          <QuestionList
+            questions={questions}
+            mode="book"
+            explanations={explanations}
+            expBusy={expBusy}
+            loadExplanation={loadExplanation}
+            showBook={true}
+          />
+        )
+      )}
 
-                  {tab === "book" && exam.showAnswerBook && (
-                    <div className="rounded-md bg-muted/40 p-3">
-                      {explanations[q.id] ? (
-                        <RichContent className="text-sm leading-relaxed">
-                          {explanations[q.id]}
-                        </RichContent>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => loadExplanation(q.id)}
-                          disabled={!!expBusy[q.id]}
-                        >
-                          <Sparkles className="mr-1.5 h-3.5 w-3.5" />
-                          {expBusy[q.id] ? "Generating…" : "Show detailed explanation"}
-                        </Button>
-                      )}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+      {!hasReview && tab === "summary" && exam.showResult && (
+        <p className="text-xs text-muted-foreground">
+          Detailed review (answer sheet / answer book) is disabled by your teacher for this exam.
+        </p>
       )}
     </>
+  );
+}
+
+function NotPublishedCard({ title, message }: { title: string; message: string }) {
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base text-muted-foreground">{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="text-sm text-muted-foreground">{message}</CardContent>
+    </Card>
+  );
+}
+
+function QuestionList({
+  questions,
+  mode,
+  explanations,
+  expBusy,
+  loadExplanation,
+  showBook,
+}: {
+  questions: any[];
+  mode: "sheet" | "book";
+  explanations: Record<string, string>;
+  expBusy: Record<string, boolean>;
+  loadExplanation: (qid: string) => void;
+  showBook: boolean;
+}) {
+  if (questions.length === 0) {
+    return (
+      <Card>
+        <CardContent className="py-6 text-sm text-muted-foreground">
+          No questions available for review.
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      {questions.map((q: any, i: number) => {
+        const correct = q.correct_answer ?? [];
+        const chose = q.response ?? [];
+        return (
+          <Card key={q.id}>
+            <CardHeader className="pb-2">
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">
+                  Q{i + 1} · {q.type} · {q.marks}m{q.topic ? ` · ${q.topic}` : ""}
+                </div>
+                <div className="flex items-center gap-1 text-sm">
+                  {q.is_correct ? (
+                    <span className="text-emerald-600 dark:text-emerald-400">
+                      ✓ {q.marks_awarded ?? 0}/{q.marks}
+                    </span>
+                  ) : (
+                    <span className="text-destructive">
+                      ✗ {q.marks_awarded ?? 0}/{q.marks}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 pt-0 text-sm">
+              <div className="font-medium"><RichContent>{q.prompt}</RichContent></div>
+              {q.options && (
+                <ul className="ml-4 list-disc space-y-1 text-xs">
+                  {q.options.map((o: string) => {
+                    const isCorrect = correct.includes(o);
+                    const isChosen = chose.includes(o);
+                    return (
+                      <li
+                        key={o}
+                        className={
+                          isCorrect
+                            ? "font-semibold text-emerald-600 dark:text-emerald-400"
+                            : isChosen
+                              ? "text-destructive line-through"
+                              : ""
+                        }
+                      >
+                        <RichContent inline>{o}</RichContent>
+                        {isCorrect && " ✓"}
+                        {!isCorrect && isChosen && " (your answer)"}
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+
+              {(q.type === "short" || q.type === "tf") && (
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="rounded-md border border-border p-2">
+                    <div className="text-xs text-muted-foreground">Your answer</div>
+                    <div className="flex flex-wrap gap-x-2">
+                      {chose.length
+                        ? chose.map((c: string, ci: number) => (
+                            <span key={ci}>
+                              <RichContent inline>{c}</RichContent>
+                              {ci < chose.length - 1 ? "," : ""}
+                            </span>
+                          ))
+                        : "—"}
+                    </div>
+                  </div>
+                  <div className="rounded-md border border-border p-2">
+                    <div className="text-xs text-muted-foreground">Correct answer</div>
+                    <div className="flex flex-wrap gap-x-2 font-medium text-emerald-600 dark:text-emerald-400">
+                      {correct.map((c: string, ci: number) => (
+                        <span key={ci}>
+                          <RichContent inline>{c}</RichContent>
+                          {ci < correct.length - 1 ? "," : ""}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {mode === "book" && showBook && (
+                <div className="rounded-md bg-muted/40 p-3">
+                  {explanations[q.id] ? (
+                    <RichContent className="text-sm leading-relaxed">
+                      {explanations[q.id]}
+                    </RichContent>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => loadExplanation(q.id)}
+                      disabled={!!expBusy[q.id]}
+                    >
+                      <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                      {expBusy[q.id] ? "Generating…" : "Show detailed explanation"}
+                    </Button>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
   );
 }
