@@ -75,7 +75,7 @@ export function PatternPicker({ pattern, config, onChange }: Props) {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm">
-              {pattern === "custom" ? "Custom configuration" : `${PATTERN_PRESETS[pattern as "neet" | "eamcet" | "mains"].label} configuration`}
+              {pattern === "custom" ? "Custom configuration" : `${PATTERN_PRESETS[pattern as Exclude<ExamPattern, "custom">].label} configuration`}
               <span className="ml-2 text-xs font-normal text-muted-foreground">
                 {totalQuestions(config)} questions · {totalMarks(config)} marks
               </span>
