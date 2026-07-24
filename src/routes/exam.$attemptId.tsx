@@ -398,21 +398,46 @@ function TakeExam() {
               />
             )}
 
-            <div className="flex justify-between pt-4">
+            <div className="flex flex-wrap items-center gap-2 pt-4">
               <Button
                 variant="outline"
-                onClick={() => setCurrent((c) => Math.max(0, c - 1))}
-                disabled={current === 0}
+                size="sm"
+                onClick={() => setResp(q.id, [])}
+                disabled={resp.length === 0}
               >
-                Previous
+                Clear
               </Button>
-              {current < questions.length - 1 ? (
-                <Button onClick={() => setCurrent((c) => c + 1)}>Next</Button>
-              ) : (
-                <Button onClick={() => handleSubmit(false)} disabled={submitting}>
-                  {submitting ? "Submitting…" : "Submit exam"}
+              <Button
+                variant={isReviewed ? "default" : "outline"}
+                size="sm"
+                className={isReviewed ? "bg-purple-600 text-white hover:bg-purple-700" : "border-purple-500 text-purple-700 hover:bg-purple-500/10 dark:text-purple-300"}
+                onClick={() =>
+                  setReviewed((s) => {
+                    const n = new Set(s);
+                    if (n.has(q.id)) n.delete(q.id);
+                    else n.add(q.id);
+                    return n;
+                  })
+                }
+              >
+                {isReviewed ? "Unmark review" : "Mark for review"}
+              </Button>
+              <div className="ml-auto flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrent((c) => Math.max(0, c - 1))}
+                  disabled={current === 0}
+                >
+                  Previous
                 </Button>
-              )}
+                {current < questions.length - 1 ? (
+                  <Button onClick={() => setCurrent((c) => c + 1)}>Next</Button>
+                ) : (
+                  <Button onClick={() => handleSubmit(false)} disabled={submitting}>
+                    {submitting ? "Submitting…" : "Submit exam"}
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
