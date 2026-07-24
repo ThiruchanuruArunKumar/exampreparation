@@ -126,7 +126,6 @@ function NewExam() {
 
   const flushSave = useCallback(async () => {
     const s = latest.current;
-    if (!s.title.trim() && s.questions.length === 0) return;
     try {
       const r = await saveDraft({
         data: {
