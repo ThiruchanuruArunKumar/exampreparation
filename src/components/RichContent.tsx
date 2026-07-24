@@ -41,10 +41,13 @@ function sanitizeRich(input: string): string {
     if (p.math) return p.text;
     let t = p.text;
     // Remove wrapping parens/brackets the model added around lone LaTeX
-    t = t.replace(/\(\s*(\\ce\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})\s*\)/g, "$$$1$$");
+    t = t.replace(
+      /\(\s*(\\ce\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})\s*\)/g,
+      (_m, inner: string) => `$${inner}$`,
+    );
     t = t.replace(
       /\[\s*((?:\\[a-zA-Z]+\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}[,\s]*)+)\s*\]/g,
-      (_full, inner: string) => `$${inner.trim()}$`,
+      (_m, inner: string) => `$${inner.trim()}$`,
     );
     // Wrap any remaining bare LaTeX macros in inline math.
     t = t.replace(bareLatexRe, (match) => `$${match}$`);
