@@ -120,20 +120,8 @@ function Results() {
                 <Sparkles className="h-5 w-5 text-primary" /> AI insights
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm">
-              <p>{insight.summary}</p>
-              {insight.weak_topics.length > 0 && (
-                <div>
-                  <div className="mb-1 flex items-center gap-1 font-medium text-destructive">
-                    <TrendingDown className="h-4 w-4" /> Needs work
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {insight.weak_topics.map((t) => (
-                      <Badge key={t} variant="destructive">{t}</Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
+            <CardContent className="space-y-4 text-sm">
+              <RichContent>{insight.summary}</RichContent>
               {insight.strong_topics.length > 0 && (
                 <div>
                   <div className="mb-1 flex items-center gap-1 font-medium text-primary">
@@ -146,10 +134,24 @@ function Results() {
                   </div>
                 </div>
               )}
-              <div className="rounded-md border border-border p-3">
-                <div className="mb-1 font-medium">Study recommendations</div>
-                <p className="whitespace-pre-wrap">{insight.recommendations}</p>
-              </div>
+              {insight.weak_topics.length > 0 && (
+                <div>
+                  <div className="mb-1 flex items-center gap-1 font-medium text-destructive">
+                    <TrendingDown className="h-4 w-4" /> Needs work
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {insight.weak_topics.map((t) => (
+                      <Badge key={t} variant="destructive">{t}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {insight.recommendations && (
+                <div className="rounded-md border border-border p-3">
+                  <div className="mb-2 font-medium">Study plan</div>
+                  <RichContent>{insight.recommendations}</RichContent>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
