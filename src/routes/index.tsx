@@ -312,6 +312,28 @@ function Landing() {
                         </div>
 
                         <div className="mt-auto flex flex-col gap-2 border-t border-border pt-3">
+                          {row.state === "ongoing" && (
+                            <Button
+                              size="sm"
+                              className="w-full"
+                              onClick={async () => {
+                                try {
+                                  const r = await startStudentAttempt({
+                                    data: { studentCode, examId: row.exam.id },
+                                  });
+                                  sessionStorage.setItem(`exam:${r.attemptId}`, r.sessionToken);
+                                  navigate({
+                                    to: "/exam/$attemptId",
+                                    params: { attemptId: r.attemptId },
+                                  });
+                                } catch (err) {
+                                  toast.error((err as Error).message);
+                                }
+                              }}
+                            >
+                              {row.in_progress ? "Resume exam" : "Start exam"}
+                            </Button>
+                          )}
                           <Link
                             to="/exam-info/$examId"
                             params={{ examId: row.exam.id }}
@@ -330,9 +352,11 @@ function Landing() {
                               View result <ArrowRight className="h-3 w-3" />
                             </Link>
                           ) : (
-                            <div className="rounded-md border border-dashed border-border px-3 py-1.5 text-center text-xs text-muted-foreground">
-                              No attempt yet
-                            </div>
+                            row.state !== "ongoing" && (
+                              <div className="rounded-md border border-dashed border-border px-3 py-1.5 text-center text-xs text-muted-foreground">
+                                No attempt yet
+                              </div>
+                            )
                           )}
                         </div>
                       </CardContent>

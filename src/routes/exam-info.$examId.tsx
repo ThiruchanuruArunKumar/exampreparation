@@ -15,7 +15,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
@@ -92,7 +92,7 @@ function ExamInfoPage() {
   );
   const [info, setInfo] = useState<InfoResult | null>(null);
   const [loading, setLoading] = useState(false);
-  const [accessCode, setAccessCode] = useState("");
+  
   const [starting, setStarting] = useState(false);
 
   const load = async (code: string) => {
@@ -147,11 +147,10 @@ function ExamInfoPage() {
         return;
       }
     }
-    if (!accessCode.trim()) return toast.error("Enter the exam password");
     setStarting(true);
     try {
       const r = await startStudentAttempt({
-        data: { studentCode, accessCode: accessCode.trim() },
+        data: { studentCode, examId },
       });
       sessionStorage.setItem(`exam:${r.attemptId}`, r.sessionToken);
       navigate({ to: "/exam/$attemptId", params: { attemptId: r.attemptId } });
@@ -365,19 +364,9 @@ function ExamInfoPage() {
               <CardContent>
                 {info.state === "ongoing" ? (
                   <form onSubmit={start} className="space-y-3">
-                    {!info.in_progress_attempt_id && (
-                      <div>
-                        <Label htmlFor="ac">Exam password</Label>
-                        <Input
-                          id="ac"
-                          autoComplete="off"
-                          placeholder="6-character code"
-                          value={accessCode}
-                          onChange={(e) => setAccessCode(e.target.value.toUpperCase())}
-                          maxLength={10}
-                        />
-                      </div>
-                    )}
+                    <p className="text-xs text-muted-foreground">
+                      You are assigned to this exam — no password required.
+                    </p>
                     <Button type="submit" className="w-full" size="lg" disabled={starting}>
                       {starting ? (
                         <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Starting…</>
@@ -388,6 +377,7 @@ function ExamInfoPage() {
                       )}
                     </Button>
                   </form>
+
                 ) : info.state === "upcoming" ? (
                   <div className="rounded-md bg-muted p-3 text-sm">
                     <Info className="mr-1 inline h-4 w-4 text-sky-500" />
