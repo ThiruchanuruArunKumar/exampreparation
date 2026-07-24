@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const PatternEnum = z.enum(["neet", "eamcet", "mains", "custom"]);
+const PatternEnum = z.enum(["neet", "eamcet", "ts_eamcet_bipc", "mains", "custom"]);
 
 const DraftPayload = z.object({
   id: z.string().uuid().optional().nullable(),
