@@ -79,7 +79,7 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
           count,
           subject: subject || null,
           fileBase64: b64,
-          mimeType: file.type || "application/pdf",
+          mimeType: detectMime(file),
           fileName: file.name,
         },
       });
