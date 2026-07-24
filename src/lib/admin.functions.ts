@@ -641,13 +641,13 @@ const PATTERN_GUIDE: Record<string, string> = {
   custom: "Follow the admin's brief exactly.",
 };
 
-async function runGenerate(prompt: string, userContent: any[]) {
+async function runGenerateOnce(prompt: string, userContent: any[]) {
   const key = process.env.LOVABLE_API_KEY;
   if (!key) throw new Error("Missing LOVABLE_API_KEY");
   const gateway = createLovableAiGatewayProvider(key, { structuredOutputs: true });
   try {
     const { output } = await generateText({
-      model: gateway("openai/gpt-5.5"),
+      model: gateway("openai/gpt-5.4-mini"),
       providerOptions: { lovable: { service_tier: "priority" } },
       output: Output.object({ schema: GenSchema }),
       instructions: prompt,
@@ -664,9 +664,31 @@ async function runGenerate(prompt: string, userContent: any[]) {
   }
 }
 
+// Split large generations into parallel chunks for much faster wall-clock time.
 async function runGenerateExact(prompt: string, userContent: any[], count: number) {
-  const qs = await runGenerate(prompt, userContent);
-  return qs.slice(0, count);
+  const CHUNK = 20;
+  if (count <= CHUNK) {
+    const qs = await runGenerateOnce(prompt, userContent);
+    return qs.slice(0, count);
+  }
+  const chunks: number[] = [];
+  let remaining = count;
+  while (remaining > 0) {
+    const n = Math.min(CHUNK, remaining);
+    chunks.push(n);
+    remaining -= n;
+  }
+  const results = await Promise.all(
+    chunks.map((n, i) => {
+      const chunkPrompt = prompt.replace(/exactly \d+ high-quality questions/, `exactly ${n} high-quality questions`);
+      const chunkContent = [
+        ...userContent,
+        { type: "text", text: `Batch ${i + 1} of ${chunks.length}. Produce exactly ${n} questions for THIS batch only. Vary topics/difficulty from other batches; do not repeat questions. Use a distinct random seed: ${Math.random().toString(36).slice(2, 10)}.` },
+      ];
+      return runGenerateOnce(chunkPrompt, chunkContent).then((qs) => qs.slice(0, n));
+    }),
+  );
+  return results.flat().slice(0, count);
 }
 
 
