@@ -32,6 +32,13 @@ function fileToBase64(file: File): Promise<string> {
   });
 }
 
+function detectMime(file: File): string {
+  if (file.type) return file.type;
+  const n = file.name.toLowerCase();
+  if (n.endsWith(".md") || n.endsWith(".markdown")) return "text/markdown";
+  return "application/octet-stream";
+}
+
 type Props = {
   pattern: ExamPattern;
   subjects: string[];
