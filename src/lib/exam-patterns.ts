@@ -1,4 +1,4 @@
-export type ExamPattern = "neet" | "eamcet" | "mains" | "custom";
+export type ExamPattern = "neet" | "eamcet" | "ts_eamcet_bipc" | "mains" | "custom";
 
 export type PatternSection = {
   name: string;
