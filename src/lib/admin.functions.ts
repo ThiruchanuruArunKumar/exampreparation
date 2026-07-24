@@ -652,8 +652,8 @@ async function runGenerate(prompt: string, userContent: any[]) {
       output: Output.object({ schema: GenSchema }),
       system: prompt,
       messages: [
-        { role: "user", content: userContent as never },
-      ] as never,
+        { role: "user", content: userContent as any },
+      ],
     });
     return output.questions;
   } catch (error) {
@@ -677,6 +677,8 @@ function baseGenPrompt(pattern: string, count: number, subject?: string | null) 
 Generate exactly ${count} high-quality questions${subject ? ` on subject/topic: ${subject}` : ""}.
 Return JSON matching the schema. For MCQ use type "mcq" with 4 options and one correct answer in correct_answer array. For true/false use "tf" with options ["True","False"]. For numerical/short use "short" with options null and correct_answer as accepted answers. Set topic to the subject or sub-topic. Set difficulty (easy/medium/hard) mixed. Do not repeat questions.
 
+LANGUAGE (CRITICAL): Every question prompt, every option, and every correct_answer MUST be written in ENGLISH only. If the source material contains Telugu, Hindi, or any other non-English text, translate it to clear, natural English before producing the question. Never emit non-English script (no Telugu, Devanagari, or other native scripts) in any field.
+
 FORMATTING (CRITICAL — questions render with Markdown + KaTeX):
 - Wrap ALL math, chemistry, physics formulas in LaTeX: inline as $...$ and display as $$...$$. Never use unicode fake-math like x² or H₂O plain text.
 - Powers/subscripts: $x^2$, $a_{ij}$, $H_2O$, $CO_2$, $10^{-3}$.
@@ -687,6 +689,35 @@ FORMATTING (CRITICAL — questions render with Markdown + KaTeX):
 - Preserve line breaks in the prompt using \\n. Options must be pure text of the choice (no "A)"/"B)" prefixes) and may contain LaTeX the same way.
 - Do NOT wrap the whole question in a code block. Do NOT escape backslashes twice.`;
 
+}
+
+// Build an AI-SDK v5 ModelMessage content part (not OpenAI-native image_url/file shapes).
+function buildFilePart(fileBase64: string, mimeType: string, fileName: string) {
+  const isImage = mimeType.startsWith("image/");
+  const isText =
+    mimeType.startsWith("text/") ||
+    mimeType === "application/json" ||
+    /\.(md|markdown|txt|csv|json)$/i.test(fileName);
+  if (isImage) {
+    return {
+      type: "image" as const,
+      image: `data:${mimeType};base64,${fileBase64}`,
+      mediaType: mimeType,
+    };
+  }
+  if (isText) {
+    const text = Buffer.from(fileBase64, "base64").toString("utf-8").slice(0, 200_000);
+    return {
+      type: "text" as const,
+      text: `--- FILE: ${fileName} ---\n${text}\n--- END FILE ---`,
+    };
+  }
+  return {
+    type: "file" as const,
+    data: `data:${mimeType};base64,${fileBase64}`,
+    mediaType: mimeType || "application/octet-stream",
+    filename: fileName,
+  };
 }
 
 export const generateFromNotes = createServerFn({ method: "POST" })
@@ -707,29 +738,10 @@ export const generateFromNotes = createServerFn({ method: "POST" })
     await assertAdmin(context);
     const sys =
       baseGenPrompt(data.pattern, data.count, data.subject) +
-      `\n\nBase the questions strictly on the notes/material in the attached file (${data.fileName}). Cross-reference with the style, difficulty, and pattern of PAST ${data.pattern.toUpperCase()} papers on these topics. Do not invent facts outside the notes.`;
-    const isImage = data.mimeType.startsWith("image/");
-    const isText =
-      data.mimeType.startsWith("text/") ||
-      data.mimeType === "application/json" ||
-      /\.(md|markdown|txt|csv|json)$/i.test(data.fileName);
-    let part: Record<string, unknown>;
-    if (isImage) {
-      part = { type: "image_url", image_url: { url: `data:${data.mimeType};base64,${data.fileBase64}` } };
-    } else if (isText) {
-      const text = Buffer.from(data.fileBase64, "base64").toString("utf-8").slice(0, 200_000);
-      part = { type: "text", text: `--- FILE: ${data.fileName} ---\n${text}\n--- END FILE ---` };
-    } else {
-      part = {
-        type: "file",
-        file: {
-          filename: data.fileName,
-          file_data: `data:${data.mimeType};base64,${data.fileBase64}`,
-        },
-      };
-    }
+      `\n\nBase the questions strictly on the notes/material in the attached file (${data.fileName}). Cross-reference with the style, difficulty, and pattern of PAST ${data.pattern.toUpperCase()} papers on these topics. Do not invent facts outside the notes. If the source is in Telugu/Hindi/any non-English language, translate all questions and options to English.`;
+    const part = buildFilePart(data.fileBase64, data.mimeType, data.fileName);
     const questions = await runGenerateExact(sys, [
-      { type: "text", text: `Generate exactly ${data.count} questions from these notes. Do not produce more or fewer than ${data.count}.` },
+      { type: "text", text: `Generate exactly ${data.count} questions from these notes. Do not produce more or fewer than ${data.count}. Output in ENGLISH only.` },
       part,
     ], data.count);
     return { questions };
