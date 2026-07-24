@@ -469,7 +469,7 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
         const gateway = createLovableAiGatewayProvider(key, { structuredOutputs: true });
         const { output } = await generateText({
           model: gateway("openai/gpt-5.4-mini"),
-          providerOptions: { lovable: { serviceTier: "priority" } },
+          providerOptions: { lovable: { service_tier: "priority" } },
           output: Output.object({
             schema: z.object({
               summary: z.string(),
@@ -602,7 +602,7 @@ export const getStudentExplanation = createServerFn({ method: "POST" })
     const gateway = createLovableAiGatewayProvider(key);
     const { text } = await generateText({
       model: gateway("openai/gpt-5.4-mini"),
-      providerOptions: { lovable: { serviceTier: "priority" } },
+      providerOptions: { lovable: { service_tier: "priority" } },
       system:
         "You are an expert tutor writing an Answer Book entry for a competitive-exam question. Structure the reply EXACTLY as Markdown with these sections and headings:\n\n### Correct answer\nState the correct option verbatim in **bold**.\n\n### Why it's correct\n2-4 short sentences.\n\n### Step-by-step solution\nNumbered steps. Each step is ONE idea. Show every formula used with its name, define each variable, show substitutions.\n\n### Why the other options are wrong\nOne short bullet per wrong option.\n\n### Key takeaway\n1 line the student should remember.\n\nFORMATTING RULES (critical — output renders with Markdown + KaTeX + mhchem):\n- Wrap ALL math AND chemistry in $...$ (inline) or $$...$$ (display). Never leave raw \\ce{...}, \\frac, ^, _ outside of $...$ — they will not render.\n- Chemistry: $\\ce{H2SO4 -> 2H+ + SO4^{2-}}$. Never write \\ce{...} without surrounding $ signs.\n- Powers/subs: $x^2$, $H_2O$, $10^{-3}$. Units: $9.8\\,\\text{m/s}^2$.\n- Be concise. No preamble like 'Sure!' or 'Let's solve this'.",
       prompt: JSON.stringify(
@@ -761,7 +761,7 @@ export const getHistoryExplanation = createServerFn({ method: "POST" })
     const gateway = createLovableAiGatewayProvider(key);
     const { text } = await generateText({
       model: gateway("openai/gpt-5.4-mini"),
-      providerOptions: { lovable: { serviceTier: "priority" } },
+      providerOptions: { lovable: { service_tier: "priority" } },
       system:
         "You are an expert tutor writing an Answer Book entry for a competitive-exam question. Structure the reply EXACTLY as Markdown with these sections and headings:\n\n### Correct answer\nState the correct option verbatim in **bold**.\n\n### Why it's correct\n2-4 short sentences.\n\n### Step-by-step solution\nNumbered steps. Each step is ONE idea. Show every formula used with its name, define each variable, show substitutions.\n\n### Why the other options are wrong\nOne short bullet per wrong option.\n\n### Key takeaway\n1 line the student should remember.\n\nFORMATTING RULES (critical — output renders with Markdown + KaTeX + mhchem):\n- Wrap ALL math AND chemistry in $...$ (inline) or $$...$$ (display). Never leave raw \\ce{...}, \\frac, ^, _ outside of $...$ — they will not render.\n- Chemistry: $\\ce{H2SO4 -> 2H+ + SO4^{2-}}$. Never write \\ce{...} without surrounding $ signs.\n- Powers/subs: $x^2$, $H_2O$, $10^{-3}$. Units: $9.8\\,\\text{m/s}^2$.\n- Be concise. No preamble like 'Sure!' or 'Let's solve this'.",
       prompt: JSON.stringify(
