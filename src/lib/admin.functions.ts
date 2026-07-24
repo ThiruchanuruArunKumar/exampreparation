@@ -631,14 +631,55 @@ const GenQuestionSchema = z.object({
 });
 const GenSchema = z.object({ questions: z.array(GenQuestionSchema) });
 
+// Real-exam question-format mix. All output remains type "mcq" (4 options) or
+// "short" (numerical) — assertion/statement/match-the-list are STRUCTURED prompts
+// inside an mcq, not new question types.
+const PATTERN_FORMAT_MIX = `
+QUESTION FORMAT MIX (must match real exam papers):
+Produce a realistic mix of these formats. Every "structured" format below is
+still type="mcq" with exactly 4 options — the STRUCTURE lives inside the prompt.
+
+1) Direct single-correct MCQ — a plain conceptual/numerical MCQ with 4 options.
+2) Assertion & Reason — prompt contains two lines:
+      "Assertion (A): <statement>."
+      "Reason (R): <statement>."
+   Options are EXACTLY (in this order, verbatim):
+      "Both A and R are true and R is the correct explanation of A"
+      "Both A and R are true but R is not the correct explanation of A"
+      "A is true but R is false"
+      "A is false but R is true"
+3) Statement-based (Statement-I / Statement-II) — prompt contains two labelled
+   statements. Options are EXACTLY:
+      "Both Statement-I and Statement-II are correct"
+      "Both Statement-I and Statement-II are incorrect"
+      "Statement-I is correct and Statement-II is incorrect"
+      "Statement-I is incorrect and Statement-II is correct"
+4) Match the following (List-I / List-II or Column-I / Column-II) — prompt
+   shows two lists (A,B,C,(D) → i,ii,iii,iv,(v)) and asks the correct pairing.
+   Options are 4 candidate mappings written like "A-ii, B-iv, C-i, D-iii".
+5) Multiple correct combinations — prompt lists 3-4 statements (i, ii, iii, iv)
+   and asks which combination is correct. Options are 4 candidate subsets like
+   "(i) and (iii) only".
+6) Numerical / integer answer (JEE Main only) — type="short", options=null,
+   correct_answer is the numeric value as string (e.g. ["12"] or ["3.14"]).
+
+correct_answer for structured formats MUST be the FULL option text, verbatim.
+Never emit just "1" or "A" — emit the whole matching option string.`;
+
 const PATTERN_GUIDE: Record<string, string> = {
   neet:
-    "NEET UG (India) standard. Single-correct MCQs only (type=mcq) with exactly 4 options. NCERT Class 11 & 12 syllabus. Subjects: Physics, Chemistry, Botany, Zoology. Marks per question = 4. Difficulty balanced (easy/medium/hard). Style must match previous NEET question papers — conceptual, application-based, formula recall.",
+    `NEET UG (India) standard. NCERT Class 11 & 12 syllabus. Subjects: Physics, Chemistry, Botany, Zoology. Marks per question = 4 (+4 correct, −1 wrong). Style must match previous NEET papers.
+Approximate format ratio for NEET: ~70% direct single-correct MCQ, ~15% Assertion & Reason, ~10% Statement-based, ~5% Match-the-following. No numerical/integer type. All questions type="mcq" with exactly 4 options.${PATTERN_FORMAT_MIX}`,
   eamcet:
-    "AP/TS EAMCET (Engineering) standard. Single-correct MCQs only (type=mcq) with exactly 4 options. Intermediate 1st & 2nd year syllabus. Subjects: Mathematics, Physics, Chemistry. Marks per question = 1, no negative marks. Style must match previous EAMCET question papers — direct and formula-based.",
+    `AP/TS EAMCET (Engineering, MPC) standard. Intermediate 1st & 2nd year syllabus. Subjects: Mathematics, Physics, Chemistry. Marks per question = 1, no negative marks.
+Approximate format ratio: ~80% direct single-correct MCQ, ~10% Match-the-following, ~5% Assertion & Reason, ~5% Statement-based / Multiple-correct-combination. No numerical/integer type. All questions type="mcq" with exactly 4 options.${PATTERN_FORMAT_MIX}`,
+  ts_eamcet_bipc:
+    `TS EAMCET (Agriculture & Medical / BIPC) standard. Intermediate 1st & 2nd year syllabus. Subjects: Botany, Zoology, Physics, Chemistry. Marks per question = 1, no negative marks.
+Approximate format ratio: ~75% direct single-correct MCQ, ~10% Assertion & Reason, ~10% Match-the-following, ~5% Statement-based / Multiple-correct-combination. No numerical type. All questions type="mcq" with exactly 4 options.${PATTERN_FORMAT_MIX}`,
   mains:
-    "JEE Main (India) standard. Single-correct MCQs (type=mcq, 4 options) and numerical-value questions (type=short with numeric expected answer). CBSE Class 11 & 12 syllabus. Subjects: Physics, Chemistry, Mathematics. Marks per question = 4. Style must match previous JEE Main papers — conceptual + calculation heavy.",
-  custom: "Follow the admin's brief exactly.",
+    `JEE Main (India) standard. CBSE Class 11 & 12 syllabus. Subjects: Physics, Chemistry, Mathematics. Marks per question = 4 (+4 correct, −1 wrong for MCQ; numerical section: +4/−1).
+Approximate format ratio: ~65% direct single-correct MCQ, ~20% Numerical/integer (type="short"), ~5% Assertion & Reason, ~5% Statement-based, ~5% Match-the-following. Non-numerical questions are type="mcq" with exactly 4 options.${PATTERN_FORMAT_MIX}`,
+  custom: `Follow the admin's brief exactly.${PATTERN_FORMAT_MIX}`,
 };
 
 async function runGenerateOnce(prompt: string, userContent: any[]) {
