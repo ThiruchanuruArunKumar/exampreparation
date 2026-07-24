@@ -44,7 +44,32 @@ export const extractQuestions = createServerFn({ method: "POST" })
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
     const gateway = createLovableAiGatewayProvider(key, { structuredOutputs: true });
 
-    const system = `You extract exam questions from documents. Return every question you can identify with type, options (for MCQ/multi/tf), the correct answer(s) as an array of strings, marks (1 if not stated), topic (short subject/topic tag), and difficulty (easy/medium/hard). For true/false use type "tf" with options ["True","False"]. For short-answer use type "short" with options null and correct_answer as accepted answers.`;
+    const system = `You extract exam questions from documents. Return every question you can identify with type, options (for MCQ/multi/tf), the correct answer(s) as an array of strings, marks (1 if not stated), topic (short subject/topic tag), and difficulty (easy/medium/hard). For true/false use type "tf" with options ["True","False"]. For short-answer use type "short" with options null and correct_answer as accepted answers.
+
+LANGUAGE (CRITICAL): Every question prompt, every option, and every correct_answer MUST be written in ENGLISH only. If the source contains Telugu, Hindi, or any other non-English text, translate it into clear, natural English before returning. Never emit non-English script (no Telugu, Devanagari, or other native scripts) in any field.`;
+
+    const isImage = data.mimeType.startsWith("image/");
+    const isText =
+      data.mimeType.startsWith("text/") ||
+      data.mimeType === "application/json" ||
+      /\.(md|markdown|txt|csv|json)$/i.test(data.fileName);
+    const filePart = isImage
+      ? {
+          type: "image" as const,
+          image: `data:${data.mimeType};base64,${data.fileBase64}`,
+          mediaType: data.mimeType,
+        }
+      : isText
+        ? {
+            type: "text" as const,
+            text: `--- FILE: ${data.fileName} ---\n${Buffer.from(data.fileBase64, "base64").toString("utf-8").slice(0, 200_000)}\n--- END FILE ---`,
+          }
+        : {
+            type: "file" as const,
+            data: `data:${data.mimeType};base64,${data.fileBase64}`,
+            mediaType: data.mimeType || "application/octet-stream",
+            filename: data.fileName,
+          };
 
     try {
       const { output } = await generateText({
@@ -55,29 +80,11 @@ export const extractQuestions = createServerFn({ method: "POST" })
           {
             role: "user",
             content: [
-              { type: "text", text: `Extract all questions from this file: ${data.fileName}` },
-              data.mimeType.startsWith("image/")
-                ? {
-                    type: "image_url",
-                    image_url: { url: `data:${data.mimeType};base64,${data.fileBase64}` },
-                  }
-                : data.mimeType.startsWith("text/") ||
-                    data.mimeType === "application/json" ||
-                    /\.(md|markdown|txt|csv|json)$/i.test(data.fileName)
-                  ? {
-                      type: "text",
-                      text: `--- FILE: ${data.fileName} ---\n${Buffer.from(data.fileBase64, "base64").toString("utf-8").slice(0, 200_000)}\n--- END FILE ---`,
-                    }
-                  : {
-                      type: "file",
-                      file: {
-                        filename: data.fileName,
-                        file_data: `data:${data.mimeType};base64,${data.fileBase64}`,
-                      },
-                    },
-            ] as never,
+              { type: "text", text: `Extract all questions from this file: ${data.fileName}. Output in ENGLISH only — translate if the source is not English.` },
+              filePart,
+            ] as any,
           },
-        ] as never,
+        ],
       });
       return output;
     } catch (error) {
