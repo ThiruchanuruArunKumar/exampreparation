@@ -62,13 +62,8 @@ function AuthPage() {
     }
   };
 
-  const handleGoogle = async () => {
-    const res = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    if (res.error) toast.error(res.error.message ?? "Google sign-in failed");
-    else if (!res.redirected) goNext();
-  };
+
+
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-8">
