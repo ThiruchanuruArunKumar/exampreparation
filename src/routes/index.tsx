@@ -280,7 +280,14 @@ function Landing() {
                   </button>
                 </div>
               )}
+              <Link
+                to="/parent"
+                className="text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+              >
+                Parent / guardian progress report →
+              </Link>
             </form>
+
           </div>
 
           {loadingList && !exams && (
