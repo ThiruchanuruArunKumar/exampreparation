@@ -301,7 +301,13 @@ function NewExam() {
                 <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                   <div className="text-xs uppercase tracking-wide text-muted-foreground">
                     Q{i + 1} · {q.type} · {q.marks}m {q.topic && `· ${q.topic}`}
+                    {q.source_ref && (
+                      <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-primary">
+                        {q.source_ref}
+                      </span>
+                    )}
                   </div>
+
                   <Button variant="ghost" size="sm" onClick={() => setQuestions((qs) => qs.filter((_, j) => j !== i))}>
                     <Trash2 className="h-4 w-4" />
                   </Button>

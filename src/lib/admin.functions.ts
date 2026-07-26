@@ -54,8 +54,10 @@ const QuestionInput = z.object({
   correct_answer: z.array(z.string()),
   marks: z.number().min(0).max(100),
   topic: z.string().nullable(),
-  difficulty: z.enum(["easy", "medium", "hard"]),
+  difficulty: z.enum(["easy", "medium", "hard", "extreme"]),
+  source_ref: z.string().nullable().optional(),
 });
+
 
 /* ---------------- Access code helpers ---------------- */
 
@@ -142,7 +144,9 @@ export const createExam = createServerFn({ method: "POST" })
         marks: q.marks,
         topic: q.topic,
         difficulty: q.difficulty,
+        source_ref: q.source_ref ?? null,
         order_index: i,
+
       }));
       const { error: qErr } = await supabaseAdmin.from("questions").insert(rows);
       if (qErr) throw qErr;
@@ -309,7 +313,10 @@ export const saveQuestions = createServerFn({ method: "POST" })
       marks: q.marks,
       topic: q.topic,
       difficulty: q.difficulty,
+      source_ref: q.source_ref ?? null,
       order_index: i,
+
+
     }));
     if (rows.length) {
       const { error } = await supabaseAdmin.from("questions").upsert(rows, { onConflict: "id" });
@@ -620,6 +627,9 @@ export const adminGetStudentHistory = createServerFn({ method: "POST" })
 
 /* ---------------- AI question generation & append ---------------- */
 
+export const GenModeEnum = z.enum(["ai", "pyq"]);
+export const ToughnessEnum = z.enum(["easy", "medium", "hard", "extreme"]);
+
 const GenQuestionSchema = z.object({
   type: z.enum(["mcq", "multi", "tf", "short"]),
   prompt: z.string(),
@@ -627,9 +637,25 @@ const GenQuestionSchema = z.object({
   correct_answer: z.array(z.string()),
   marks: z.number().min(0).max(100),
   topic: z.string().nullable(),
-  difficulty: z.enum(["easy", "medium", "hard"]),
+  difficulty: z.enum(["easy", "medium", "hard", "extreme"]),
+  source_ref: z.string().nullable(),
 });
 const GenSchema = z.object({ questions: z.array(GenQuestionSchema) });
+
+type GenQuestion = z.infer<typeof GenQuestionSchema>;
+
+// Force the admin-chosen toughness onto every question and make sure PYQ
+// questions always carry a year/shift reference.
+function normalizeGenerated(questions: GenQuestion[], genMode: string, toughness: string) {
+  return questions.map((q) => ({
+    ...q,
+    difficulty: toughness as GenQuestion["difficulty"],
+    source_ref:
+      q.source_ref?.trim() ||
+      (genMode === "pyq" || toughness === "extreme" ? "Previous year (year/shift not identified)" : null),
+  }));
+}
+
 
 // Real-exam question-format mix. All output remains type "mcq" (4 options) or
 // "short" (numerical) — assertion/statement/match-the-list are STRUCTURED prompts
@@ -734,11 +760,41 @@ async function runGenerateExact(prompt: string, userContent: any[], count: numbe
 
 
 
-function baseGenPrompt(pattern: string, count: number, subject?: string | null) {
+const TOUGHNESS_GUIDE: Record<string, string> = {
+  easy:
+    `TOUGHNESS: EASY. Single-step, direct-recall or one-formula questions. Straight from NCERT/Intermediate textbook lines. Distractors are obviously wrong. Difficulty field = "easy" for every question.`,
+  medium:
+    `TOUGHNESS: MEDIUM. Two-step reasoning or one application of a formula, typical of an average question in the real paper. Distractors are plausible. Difficulty field = "medium" for every question.`,
+  hard:
+    `TOUGHNESS: HARD. Multi-concept, multi-step questions matching the toughest 20% of the real paper. Combine two chapters, require careful unit/exception handling, and use very close distractors. Difficulty field = "hard" for every question.`,
+  extreme:
+    `TOUGHNESS: EXTREME. Reproduce the EXACT questions asked in previous years' hardest shifts (the shift that was reported as the toughest that year). Do not simplify them. Every question must carry its real source_ref, e.g. "NEET 2022 (Phase 2)" or "JEE Main 2023 · Jan 31 Shift 2". Difficulty field = "extreme" for every question.`,
+};
+
+const MODE_GUIDE: Record<string, string> = {
+  ai:
+    `GENERATION MODE: AI-GENERATED (previous-year aligned). Every question must be a close variant/modification of a question actually asked in a previous year of this exam — same concept, same structure, same trap, with numbers, species, or wording changed. Never invent an off-pattern question. Set source_ref to the paper you modelled it on, prefixed with "Modelled on ", e.g. "Modelled on NEET 2021".`,
+  pyq:
+    `GENERATION MODE: PREVIOUS YEAR QUESTIONS (PYQ) ONLY. Every question MUST be an actual question asked in a real past paper of this exam, reproduced faithfully (wording, options, correct answer). Do NOT invent questions and do NOT paraphrase. source_ref is MANDATORY for every question and must state the exam, year and shift/phase exactly, e.g. "NEET 2023", "JEE Main 2024 · Apr 06 Shift 1", "TS EAMCET 2022 · Jul 18 Forenoon". If you are not confident a question was really asked, do not include it — pick another real one.`,
+};
+
+function baseGenPrompt(
+  pattern: string,
+  count: number,
+  subject?: string | null,
+  genMode: string = "ai",
+  toughness: string = "medium",
+) {
   const guide = PATTERN_GUIDE[pattern] ?? PATTERN_GUIDE.custom;
   return `You are an expert exam question setter. ${guide}
+
+${MODE_GUIDE[genMode] ?? MODE_GUIDE.ai}
+
+${TOUGHNESS_GUIDE[toughness] ?? TOUGHNESS_GUIDE.medium}
+
 Generate exactly ${count} high-quality questions${subject ? ` on subject/topic: ${subject}` : ""}.
-Return JSON matching the schema. For MCQ use type "mcq" with 4 options and one correct answer in correct_answer array. For true/false use "tf" with options ["True","False"]. For numerical/short use "short" with options null and correct_answer as accepted answers. Set topic to the subject or sub-topic. Set difficulty (easy/medium/hard) mixed. Do not repeat questions.
+Return JSON matching the schema. For MCQ use type "mcq" with 4 options and one correct answer in correct_answer array. For true/false use "tf" with options ["True","False"]. For numerical/short use "short" with options null and correct_answer as accepted answers. Set topic to the subject or sub-topic. Set difficulty to the toughness level requested above. Set source_ref as described above (null only when genMode is AI and no source paper applies). Do not repeat questions.
+
 
 LANGUAGE (CRITICAL): Every question prompt, every option, and every correct_answer MUST be written in ENGLISH only. If the source material contains Telugu, Hindi, or any other non-English text, translate it to clear, natural English before producing the question. Never emit non-English script (no Telugu, Devanagari, or other native scripts) in any field.
 
@@ -794,20 +850,22 @@ export const generateFromNotes = createServerFn({ method: "POST" })
         fileBase64: z.string(),
         mimeType: z.string(),
         fileName: z.string(),
+        genMode: GenModeEnum.default("ai"),
+        toughness: ToughnessEnum.default("medium"),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const sys =
-      baseGenPrompt(data.pattern, data.count, data.subject) +
+      baseGenPrompt(data.pattern, data.count, data.subject, data.genMode, data.toughness) +
       `\n\nBase the questions strictly on the notes/material in the attached file (${data.fileName}). Cross-reference with the style, difficulty, and pattern of PAST ${data.pattern.toUpperCase()} papers on these topics. Do not invent facts outside the notes. If the source is in Telugu/Hindi/any non-English language, translate all questions and options to English.`;
     const part = buildFilePart(data.fileBase64, data.mimeType, data.fileName);
     const questions = await runGenerateExact(sys, [
       { type: "text", text: `Generate exactly ${data.count} questions from these notes. Do not produce more or fewer than ${data.count}. Output in ENGLISH only.` },
       part,
     ], data.count);
-    return { questions };
+    return { questions: normalizeGenerated(questions, data.genMode, data.toughness) };
   });
 
 export const generateFromDescription = createServerFn({ method: "POST" })
@@ -819,17 +877,20 @@ export const generateFromDescription = createServerFn({ method: "POST" })
         count: z.number().int().min(1).max(60),
         subject: z.string().max(120).nullable().optional(),
         description: z.string().min(3).max(4000),
+        genMode: GenModeEnum.default("ai"),
+        toughness: ToughnessEnum.default("medium"),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const sys = baseGenPrompt(data.pattern, data.count, data.subject);
+    const sys = baseGenPrompt(data.pattern, data.count, data.subject, data.genMode, data.toughness);
     const questions = await runGenerateExact(sys, [
       { type: "text", text: `Exam brief / topics from admin:\n${data.description}\n\nProduce exactly ${data.count} questions — no more, no less.` },
     ], data.count);
-    return { questions };
+    return { questions: normalizeGenerated(questions, data.genMode, data.toughness) };
   });
+
 
 export const appendQuestions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -857,7 +918,9 @@ export const appendQuestions = createServerFn({ method: "POST" })
       marks: q.marks,
       topic: q.topic,
       difficulty: q.difficulty,
+      source_ref: q.source_ref ?? null,
       order_index: start + i,
+
     }));
     const { error } = await supabaseAdmin.from("questions").insert(rows);
     if (error) throw error;
@@ -910,7 +973,7 @@ export const adminGetAttemptDetail = createServerFn({ method: "POST" })
     let questions: any[] = [];
     if (qids.length) {
       const [{ data: qs }, { data: ans }] = await Promise.all([
-        context.supabase.from("questions").select("id, type, prompt, options, correct_answer, marks, topic").in("id", qids),
+        context.supabase.from("questions").select("id, type, prompt, options, correct_answer, marks, topic, source_ref").in("id", qids),
         context.supabase.from("answers").select("question_id, response, is_correct, marks_awarded").eq("attempt_id", att.id),
       ]);
       const ansMap = new Map((ans ?? []).map((a: any) => [a.question_id, a]));
@@ -928,6 +991,8 @@ export const adminGetAttemptDetail = createServerFn({ method: "POST" })
             correct_answer: q.correct_answer,
             marks: q.marks,
             topic: q.topic,
+            source_ref: q.source_ref ?? null,
+
             response: (a?.response as string[] | null) ?? [],
             is_correct: a?.is_correct ?? null,
             marks_awarded: a?.marks_awarded ?? 0,

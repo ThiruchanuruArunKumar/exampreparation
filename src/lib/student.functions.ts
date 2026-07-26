@@ -546,7 +546,7 @@ export const getStudentReview = createServerFn({ method: "POST" })
     const order = (att.question_order as { qid: string; options_order: number[] | null }[]) ?? [];
     const qids = order.map((o) => o.qid);
     const [{ data: qs }, { data: ans }] = await Promise.all([
-      sb.from("questions").select("id, type, prompt, options, correct_answer, marks, topic").in("id", qids),
+      sb.from("questions").select("id, type, prompt, options, correct_answer, marks, topic, source_ref").in("id", qids),
       sb.from("answers").select("question_id, response, is_correct, marks_awarded").eq("attempt_id", att.id),
     ]);
     const ansMap = new Map((ans ?? []).map((a) => [a.question_id, a]));
@@ -564,6 +564,7 @@ export const getStudentReview = createServerFn({ method: "POST" })
           correct_answer: q.correct_answer,
           marks: q.marks,
           topic: q.topic,
+          source_ref: (q as { source_ref?: string | null }).source_ref ?? null,
           response: (a?.response as string[] | null) ?? [],
           is_correct: a?.is_correct ?? null,
           marks_awarded: a?.marks_awarded ?? 0,
@@ -687,7 +688,7 @@ export const getHistoryAttemptDetail = createServerFn({ method: "POST" })
       const order = (att.question_order as { qid: string; options_order: number[] | null }[]) ?? [];
       const qids = order.map((o) => o.qid);
       const [{ data: qs }, { data: ans }] = await Promise.all([
-        sb.from("questions").select("id, type, prompt, options, correct_answer, marks, topic").in("id", qids),
+        sb.from("questions").select("id, type, prompt, options, correct_answer, marks, topic, source_ref").in("id", qids),
         sb.from("answers").select("question_id, response, is_correct, marks_awarded").eq("attempt_id", att.id),
       ]);
       const ansMap = new Map((ans ?? []).map((a) => [a.question_id, a]));
@@ -705,6 +706,7 @@ export const getHistoryAttemptDetail = createServerFn({ method: "POST" })
             correct_answer: q.correct_answer,
             marks: q.marks,
             topic: q.topic,
+            source_ref: (q as { source_ref?: string | null }).source_ref ?? null,
             response: (a?.response as string[] | null) ?? [],
             is_correct: a?.is_correct ?? null,
             marks_awarded: a?.marks_awarded ?? 0,
