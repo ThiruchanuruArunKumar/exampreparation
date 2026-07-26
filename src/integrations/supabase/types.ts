@@ -399,6 +399,7 @@ export type Database = {
           options: Json | null
           order_index: number
           prompt: string
+          source_ref: string | null
           topic: string | null
           type: string
         }
@@ -412,6 +413,7 @@ export type Database = {
           options?: Json | null
           order_index?: number
           prompt: string
+          source_ref?: string | null
           topic?: string | null
           type: string
         }
@@ -425,6 +427,7 @@ export type Database = {
           options?: Json | null
           order_index?: number
           prompt?: string
+          source_ref?: string | null
           topic?: string | null
           type?: string
         }
