@@ -930,6 +930,8 @@ export const adminGetAttemptDetail = createServerFn({ method: "POST" })
             correct_answer: q.correct_answer,
             marks: q.marks,
             topic: q.topic,
+            source_ref: q.source_ref ?? null,
+
             response: (a?.response as string[] | null) ?? [],
             is_correct: a?.is_correct ?? null,
             marks_awarded: a?.marks_awarded ?? 0,
