@@ -796,20 +796,22 @@ export const generateFromNotes = createServerFn({ method: "POST" })
         fileBase64: z.string(),
         mimeType: z.string(),
         fileName: z.string(),
+        genMode: GenModeEnum.default("ai"),
+        toughness: ToughnessEnum.default("medium"),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const sys =
-      baseGenPrompt(data.pattern, data.count, data.subject) +
+      baseGenPrompt(data.pattern, data.count, data.subject, data.genMode, data.toughness) +
       `\n\nBase the questions strictly on the notes/material in the attached file (${data.fileName}). Cross-reference with the style, difficulty, and pattern of PAST ${data.pattern.toUpperCase()} papers on these topics. Do not invent facts outside the notes. If the source is in Telugu/Hindi/any non-English language, translate all questions and options to English.`;
     const part = buildFilePart(data.fileBase64, data.mimeType, data.fileName);
     const questions = await runGenerateExact(sys, [
       { type: "text", text: `Generate exactly ${data.count} questions from these notes. Do not produce more or fewer than ${data.count}. Output in ENGLISH only.` },
       part,
     ], data.count);
-    return { questions };
+    return { questions: normalizeGenerated(questions, data.genMode, data.toughness) };
   });
 
 export const generateFromDescription = createServerFn({ method: "POST" })
@@ -821,17 +823,20 @@ export const generateFromDescription = createServerFn({ method: "POST" })
         count: z.number().int().min(1).max(60),
         subject: z.string().max(120).nullable().optional(),
         description: z.string().min(3).max(4000),
+        genMode: GenModeEnum.default("ai"),
+        toughness: ToughnessEnum.default("medium"),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const sys = baseGenPrompt(data.pattern, data.count, data.subject);
+    const sys = baseGenPrompt(data.pattern, data.count, data.subject, data.genMode, data.toughness);
     const questions = await runGenerateExact(sys, [
       { type: "text", text: `Exam brief / topics from admin:\n${data.description}\n\nProduce exactly ${data.count} questions — no more, no less.` },
     ], data.count);
-    return { questions };
+    return { questions: normalizeGenerated(questions, data.genMode, data.toughness) };
   });
+
 
 export const appendQuestions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
