@@ -912,7 +912,7 @@ export const adminGetAttemptDetail = createServerFn({ method: "POST" })
     let questions: any[] = [];
     if (qids.length) {
       const [{ data: qs }, { data: ans }] = await Promise.all([
-        context.supabase.from("questions").select("id, type, prompt, options, correct_answer, marks, topic").in("id", qids),
+        context.supabase.from("questions").select("id, type, prompt, options, correct_answer, marks, topic, source_ref").in("id", qids),
         context.supabase.from("answers").select("question_id, response, is_correct, marks_awarded").eq("attempt_id", att.id),
       ]);
       const ansMap = new Map((ans ?? []).map((a: any) => [a.question_id, a]));
