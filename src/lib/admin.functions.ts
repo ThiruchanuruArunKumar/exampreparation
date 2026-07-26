@@ -622,6 +622,9 @@ export const adminGetStudentHistory = createServerFn({ method: "POST" })
 
 /* ---------------- AI question generation & append ---------------- */
 
+export const GenModeEnum = z.enum(["ai", "pyq"]);
+export const ToughnessEnum = z.enum(["easy", "medium", "hard", "extreme"]);
+
 const GenQuestionSchema = z.object({
   type: z.enum(["mcq", "multi", "tf", "short"]),
   prompt: z.string(),
@@ -629,9 +632,25 @@ const GenQuestionSchema = z.object({
   correct_answer: z.array(z.string()),
   marks: z.number().min(0).max(100),
   topic: z.string().nullable(),
-  difficulty: z.enum(["easy", "medium", "hard"]),
+  difficulty: z.enum(["easy", "medium", "hard", "extreme"]),
+  source_ref: z.string().nullable(),
 });
 const GenSchema = z.object({ questions: z.array(GenQuestionSchema) });
+
+type GenQuestion = z.infer<typeof GenQuestionSchema>;
+
+// Force the admin-chosen toughness onto every question and make sure PYQ
+// questions always carry a year/shift reference.
+function normalizeGenerated(questions: GenQuestion[], genMode: string, toughness: string) {
+  return questions.map((q) => ({
+    ...q,
+    difficulty: toughness as GenQuestion["difficulty"],
+    source_ref:
+      q.source_ref?.trim() ||
+      (genMode === "pyq" || toughness === "extreme" ? "Previous year (year/shift not identified)" : null),
+  }));
+}
+
 
 // Real-exam question-format mix. All output remains type "mcq" (4 options) or
 // "short" (numerical) — assertion/statement/match-the-list are STRUCTURED prompts
