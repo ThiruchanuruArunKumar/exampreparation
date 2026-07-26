@@ -20,8 +20,12 @@ export type GeneratedQuestion = {
   correct_answer: string[];
   marks: number;
   topic: string | null;
-  difficulty: "easy" | "medium" | "hard";
+  difficulty: "easy" | "medium" | "hard" | "extreme";
+  source_ref?: string | null;
 };
+
+export type GenMode = "ai" | "pyq";
+export type Toughness = "easy" | "medium" | "hard" | "extreme";
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -51,6 +55,8 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
   const [count, setCount] = useState(10);
   const [subject, setSubject] = useState<string>(subjects[0] ?? "");
   const [description, setDescription] = useState("");
+  const [genMode, setGenMode] = useState<GenMode>("ai");
+  const [toughness, setToughness] = useState<Toughness>("medium");
 
   const doExtract = async (file: File) => {
     setBusy(true);
@@ -81,6 +87,8 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
           fileBase64: b64,
           mimeType: detectMime(file),
           fileName: file.name,
+          genMode,
+          toughness,
         },
       });
       onQuestions(res.questions as GeneratedQuestion[]);
@@ -97,7 +105,7 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
     setBusy(true);
     try {
       const res = await generateFromDescription({
-        data: { pattern, count, subject: subject || null, description: description.trim() },
+        data: { pattern, count, subject: subject || null, description: description.trim(), genMode, toughness },
       });
       onQuestions(res.questions as GeneratedQuestion[]);
       toast.success(`Generated ${res.questions.length} questions for ${subject || "the exam"}`);
@@ -116,10 +124,10 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
     setBusy(true);
     try {
       toast.info(`Generating ${sections.length} subjects in parallel…`);
-      const results = await Promise.all(
+      const results: number[] = await Promise.all(
         sections.map((sec) =>
           generateFromDescription({
-            data: { pattern, count: sec.count, subject: sec.name, description: description.trim() },
+            data: { pattern, count: sec.count, subject: sec.name, description: description.trim(), genMode, toughness },
           }).then((res) => {
             onQuestions(res.questions as GeneratedQuestion[]);
             return res.questions.length;
@@ -145,7 +153,8 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
         correct_answer: [],
         marks: pattern === "neet" || pattern === "mains" ? 4 : 1,
         topic: subject || null,
-        difficulty: "medium",
+        difficulty: toughness,
+        source_ref: null,
       },
     ]);
   };
@@ -185,6 +194,57 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
               ) : (
                 <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Kinematics" />
               )}
+            </div>
+          </div>
+
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label>Generation type</Label>
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                {([
+                  { v: "ai", label: "AI generated", hint: "Close variants of real past questions" },
+                  { v: "pyq", label: "Previous year", hint: "Actual PYQs with year & shift" },
+                ] as const).map((o) => (
+                  <button
+                    key={o.v}
+                    type="button"
+                    onClick={() => setGenMode(o.v)}
+                    className={`rounded-lg border p-2 text-left text-xs transition ${
+                      genMode === o.v ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/50"
+                    }`}
+                  >
+                    <div className="font-medium">{o.label}</div>
+                    <div className="text-[11px] text-muted-foreground">{o.hint}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <Label>Toughness level</Label>
+              <div className="mt-1 grid grid-cols-2 gap-2">
+                {([
+                  { v: "easy", label: "Easy" },
+                  { v: "medium", label: "Medium" },
+                  { v: "hard", label: "Hard" },
+                  { v: "extreme", label: "Extreme" },
+                ] as const).map((o) => (
+                  <button
+                    key={o.v}
+                    type="button"
+                    onClick={() => setToughness(o.v)}
+                    className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition ${
+                      toughness === o.v ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/50"
+                    }`}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                {toughness === "extreme"
+                  ? "Exact questions from previous years' hardest shifts."
+                  : "Every generated question follows this difficulty."}
+              </p>
             </div>
           </div>
 
