@@ -144,7 +144,9 @@ export const createExam = createServerFn({ method: "POST" })
         marks: q.marks,
         topic: q.topic,
         difficulty: q.difficulty,
+        source_ref: q.source_ref ?? null,
         order_index: i,
+
       }));
       const { error: qErr } = await supabaseAdmin.from("questions").insert(rows);
       if (qErr) throw qErr;
