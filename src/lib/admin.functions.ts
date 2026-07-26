@@ -54,8 +54,10 @@ const QuestionInput = z.object({
   correct_answer: z.array(z.string()),
   marks: z.number().min(0).max(100),
   topic: z.string().nullable(),
-  difficulty: z.enum(["easy", "medium", "hard"]),
+  difficulty: z.enum(["easy", "medium", "hard", "extreme"]),
+  source_ref: z.string().nullable().optional(),
 });
+
 
 /* ---------------- Access code helpers ---------------- */
 
