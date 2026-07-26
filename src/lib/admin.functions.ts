@@ -736,11 +736,41 @@ async function runGenerateExact(prompt: string, userContent: any[], count: numbe
 
 
 
-function baseGenPrompt(pattern: string, count: number, subject?: string | null) {
+const TOUGHNESS_GUIDE: Record<string, string> = {
+  easy:
+    `TOUGHNESS: EASY. Single-step, direct-recall or one-formula questions. Straight from NCERT/Intermediate textbook lines. Distractors are obviously wrong. Difficulty field = "easy" for every question.`,
+  medium:
+    `TOUGHNESS: MEDIUM. Two-step reasoning or one application of a formula, typical of an average question in the real paper. Distractors are plausible. Difficulty field = "medium" for every question.`,
+  hard:
+    `TOUGHNESS: HARD. Multi-concept, multi-step questions matching the toughest 20% of the real paper. Combine two chapters, require careful unit/exception handling, and use very close distractors. Difficulty field = "hard" for every question.`,
+  extreme:
+    `TOUGHNESS: EXTREME. Reproduce the EXACT questions asked in previous years' hardest shifts (the shift that was reported as the toughest that year). Do not simplify them. Every question must carry its real source_ref, e.g. "NEET 2022 (Phase 2)" or "JEE Main 2023 · Jan 31 Shift 2". Difficulty field = "extreme" for every question.`,
+};
+
+const MODE_GUIDE: Record<string, string> = {
+  ai:
+    `GENERATION MODE: AI-GENERATED (previous-year aligned). Every question must be a close variant/modification of a question actually asked in a previous year of this exam — same concept, same structure, same trap, with numbers, species, or wording changed. Never invent an off-pattern question. Set source_ref to the paper you modelled it on, prefixed with "Modelled on ", e.g. "Modelled on NEET 2021".`,
+  pyq:
+    `GENERATION MODE: PREVIOUS YEAR QUESTIONS (PYQ) ONLY. Every question MUST be an actual question asked in a real past paper of this exam, reproduced faithfully (wording, options, correct answer). Do NOT invent questions and do NOT paraphrase. source_ref is MANDATORY for every question and must state the exam, year and shift/phase exactly, e.g. "NEET 2023", "JEE Main 2024 · Apr 06 Shift 1", "TS EAMCET 2022 · Jul 18 Forenoon". If you are not confident a question was really asked, do not include it — pick another real one.`,
+};
+
+function baseGenPrompt(
+  pattern: string,
+  count: number,
+  subject?: string | null,
+  genMode: string = "ai",
+  toughness: string = "medium",
+) {
   const guide = PATTERN_GUIDE[pattern] ?? PATTERN_GUIDE.custom;
   return `You are an expert exam question setter. ${guide}
+
+${MODE_GUIDE[genMode] ?? MODE_GUIDE.ai}
+
+${TOUGHNESS_GUIDE[toughness] ?? TOUGHNESS_GUIDE.medium}
+
 Generate exactly ${count} high-quality questions${subject ? ` on subject/topic: ${subject}` : ""}.
-Return JSON matching the schema. For MCQ use type "mcq" with 4 options and one correct answer in correct_answer array. For true/false use "tf" with options ["True","False"]. For numerical/short use "short" with options null and correct_answer as accepted answers. Set topic to the subject or sub-topic. Set difficulty (easy/medium/hard) mixed. Do not repeat questions.
+Return JSON matching the schema. For MCQ use type "mcq" with 4 options and one correct answer in correct_answer array. For true/false use "tf" with options ["True","False"]. For numerical/short use "short" with options null and correct_answer as accepted answers. Set topic to the subject or sub-topic. Set difficulty to the toughness level requested above. Set source_ref as described above (null only when genMode is AI and no source paper applies). Do not repeat questions.
+
 
 LANGUAGE (CRITICAL): Every question prompt, every option, and every correct_answer MUST be written in ENGLISH only. If the source material contains Telugu, Hindi, or any other non-English text, translate it to clear, natural English before producing the question. Never emit non-English script (no Telugu, Devanagari, or other native scripts) in any field.
 
