@@ -375,6 +375,11 @@ function QuestionList({
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">
                   Q{i + 1} · {q.type} · {q.marks}m{q.topic ? ` · ${q.topic}` : ""}
+                  {q.source_ref && (
+                    <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-primary">
+                      {q.source_ref}
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 text-sm">
                   {q.is_correct ? (
