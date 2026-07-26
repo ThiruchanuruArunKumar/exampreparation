@@ -309,9 +309,11 @@ export const saveQuestions = createServerFn({ method: "POST" })
       options: q.options,
       correct_answer: q.correct_answer,
       marks: q.marks,
-      topic: q.topic,
-      difficulty: q.difficulty,
-      order_index: i,
+        topic: q.topic,
+        difficulty: q.difficulty,
+        source_ref: q.source_ref ?? null,
+        order_index: i,
+
     }));
     if (rows.length) {
       const { error } = await supabaseAdmin.from("questions").upsert(rows, { onConflict: "id" });
