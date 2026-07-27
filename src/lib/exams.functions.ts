@@ -46,7 +46,16 @@ export const extractQuestions = createServerFn({ method: "POST" })
 
     const system = `You extract exam questions from documents. Return every question you can identify with type, options (for MCQ/multi/tf), the correct answer(s) as an array of strings, marks (1 if not stated), topic (short subject/topic tag), and difficulty (easy/medium/hard). For true/false use type "tf" with options ["True","False"]. For short-answer use type "short" with options null and correct_answer as accepted answers.
 
-LANGUAGE (CRITICAL): Every question prompt, every option, and every correct_answer MUST be written in ENGLISH only. If the source contains Telugu, Hindi, or any other non-English text, translate it into clear, natural English before returning. Never emit non-English script (no Telugu, Devanagari, or other native scripts) in any field.`;
+LANGUAGE (CRITICAL): Every question prompt, every option, and every correct_answer MUST be written in ENGLISH only. If the source contains Telugu, Hindi, or any other non-English text, translate it into clear, natural English before returning. Never emit non-English script (no Telugu, Devanagari, or other native scripts) in any field.
+
+FORMATTING (CRITICAL — output renders with Markdown + KaTeX + mhchem):
+- Default to plain English text. Use LaTeX ONLY for real formulas, symbols and chemical species — never for ordinary words.
+- Every LaTeX fragment gets its own matching $...$ pair. Never leave an unmatched $, and never wrap a sentence in math.
+- Chemistry uses mhchem inside math: $\\ce{H2SO4}$, $\\ce{SO4^2-}$, $\\ce{2SO2(g) + O2(g) <=> 2SO3(g)}$. Never bare \\ce{...}, never \\mathrm{...} around a reaction, never a stray \\sigma / \\pi / \\rightarrow in prose.
+- Options are pure choice text with no "A)"/"B)" prefixes.
+
+SELF-VERIFICATION (MANDATORY): Re-read every prompt, option and correct_answer before returning. Fix unbalanced $, bare macros, unbalanced chemical equations, duplicated or truncated text, and make sure correct_answer is the verbatim full text of one option.`;
+
 
     const isImage = data.mimeType.startsWith("image/");
     const isText =
