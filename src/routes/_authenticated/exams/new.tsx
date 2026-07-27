@@ -490,7 +490,21 @@ function NewExam() {
                   {q.options && (
                     <div className="space-y-2 pt-1 text-xs">
                       {q.options.map((o, oi) => {
-                        const isCorrect = q.correct_answer.includes(o);
+                        const isCorrect = q.correct_answer.some((ans) => {
+                          if (ans === o) return true;
+                          const cleanAns = ans.trim().replace(/\\\\/g, "\\").replace(/[\$\`]/g, "").toLowerCase();
+                          const cleanOpt = o.trim().replace(/\\\\/g, "\\").replace(/[\$\`]/g, "").toLowerCase();
+                          if (cleanAns === cleanOpt) return true;
+                          const letterMatch = ans.match(/^(?:Option\s*)?\(?\s*([A-D1-4])\s*[\)\.]?$/i);
+                          if (letterMatch) {
+                            const char = letterMatch[1].toUpperCase();
+                            const targetIdx = ["A", "B", "C", "D"].includes(char)
+                              ? ["A", "B", "C", "D"].indexOf(char)
+                              : parseInt(char, 10) - 1;
+                            if (targetIdx === oi) return true;
+                          }
+                          return false;
+                        });
                         const letter = String.fromCharCode(65 + oi);
                         return (
                           <div

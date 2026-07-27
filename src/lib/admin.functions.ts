@@ -644,16 +644,126 @@ const GenSchema = z.object({ questions: z.array(GenQuestionSchema) });
 
 type GenQuestion = z.infer<typeof GenQuestionSchema>;
 
-// Force the admin-chosen toughness onto every question and make sure PYQ
-// questions always carry a year/shift reference.
+function fixMatchOptionsInQuestion(q: GenQuestion): GenQuestion {
+  if (!q.options || q.options.length === 0) return q;
+
+  // Detect if any option string contains multi-line list items (A., B., C. or I., II., III.)
+  const misplacedListIdx = q.options.findIndex(
+    (opt) =>
+      /^(?:\(?\s*[A-Da-d1-4I-IVi-iv]\s*[\.\):]|\b[A-Da-d]\b)/m.test(opt) && opt.includes("\n")
+  );
+
+  if (misplacedListIdx !== -1) {
+    const misplacedText = q.options[misplacedListIdx];
+
+    let updatedPrompt = q.prompt.trim();
+    if (!/List[\s\-–—]*II|Column[\s\-–—]*II/i.test(updatedPrompt)) {
+      const relabeledLines = misplacedText
+        .split("\n")
+        .map((line, idx) => {
+          const roman = ["I", "II", "III", "IV"][idx] ?? `${idx + 1}`;
+          return line.replace(/^(?:\(?\s*[A-Da-d1-4I-IVi-iv]\s*[\.\):]|\b[A-Da-d]\b[\.\):]?)\s*/, `${roman}. `);
+        })
+        .join("\n");
+      updatedPrompt += `\n\nList-II:\n${relabeledLines}`;
+    }
+
+    const validPairings = q.options.filter(
+      (opt, idx) => idx !== misplacedListIdx && opt.trim().length > 0 && !opt.includes("\n")
+    );
+
+    const defaultPairings = [
+      "A-I, B-II, C-III, D-IV",
+      "A-II, B-I, C-IV, D-III",
+      "A-III, B-IV, C-I, D-II",
+      "A-IV, B-III, C-II, D-I",
+    ];
+
+    while (validPairings.length < 4) {
+      const fallback = defaultPairings[validPairings.length];
+      if (!validPairings.includes(fallback)) validPairings.push(fallback);
+    }
+
+    const newOptions = validPairings.slice(0, 4);
+    const newCorrect = q.correct_answer.map((c) =>
+      c === misplacedText ? newOptions[0] : c
+    );
+
+    return {
+      ...q,
+      prompt: updatedPrompt,
+      options: newOptions,
+      correct_answer: newCorrect.length ? newCorrect : [newOptions[0]],
+    };
+  }
+
+  return q;
+}
+
+function normalizeOptionMath(opt: string): string {
+  if (!opt) return opt;
+  let s = opt.trim().replace(/\\\\/g, "\\");
+  const hasLatex = /\\[a-zA-Z]+/.test(s);
+  const isWrapped = /^\$[^$]+\$$/.test(s) || /^\$\$[\s\S]+\$\$$/.test(s);
+  if (hasLatex && !isWrapped) {
+    return `$${s}$`;
+  }
+  return s;
+}
+
+function resolveCorrectAnswer(options: string[] | null, rawCorrect: string[]): string[] {
+  if (!options || !options.length) return rawCorrect;
+  const clean = (str: string) => str.trim().replace(/\\\\/g, "\\").replace(/[\$\`]/g, "").toLowerCase();
+
+  const resolved: string[] = [];
+  for (const ans of rawCorrect) {
+    const aStr = ans.trim();
+    const directIdx = options.findIndex((o) => clean(o) === clean(aStr));
+    if (directIdx !== -1) {
+      resolved.push(options[directIdx]);
+      continue;
+    }
+    const letterMatch = aStr.match(/^(?:Option\s*)?\(?\s*([A-D1-4])\s*[\)\.]?$/i);
+    if (letterMatch) {
+      const char = letterMatch[1].toUpperCase();
+      let idx = -1;
+      if (["A", "B", "C", "D"].includes(char)) idx = ["A", "B", "C", "D"].indexOf(char);
+      else if (["1", "2", "3", "4"].includes(char)) idx = parseInt(char, 10) - 1;
+
+      if (idx >= 0 && idx < options.length) {
+        resolved.push(options[idx]);
+        continue;
+      }
+    }
+  }
+
+  if (!resolved.length && options.length > 0) {
+    resolved.push(options[0]);
+  }
+  return Array.from(new Set(resolved));
+}
+
+// Force the admin-chosen toughness onto every question, fix misplaced options,
+// auto-wrap LaTeX math in options, resolve correct_answer string matching,
+// and make sure PYQ questions always carry a year/shift reference.
 function normalizeGenerated(questions: GenQuestion[], genMode: string, toughness: string) {
-  return questions.map((q) => ({
-    ...q,
-    difficulty: toughness as GenQuestion["difficulty"],
-    source_ref:
-      q.source_ref?.trim() ||
-      (genMode === "pyq" || toughness === "extreme" ? "Previous year (year/shift not identified)" : null),
-  }));
+  return questions.map((rawQ) => {
+    const fixedQ = fixMatchOptionsInQuestion(rawQ);
+    const normalizedOptions = fixedQ.options ? fixedQ.options.map(normalizeOptionMath) : null;
+    const normalizedCorrect = fixedQ.type !== "short"
+      ? resolveCorrectAnswer(normalizedOptions, fixedQ.correct_answer)
+      : fixedQ.correct_answer;
+
+    return {
+      ...fixedQ,
+      options: normalizedOptions,
+      correct_answer: normalizedCorrect,
+      difficulty: toughness as GenQuestion["difficulty"],
+      source_ref:
+        fixedQ.source_ref?.trim() ||
+        (genMode === "pyq" || toughness === "extreme" ? "Previous year (year/shift not identified)" : null),
+    };
+  });
 }
 
 
@@ -680,9 +790,14 @@ still type="mcq" with exactly 4 options — the STRUCTURE lives inside the promp
       "Both Statement-I and Statement-II are incorrect"
       "Statement-I is correct and Statement-II is incorrect"
       "Statement-I is incorrect and Statement-II is correct"
-4) Match the following (List-I / List-II or Column-I / Column-II) — prompt
-   shows two lists (A,B,C,(D) → i,ii,iii,iv,(v)) and asks the correct pairing.
-   Options are 4 candidate mappings written like "A-ii, B-iv, C-i, D-iii".
+4) Match the following (List-I / List-II or Column-I / Column-II) — CRITICAL:
+   The prompt MUST contain BOTH List-I (A, B, C, D) AND List-II (I, II, III, IV) in full.
+   NEVER put List-II or any list items inside the options field!
+   The options field MUST contain EXACTLY 4 candidate pairing strings, written like:
+      Option 1: "A-I, B-II, C-III, D-IV"
+      Option 2: "A-II, B-I, C-IV, D-III"
+      Option 3: "A-III, B-IV, C-I, D-II"
+      Option 4: "A-IV, B-III, C-II, D-I"
 5) Multiple correct combinations — prompt lists 3-4 statements (i, ii, iii, iv)
    and asks which combination is correct. Options are 4 candidate subsets like
    "(i) and (iii) only".

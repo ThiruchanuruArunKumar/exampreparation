@@ -134,11 +134,15 @@ function sanitizeRich(input: string): string {
   // 3. In non-math regions, wrap bare LaTeX/chemistry in $...$ and
   //    strip redundant () / [] the model added around them.
   const bareLatexRe =
-    /(\\ce\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|\\frac\{[^{}]*\}\{[^{}]*\}|\\sqrt(?:\[[^\]]*\])?\{[^{}]*\}|\\vec\{[^{}]*\}|\\text\{[^{}]*\})/g;
+    /(\\ce\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|\\frac\{[^{}]*\}\{[^{}]*\}|\\sqrt(?:\[[^\]]*\])?\{[^{}]*\}|\\vec\{[^{}]*\}|\\text\{[^{}]*\}|\\(?:right|left|Right|Left|up|down|long)*arrow\b|\\(?:cdot|times|pm|mp|infty|degree|alpha|beta|gamma|delta|theta|pi|mu|lambda|sigma|omega|Delta)\b)/g;
 
   const fixed = parts.map((p) => {
     if (p.math) return p.text;
     let t = p.text;
+    // Auto-wrap un-wrapped LaTeX arrow sequences e.g. "1 \rightarrow 2 \rightarrow 3"
+    if (/\\(?:right|left|Right|Left)*arrow\b/.test(t) && !t.includes("$")) {
+      t = `$${t.trim()}$`;
+    }
     // Remove wrapping parens/brackets the model added around lone LaTeX
     t = t.replace(
       /\(\s*(\\ce\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\})\s*\)/g,
