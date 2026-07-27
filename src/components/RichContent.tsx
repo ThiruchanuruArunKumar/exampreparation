@@ -6,6 +6,8 @@ import "katex/dist/katex.min.css";
 import "katex/dist/contrib/mhchem.js";
 
 import { cn } from "@/lib/utils";
+import { repairLatex } from "@/lib/latex-repair";
+
 
 /**
  * Detects "Match the following" questions that contain List-I and List-II
@@ -296,8 +298,9 @@ export function RichContent({
 }) {
   const raw = (children ?? "").toString();
   if (!raw.trim()) return null;
-  // Run match-question formatter first, then general sanitizer
-  const text = sanitizeRich(formatMatchQuestion(raw));
+  // Repair broken/unbalanced LaTeX first, then match-table formatting, then sanitize.
+  const text = sanitizeRich(formatMatchQuestion(repairLatex(raw)));
+
 
   const Wrapper = inline ? "span" : "div";
   return (

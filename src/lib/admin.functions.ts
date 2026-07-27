@@ -3,6 +3,8 @@ import { z } from "zod";
 import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createLovableAiGatewayProvider } from "./ai-gateway.server";
+import { repairLatex } from "./latex-repair";
+
 
 const PatternEnum = z.enum(["neet", "eamcet", "ts_eamcet_bipc", "mains", "custom"]);
 const PatternConfigSchema = z
@@ -702,7 +704,7 @@ function fixMatchOptionsInQuestion(q: GenQuestion): GenQuestion {
 
 function normalizeOptionMath(opt: string): string {
   if (!opt) return opt;
-  let s = opt.trim().replace(/\\\\/g, "\\");
+  let s = opt.trim().replace(/^\(?\s*[A-Da-d1-4]\s*[\).:]\s+/, "").replace(/\\\\/g, "\\");
 
   // 1. Fix misplaced closing braces in \ce e.g. \ce{CH3-CH}=CH-CHO} -> \ce{CH3-CH=CH-CHO}
   s = s.replace(/\\ce\s*\{([^{}\n]+)\}([^$\s\n]*\})/g, (_m, inner1, inner2) => {
@@ -746,6 +748,7 @@ function normalizeOptionMath(opt: string): string {
   }
   return s;
 }
+
 
 function resolveCorrectAnswer(options: string[] | null, rawCorrect: string[]): string[] {
   if (!options || !options.length) return rawCorrect;
@@ -794,13 +797,16 @@ function resolveCorrectAnswer(options: string[] | null, rawCorrect: string[]): s
 function normalizeGenerated(questions: GenQuestion[], genMode: string, toughness: string) {
   return questions.map((rawQ) => {
     const fixedQ = fixMatchOptionsInQuestion(rawQ);
+    const normalizedPrompt = repairLatex(fixedQ.prompt);
     const normalizedOptions = fixedQ.options ? fixedQ.options.map(normalizeOptionMath) : null;
     const normalizedCorrect = fixedQ.type !== "short"
-      ? resolveCorrectAnswer(normalizedOptions, fixedQ.correct_answer)
+      ? resolveCorrectAnswer(normalizedOptions, fixedQ.correct_answer.map((a) => repairLatex(a)))
       : fixedQ.correct_answer;
 
     return {
       ...fixedQ,
+      prompt: normalizedPrompt,
+
       options: normalizedOptions,
       correct_answer: normalizedCorrect,
       difficulty: toughness as GenQuestion["difficulty"],
@@ -1021,15 +1027,30 @@ Return JSON matching the schema. For MCQ use type "mcq" with 4 options and one c
 
 LANGUAGE (CRITICAL): Every question prompt, every option, and every correct_answer MUST be written in ENGLISH only. If the source material contains Telugu, Hindi, or any other non-English text, translate it to clear, natural English before producing the question. Never emit non-English script (no Telugu, Devanagari, or other native scripts) in any field.
 
-FORMATTING (CRITICAL — questions render with Markdown + KaTeX):
-- Wrap ALL math, chemistry, physics formulas in LaTeX: inline as $...$ and display as $$...$$. Never use unicode fake-math like x² or H₂O plain text.
-- Powers/subscripts: $x^2$, $a_{ij}$, $H_2O$, $CO_2$, $10^{-3}$.
+FORMATTING (CRITICAL — questions render with Markdown + KaTeX + mhchem):
+- Default to PLAIN ENGLISH TEXT. Use LaTeX ONLY for an actual formula, equation, symbol or chemical species — never for ordinary words. A sentence like "if the number of moles of product increases" must contain NO LaTeX at all.
+- Every LaTeX fragment must be individually wrapped in its own $...$ pair. Never open a $ and close it many words later, never leave an unmatched $, never wrap a whole sentence in $...$.
+- Powers/subscripts: $x^2$, $a_{ij}$, $10^{-3}$.
 - Fractions/roots: $\\frac{a}{b}$, $\\sqrt{x}$, $\\sqrt[3]{x}$.
-- Greek/symbols: $\\alpha, \\beta, \\pi, \\theta, \\Delta, \\rightarrow, \\leq, \\geq, \\neq, \\pm, \\times, \\cdot, \\infty$.
-- Vectors/units: $\\vec{F} = m\\vec{a}$, $9.8\\,\\text{m/s}^2$.
-- Chemistry: use $\\ce{...}$ style where possible, e.g. $\\ce{H2SO4 -> H+ + HSO4-}$, or plain LaTeX like $H_2SO_4 \\rightarrow 2H^+ + SO_4^{2-}$.
-- Preserve line breaks in the prompt using \\n. Options must be pure text of the choice (no "A)"/"B)" prefixes) and may contain LaTeX the same way.
-- Do NOT wrap the whole question in a code block. Do NOT escape backslashes twice.`;
+- Greek/symbols: $\\alpha$, $\\beta$, $\\pi$, $\\sigma$, $\\theta$, $\\Delta$, $\\rightarrow$, $\\pm$, $\\times$, $\\infty$ — each in its own $...$.
+- Vectors/units: $\\vec{F} = m\\vec{a}$, $9.8\\ \\text{m/s}^2$.
+- CHEMISTRY (strict): ALWAYS use mhchem inside math, one species/equation per $...$ pair:
+  species -> $\\ce{H2SO4}$, $\\ce{SO4^2-}$, $\\ce{NH3(aq)}$, $\\ce{AgCl(s)}$
+  reaction -> $\\ce{2SO2(g) + O2(g) <=> 2SO3(g)}$
+  Never write bare \\ce{...} outside $...$; never write \\mathrm{...} around a whole reaction; never mix prose inside \\ce{}. Use $\\ce{->}$ / $\\ce{<=>}$ for arrows, never the words "arrow" or raw \\rightleftharpoons outside math. For bonds write "sigma bond" / "pi bond" in words, or $\\sigma$ / $\\pi$ inside math — never a stray \\sigma in prose.
+- PHYSICS: state every symbol's meaning in words; numbers with units as $5\\ \\text{m s}^{-1}$.
+- BOTANY / ZOOLOGY: plain English only, italics via **bold** is not needed; scientific names written normally (e.g. Homo sapiens). No LaTeX unless a real formula appears.
+- Options must be pure text of the choice (no "A)"/"B)" prefixes), self-contained, and use the same math rules.
+- Preserve line breaks in the prompt using \\n. Do NOT wrap the question in a code block. Do NOT escape backslashes twice.
+
+SELF-VERIFICATION (MANDATORY): Before returning, re-read EVERY question prompt, EVERY option and EVERY correct_answer and check:
+ 1. Every $ has a matching closing $ and no prose sits inside a math span.
+ 2. Every backslash macro sits inside $...$ and is a real KaTeX/mhchem command.
+ 3. Every chemical formula/equation is written with \\ce{} and is chemically balanced.
+ 4. Exactly 4 distinct, plausible, non-overlapping options for MCQs, and correct_answer is the verbatim full text of one of them.
+ 5. No leftover markup, stray symbols, duplicated text, or truncated sentences.
+Silently fix anything that fails these checks and return only the corrected questions.`;
+
 
 }
 

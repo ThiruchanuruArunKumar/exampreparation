@@ -9,40 +9,31 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as McpRouteImport } from './routes/mcp'
 import { Route as ParentRouteImport } from './routes/parent'
-import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
-import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
-import { Route as AuthenticatedAdminsRouteImport } from './routes/_authenticated/admins'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedStudentsRouteImport } from './routes/_authenticated/students'
-import { Route as ExamInfoExamIdRouteImport } from './routes/exam-info.$examId'
-import { Route as ExamAttemptIdRouteImport } from './routes/exam.$attemptId'
+import { Route as McpRouteImport } from './routes/mcp'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as HistoryIndexRouteImport } from './routes/history.index'
 import { Route as HistoryAttemptIdRouteImport } from './routes/history.$attemptId'
-import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
-import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
-import { Route as AuthenticatedAttemptResultsAttemptIdRouteImport } from './routes/_authenticated/attempt-results.$attemptId'
-import { Route as AuthenticatedExamsExamIdRouteImport } from './routes/_authenticated/exams/$examId'
-import { Route as AuthenticatedExamsNewRouteImport } from './routes/_authenticated/exams/new'
+import { Route as ExamAttemptIdRouteImport } from './routes/exam.$attemptId'
+import { Route as ExamInfoExamIdRouteImport } from './routes/exam-info.$examId'
+import { Route as AuthenticatedStudentsRouteImport } from './routes/_authenticated/students'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedAdminsRouteImport } from './routes/_authenticated/admins'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as AuthenticatedResultsIndexRouteImport } from './routes/_authenticated/results.index'
 import { Route as AuthenticatedResultsStudentIdRouteImport } from './routes/_authenticated/results.$studentId'
+import { Route as AuthenticatedExamsNewRouteImport } from './routes/_authenticated/exams/new'
+import { Route as AuthenticatedExamsExamIdRouteImport } from './routes/_authenticated/exams/$examId'
+import { Route as AuthenticatedAttemptResultsAttemptIdRouteImport } from './routes/_authenticated/attempt-results.$attemptId'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const ParentRoute = ParentRouteImport.update({
+  id: '/parent',
+  path: '/parent',
   getParentRoute: () => rootRouteImport,
 } as any)
 const McpRoute = McpRouteImport.update({
@@ -50,46 +41,18 @@ const McpRoute = McpRouteImport.update({
   path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ParentRoute = ParentRouteImport.update({
-  id: '/parent',
-  path: '/parent',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char91DotmcpChar93ListToolsRoute =
-  Char91DotmcpChar93ListToolsRouteImport.update({
-    id: '/.mcp/list-tools',
-    path: '/.mcp/list-tools',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const Char91DotwellKnownChar93OauthProtectedResourceRoute =
-  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
-    id: '/.well-known/oauth-protected-resource',
-    path: '/.well-known/oauth-protected-resource',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const AuthenticatedAdminsRoute = AuthenticatedAdminsRouteImport.update({
-  id: '/admins',
-  path: '/admins',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedStudentsRoute = AuthenticatedStudentsRouteImport.update({
-  id: '/students',
-  path: '/students',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const ExamInfoExamIdRoute = ExamInfoExamIdRouteImport.update({
-  id: '/exam-info/$examId',
-  path: '/exam-info/$examId',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ExamAttemptIdRoute = ExamAttemptIdRouteImport.update({
-  id: '/exam/$attemptId',
-  path: '/exam/$attemptId',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HistoryIndexRoute = HistoryIndexRouteImport.update({
@@ -102,34 +65,43 @@ const HistoryAttemptIdRoute = HistoryAttemptIdRouteImport.update({
   path: '/history/$attemptId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
-  id: '/.lovable/oauth/consent',
-  path: '/.lovable/oauth/consent',
+const ExamAttemptIdRoute = ExamAttemptIdRouteImport.update({
+  id: '/exam/$attemptId',
+  path: '/exam/$attemptId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char91DotmcpChar93InvokeToolToolRoute =
-  Char91DotmcpChar93InvokeToolToolRouteImport.update({
-    id: '/.mcp/invoke-tool/$tool',
-    path: '/.mcp/invoke-tool/$tool',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const AuthenticatedAttemptResultsAttemptIdRoute =
-  AuthenticatedAttemptResultsAttemptIdRouteImport.update({
-    id: '/attempt-results/$attemptId',
-    path: '/attempt-results/$attemptId',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedExamsExamIdRoute =
-  AuthenticatedExamsExamIdRouteImport.update({
-    id: '/exams/$examId',
-    path: '/exams/$examId',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedExamsNewRoute = AuthenticatedExamsNewRouteImport.update({
-  id: '/exams/new',
-  path: '/exams/new',
+const ExamInfoExamIdRoute = ExamInfoExamIdRouteImport.update({
+  id: '/exam-info/$examId',
+  path: '/exam-info/$examId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedStudentsRoute = AuthenticatedStudentsRouteImport.update({
+  id: '/students',
+  path: '/students',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminsRoute = AuthenticatedAdminsRouteImport.update({
+  id: '/admins',
+  path: '/admins',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedResultsIndexRoute =
   AuthenticatedResultsIndexRouteImport.update({
     id: '/results/',
@@ -142,6 +114,34 @@ const AuthenticatedResultsStudentIdRoute =
     path: '/results/$studentId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedExamsNewRoute = AuthenticatedExamsNewRouteImport.update({
+  id: '/exams/new',
+  path: '/exams/new',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedExamsExamIdRoute =
+  AuthenticatedExamsExamIdRouteImport.update({
+    id: '/exams/$examId',
+    path: '/exams/$examId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedAttemptResultsAttemptIdRoute =
+  AuthenticatedAttemptResultsAttemptIdRouteImport.update({
+    id: '/attempt-results/$attemptId',
+    path: '/attempt-results/$attemptId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -299,25 +299,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated': {
-      id: '/_authenticated'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/parent': {
+      id: '/parent'
+      path: '/parent'
+      fullPath: '/parent'
+      preLoaderRoute: typeof ParentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mcp': {
@@ -327,60 +313,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/parent': {
-      id: '/parent'
-      path: '/parent'
-      fullPath: '/parent'
-      preLoaderRoute: typeof ParentRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.mcp/list-tools': {
-      id: '/.mcp/list-tools'
-      path: '/.mcp/list-tools'
-      fullPath: '/.mcp/list-tools'
-      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.well-known/oauth-protected-resource': {
-      id: '/.well-known/oauth-protected-resource'
-      path: '/.well-known/oauth-protected-resource'
-      fullPath: '/.well-known/oauth-protected-resource'
-      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/admins': {
-      id: '/_authenticated/admins'
-      path: '/admins'
-      fullPath: '/admins'
-      preLoaderRoute: typeof AuthenticatedAdminsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/students': {
-      id: '/_authenticated/students'
-      path: '/students'
-      fullPath: '/students'
-      preLoaderRoute: typeof AuthenticatedStudentsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/exam-info/$examId': {
-      id: '/exam-info/$examId'
-      path: '/exam-info/$examId'
-      fullPath: '/exam-info/$examId'
-      preLoaderRoute: typeof ExamInfoExamIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/exam/$attemptId': {
-      id: '/exam/$attemptId'
-      path: '/exam/$attemptId'
-      fullPath: '/exam/$attemptId'
-      preLoaderRoute: typeof ExamAttemptIdRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/history/': {
@@ -397,40 +348,54 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoryAttemptIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.lovable/oauth/consent': {
-      id: '/.lovable/oauth/consent'
-      path: '/.lovable/oauth/consent'
-      fullPath: '/.lovable/oauth/consent'
-      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+    '/exam/$attemptId': {
+      id: '/exam/$attemptId'
+      path: '/exam/$attemptId'
+      fullPath: '/exam/$attemptId'
+      preLoaderRoute: typeof ExamAttemptIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/.mcp/invoke-tool/$tool': {
-      id: '/.mcp/invoke-tool/$tool'
-      path: '/.mcp/invoke-tool/$tool'
-      fullPath: '/.mcp/invoke-tool/$tool'
-      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+    '/exam-info/$examId': {
+      id: '/exam-info/$examId'
+      path: '/exam-info/$examId'
+      fullPath: '/exam-info/$examId'
+      preLoaderRoute: typeof ExamInfoExamIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/attempt-results/$attemptId': {
-      id: '/_authenticated/attempt-results/$attemptId'
-      path: '/attempt-results/$attemptId'
-      fullPath: '/attempt-results/$attemptId'
-      preLoaderRoute: typeof AuthenticatedAttemptResultsAttemptIdRouteImport
+    '/_authenticated/students': {
+      id: '/_authenticated/students'
+      path: '/students'
+      fullPath: '/students'
+      preLoaderRoute: typeof AuthenticatedStudentsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/exams/$examId': {
-      id: '/_authenticated/exams/$examId'
-      path: '/exams/$examId'
-      fullPath: '/exams/$examId'
-      preLoaderRoute: typeof AuthenticatedExamsExamIdRouteImport
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/exams/new': {
-      id: '/_authenticated/exams/new'
-      path: '/exams/new'
-      fullPath: '/exams/new'
-      preLoaderRoute: typeof AuthenticatedExamsNewRouteImport
+    '/_authenticated/admins': {
+      id: '/_authenticated/admins'
+      path: '/admins'
+      fullPath: '/admins'
+      preLoaderRoute: typeof AuthenticatedAdminsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/results/': {
       id: '/_authenticated/results/'
@@ -445,6 +410,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/results/$studentId'
       preLoaderRoute: typeof AuthenticatedResultsStudentIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/exams/new': {
+      id: '/_authenticated/exams/new'
+      path: '/exams/new'
+      fullPath: '/exams/new'
+      preLoaderRoute: typeof AuthenticatedExamsNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/exams/$examId': {
+      id: '/_authenticated/exams/$examId'
+      path: '/exams/$examId'
+      fullPath: '/exams/$examId'
+      preLoaderRoute: typeof AuthenticatedExamsExamIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/attempt-results/$attemptId': {
+      id: '/_authenticated/attempt-results/$attemptId'
+      path: '/attempt-results/$attemptId'
+      fullPath: '/attempt-results/$attemptId'
+      preLoaderRoute: typeof AuthenticatedAttemptResultsAttemptIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
