@@ -211,7 +211,7 @@ export const getStudentAttemptState = createServerFn({ method: "POST" })
     const { sb, att } = await loadAttempt(data.attemptId, data.sessionToken);
     const { data: exam } = await sb
       .from("exams")
-      .select("id, title, duration_minutes")
+      .select("id, title, duration_minutes, pattern_config")
       .eq("id", att.exam_id)
       .single();
     const { data: student } = await sb
@@ -322,7 +322,7 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
     const { sb, att } = await loadAttempt(data.attemptId, data.sessionToken);
     const { data: examFlags } = await sb
       .from("exams")
-      .select("title, show_result_after_submit, show_answer_sheet, show_answer_book, negative_mark_per_wrong")
+      .select("title, show_result_after_submit, show_answer_sheet, show_answer_book, negative_mark_per_wrong, pattern_config")
       .eq("id", att.exam_id)
       .maybeSingle();
     const flags = {
@@ -352,8 +352,34 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
       sb.from("answers").select("question_id, response").eq("attempt_id", att.id),
     ]);
     const ansMap = new Map((ans ?? []).map((a) => [a.question_id, (a.response as string[]) ?? []]));
+    const qMap = new Map((qs ?? []).map((q) => [q.id, q]));
     let score = 0;
     let maxScore = 0;
+    
+    const limits: { count: number; attempt_limit: number; maxAdded: number; attemptedAdded: number }[] = [];
+    if (examFlags?.pattern_config) {
+      const cfg = examFlags.pattern_config as any;
+      for (const sec of cfg.sections ?? []) {
+        if (sec.subsections) {
+          for (const sub of sec.subsections) {
+            limits.push({
+              count: Number(sub.count) || 0,
+              attempt_limit: Number(sub.attempt_limit ?? sub.count) || 0,
+              maxAdded: 0,
+              attemptedAdded: 0,
+            });
+          }
+        } else {
+          limits.push({
+            count: Number(sec.count) || 0,
+            attempt_limit: Number(sec.count) || 0,
+            maxAdded: 0,
+            attemptedAdded: 0,
+          });
+        }
+      }
+    }
+
     const shortToGrade: {
       id: string;
       prompt: string;
@@ -368,14 +394,39 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
       topic: string | null;
       difficulty: string | null;
     }[] = [];
-    for (const q of qs ?? []) {
-      maxScore += q.marks;
+    
+    for (let i = 0; i < qids.length; i++) {
+      const q = qMap.get(qids[i]);
+      if (!q) continue;
+
+      let l = null;
+      let offset = 0;
+      for (const limit of limits) {
+        if (i >= offset && i < offset + limit.count) {
+          l = limit;
+          break;
+        }
+        offset += limit.count;
+      }
+
+      if (!l || l.maxAdded < l.attempt_limit) {
+        maxScore += q.marks;
+        if (l) l.maxAdded++;
+      }
+
       const resp = ansMap.get(q.id) ?? [];
+      let attempted = resp.length > 0;
+      if (attempted && l && l.attemptedAdded >= l.attempt_limit) {
+        attempted = false; // enforce attempt limit constraint by ignoring extra attempts
+      }
+      if (attempted && l) {
+        l.attemptedAdded++;
+      }
+
       const correct = (q.correct_answer as string[]) ?? [];
       if (q.type === "short") {
-        shortToGrade.push({ id: q.id, prompt: q.prompt, correct, response: resp, marks: q.marks });
+        shortToGrade.push({ id: q.id, prompt: q.prompt, correct, response: attempted ? resp : [], marks: q.marks });
       } else {
-        const attempted = resp.length > 0;
         const ok = attempted && answersEqual(resp, correct);
         const awarded = ok ? q.marks : attempted ? -negPerWrong : 0;
         score += awarded;

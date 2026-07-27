@@ -705,48 +705,7 @@ function fixMatchOptionsInQuestion(q: GenQuestion): GenQuestion {
 function normalizeOptionMath(opt: string): string {
   if (!opt) return opt;
   let s = opt.trim().replace(/^\(?\s*[A-Da-d1-4]\s*[\).:]\s+/, "").replace(/\\\\/g, "\\");
-
-  // 1. Fix misplaced closing braces in \ce e.g. \ce{CH3-CH}=CH-CHO} -> \ce{CH3-CH=CH-CHO}
-  s = s.replace(/\\ce\s*\{([^{}\n]+)\}([^$\s\n]*\})/g, (_m, inner1, inner2) => {
-    const clean2 = inner2.replace(/\}$/, "");
-    return `\\ce{${inner1}${clean2}}`;
-  });
-
-  // 2. Transform \ce{content} -> $\mathrm{content}$
-  s = s.replace(/\\ce\s*\{([^{}\n]+)\}/g, (_m, rawFormula) => {
-    let formula = rawFormula.trim();
-    formula = formula.replace(/([A-Za-z])([0-9]+)/g, "$1_{$2}");
-    formula = formula.replace(/\^?([0-9]*[\+\-])/g, "^{$1}");
-    return `$\\mathrm{${formula}}$`;
-  });
-
-  // 3. Transform bare \ce -> $\mathrm{...}$
-  s = s.replace(/\\ce\s*([A-Za-z0-9_+\-^\(\)]+)/g, (_m, rawFormula) => {
-    let formula = rawFormula.trim();
-    formula = formula.replace(/([A-Za-z])([0-9]+)/g, "$1_{$2}");
-    formula = formula.replace(/\^?([0-9]*[\+\-])/g, "^{$1}");
-    return `$\\mathrm{${formula}}$`;
-  });
-
-  // 4. Fix mismatched dollar wrappers
-  s = s.replace(/\$\$([^\$\n]+)\$/g, (_m, inner) => `$${inner.trim()}$`);
-  s = s.replace(/\$([^\$\n]+)\$\$/g, (_m, inner) => `$${inner.trim()}$`);
-
-  // 5. Wrap bare Greek letters in inline math (e.g. "3 \sigma and 2 \pi" -> "3 $\sigma$ and 2 $\pi$")
-  s = s.replace(
-    /(?<!\$)\\(sigma|pi|alpha|beta|gamma|delta|theta|lambda|mu|nu|omega|phi|psi|rho|tau|eta|zeta|kappa|chi|epsilon|Delta|Gamma|Theta|Lambda|Sigma|Omega)\b(?!\$)/g,
-    (_m, g) => `$\\${g}$`
-  );
-
-  // 6. Only wrap in full $...$ if it's a lone LaTeX macro without English prose words
-  const isWrapped = /^\$[^$]+\$$/.test(s) || /^\$\$[\s\S]+\$\$$/.test(s);
-  const hasProseWords = /\b(and|or|with|is|are|in|of|the|to|for|a|an|only)\b/i.test(s);
-  const hasLatex = /\\[a-zA-Z]+/.test(s);
-
-  if (hasLatex && !isWrapped && !hasProseWords) {
-    return `$${s}$`;
-  }
-  return s;
+  return repairLatex(s);
 }
 
 

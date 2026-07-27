@@ -4,6 +4,11 @@ export type PatternSection = {
   name: string;
   count: number;
   marks_per_q: number;
+  subsections?: {
+    name: string;
+    count: number;
+    attempt_limit?: number;
+  }[];
 };
 
 export type PatternConfig = {
@@ -16,16 +21,48 @@ export type PatternConfig = {
 export const PATTERN_PRESETS: Record<Exclude<ExamPattern, "custom">, PatternConfig & { label: string; description: string }> = {
   neet: {
     label: "NEET",
-    description: "200 min · 200 questions · +4 / −1 · Physics (50), Chemistry (50), Botany (50), Zoology (50)",
+    description: "200 min · 200 questions (attempt 180) · +4 / −1 · Physics, Chemistry, Botany, Zoology",
     duration_minutes: 200,
     negative_mark_per_wrong: 1,
     sections: [
-      { name: "Physics", count: 50, marks_per_q: 4 },
-      { name: "Chemistry", count: 50, marks_per_q: 4 },
-      { name: "Botany", count: 50, marks_per_q: 4 },
-      { name: "Zoology", count: 50, marks_per_q: 4 },
+      {
+        name: "Physics",
+        count: 50,
+        marks_per_q: 4,
+        subsections: [
+          { name: "Section A", count: 35, attempt_limit: 35 },
+          { name: "Section B", count: 15, attempt_limit: 10 }
+        ]
+      },
+      {
+        name: "Chemistry",
+        count: 50,
+        marks_per_q: 4,
+        subsections: [
+          { name: "Section A", count: 35, attempt_limit: 35 },
+          { name: "Section B", count: 15, attempt_limit: 10 }
+        ]
+      },
+      {
+        name: "Botany",
+        count: 50,
+        marks_per_q: 4,
+        subsections: [
+          { name: "Section A", count: 35, attempt_limit: 35 },
+          { name: "Section B", count: 15, attempt_limit: 10 }
+        ]
+      },
+      {
+        name: "Zoology",
+        count: 50,
+        marks_per_q: 4,
+        subsections: [
+          { name: "Section A", count: 35, attempt_limit: 35 },
+          { name: "Section B", count: 15, attempt_limit: 10 }
+        ]
+      },
     ],
-    notes: "NEET UG official 200 questions paper (50 questions each for Physics, Chemistry, Botany, Zoology). Follow NCERT Class 11 & 12 syllabus. 4 options each.",
+    notes: "NEET UG official 200 questions paper. Section A (35 questions) + Section B (15 questions, attempt 10). 4 options each.",
   },
   eamcet: {
     label: "AP/TS EAMCET",
@@ -72,18 +109,29 @@ export function presetToConfig(pattern: ExamPattern): PatternConfig | null {
   return {
     duration_minutes: p.duration_minutes,
     negative_mark_per_wrong: p.negative_mark_per_wrong,
-    sections: p.sections.map((s) => ({ ...s })),
+    sections: p.sections.map((s) => ({ ...s, subsections: s.subsections ? s.subsections.map(sub => ({ ...sub })) : undefined })),
     notes: p.notes,
   };
 }
 
 export function totalQuestions(cfg: PatternConfig | null | undefined): number {
   if (!cfg) return 0;
-  return cfg.sections.reduce((n, s) => n + (Number(s.count) || 0), 0);
+  return cfg.sections.reduce((n, s) => {
+    if (s.subsections) {
+      return n + s.subsections.reduce((subN, sub) => subN + (Number(sub.count) || 0), 0);
+    }
+    return n + (Number(s.count) || 0);
+  }, 0);
 }
 export function totalMarks(cfg: PatternConfig | null | undefined): number {
   if (!cfg) return 0;
-  return cfg.sections.reduce((n, s) => n + (Number(s.count) || 0) * (Number(s.marks_per_q) || 0), 0);
+  return cfg.sections.reduce((n, s) => {
+    if (s.subsections) {
+      const qsToAttempt = s.subsections.reduce((subN, sub) => subN + Math.min(Number(sub.count) || 0, Number(sub.attempt_limit) || Number(sub.count) || 0), 0);
+      return n + (qsToAttempt * (Number(s.marks_per_q) || 0));
+    }
+    return n + ((Number(s.count) || 0) * (Number(s.marks_per_q) || 0));
+  }, 0);
 }
 
 export function patternLabel(p: ExamPattern): string {

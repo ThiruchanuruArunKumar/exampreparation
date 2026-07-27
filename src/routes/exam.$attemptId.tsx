@@ -61,7 +61,7 @@ function TakeExam() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [started, setStarted] = useState(false);
-  const [exam, setExam] = useState<{ title: string; duration_minutes: number } | null>(null);
+  const [exam, setExam] = useState<{ title: string; duration_minutes: number; pattern_config?: any } | null>(null);
   const [student, setStudent] = useState<{ name: string; student_code: string } | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [answers, setAnswers] = useState<Record<string, string[]>>({});
@@ -72,6 +72,7 @@ function TakeExam() {
   const [endsAt, setEndsAt] = useState<string>("");
   const [remaining, setRemaining] = useState(0);
   const [submitting, setSubmitting] = useState(false);
+  const [activeSubject, setActiveSubject] = useState<string | null>(null);
   const submittingRef = useRef(false);
   const [result, setResult] = useState<{
     score: number;
@@ -83,6 +84,25 @@ function TakeExam() {
     showAnswerSheet: boolean;
     showAnswerBook: boolean;
   } | null>(null);
+
+  const subjectBoundaries = useMemo(() => {
+    if (!exam?.pattern_config?.sections) return null;
+    let offset = 0;
+    return (exam.pattern_config.sections as any[]).map((sec) => {
+      const start = offset;
+      const count = sec.subsections
+        ? sec.subsections.reduce((n: number, sub: any) => n + Number(sub.count), 0)
+        : Number(sec.count);
+      offset += count;
+      return { name: sec.name, start, end: offset - 1, subsections: sec.subsections };
+    });
+  }, [exam?.pattern_config]);
+
+  useEffect(() => {
+    if (subjectBoundaries && !activeSubject) {
+      setActiveSubject(subjectBoundaries[0].name);
+    }
+  }, [subjectBoundaries, activeSubject]);
 
   useEffect(() => {
     if (!token) {
@@ -104,12 +124,12 @@ function TakeExam() {
             showAnswerSheet: false,
             showAnswerBook: false,
           });
-          setExam(s.exam as { title: string; duration_minutes: number });
+          setExam(s.exam as { title: string; duration_minutes: number; pattern_config?: any });
           setStudent(s.student as { name: string; student_code: string });
           setLoading(false);
           return;
         }
-        setExam(s.exam as { title: string; duration_minutes: number });
+        setExam(s.exam as { title: string; duration_minutes: number; pattern_config?: any });
         setStudent(s.student as { name: string; student_code: string });
         setQuestions(s.questions as Question[]);
         setEndsAt(s.attempt.endsAt);
@@ -180,6 +200,35 @@ function TakeExam() {
   });
 
   const setResp = async (qid: string, resp: string[]) => {
+    if (resp.length > 0 && exam?.pattern_config?.sections) {
+      const qIndex = questions.findIndex(q => q.id === qid);
+      if (qIndex >= 0) {
+        let offset = 0;
+        for (const sec of (exam.pattern_config.sections as any[])) {
+           if (sec.subsections) {
+              for (const sub of sec.subsections) {
+                 const count = Number(sub.count);
+                 if (qIndex >= offset && qIndex < offset + count) {
+                    const limit = Number(sub.attempt_limit ?? sub.count);
+                    let answeredInSub = 0;
+                    for (let i = offset; i < offset + count; i++) {
+                       if (questions[i].id !== qid && (answers[questions[i].id]?.length ?? 0) > 0) {
+                          answeredInSub++;
+                       }
+                    }
+                    if (answeredInSub >= limit && (answers[qid]?.length ?? 0) === 0) {
+                       toast.error(`You can only attempt ${limit} questions in ${sub.name}. Please clear an answer first.`);
+                       return;
+                    }
+                 }
+                 offset += count;
+              }
+           } else {
+              offset += Number(sec.count);
+           }
+        }
+      }
+    }
     setAnswers((a) => ({ ...a, [qid]: resp }));
     if (!token) return;
     try {
@@ -295,36 +344,138 @@ function TakeExam() {
               {showPalette ? "Hide" : "Show"} all
             </Button>
           </div>
+          {subjectBoundaries && subjectBoundaries.length > 1 && (
+             <div className="flex flex-wrap gap-1 mb-2">
+               {subjectBoundaries.map((s) => (
+                  <Button
+                    key={s.name}
+                    variant={activeSubject === s.name ? "default" : "outline"}
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => {
+                       setActiveSubject(s.name);
+                    }}
+                  >
+                    {s.name}
+                  </Button>
+               ))}
+             </div>
+          )}
           {showPalette && (
             <>
-              <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 lg:grid-cols-5">
-                {questions.map((qq, i) => {
-                  const done = (answers[qq.id] ?? []).length > 0;
-                  const rev = reviewed.has(qq.id);
-                  const seen = visited.has(qq.id);
-                  // Priority: reviewed+answered → purple w/ green dot; reviewed → purple;
-                  // answered → green; visited-not-answered → red; else neutral.
-                  let cls = "border-border bg-background text-foreground";
-                  if (rev && done) cls = "border-purple-500 bg-purple-500 text-white";
-                  else if (rev) cls = "border-purple-500 bg-purple-500 text-white";
-                  else if (done) cls = "border-green-500 bg-green-500 text-white";
-                  else if (seen) cls = "border-red-500 bg-red-500 text-white";
-                  const isCurrent = i === current;
-                  return (
-                    <button
-                      key={qq.id}
-                      onClick={() => setCurrent(i)}
-                      className={`relative rounded-md border p-2 text-xs font-medium transition ${cls} ${
-                        isCurrent ? "ring-2 ring-offset-1 ring-primary" : ""
-                      }`}
-                    >
-                      {i + 1}
-                      {rev && done && (
-                        <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-green-400 ring-1 ring-white" />
-                      )}
-                    </button>
-                  );
-                })}
+              <div className="space-y-4">
+                {subjectBoundaries && activeSubject ? (() => {
+                   const activeSubjInfo = subjectBoundaries.find(s => s.name === activeSubject);
+                   if (!activeSubjInfo) return null;
+                   if (activeSubjInfo.subsections) {
+                      return activeSubjInfo.subsections.map((sub: any, subIdx: number) => {
+                         let subStart = activeSubjInfo.start;
+                         for(let i=0; i<subIdx; i++) subStart += Number(activeSubjInfo.subsections[i].count);
+                         const subCount = Number(sub.count);
+                         return (
+                            <div key={sub.name} className="space-y-1">
+                              <div className="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                                <span>{sub.name}</span>
+                                {sub.attempt_limit && sub.attempt_limit < subCount && (
+                                  <span className="text-destructive font-bold">Attempt {sub.attempt_limit} of {subCount}</span>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 lg:grid-cols-5">
+                                {Array.from({length: subCount}).map((_, i) => {
+                                   const qIdx = subStart + i;
+                                   const qq = questions[qIdx];
+                                   if (!qq) return null;
+                                   const done = (answers[qq.id] ?? []).length > 0;
+                                   const rev = reviewed.has(qq.id);
+                                   const seen = visited.has(qq.id);
+                                   let cls = "border-border bg-background text-foreground";
+                                   if (rev && done) cls = "border-purple-500 bg-purple-500 text-white";
+                                   else if (rev) cls = "border-purple-500 bg-purple-500 text-white";
+                                   else if (done) cls = "border-green-500 bg-green-500 text-white";
+                                   else if (seen) cls = "border-red-500 bg-red-500 text-white";
+                                   const isCurrent = qIdx === current;
+                                   return (
+                                     <button
+                                       key={qq.id}
+                                       onClick={() => setCurrent(qIdx)}
+                                       className={`relative rounded-md border p-2 text-xs font-medium transition ${cls} ${
+                                         isCurrent ? "ring-2 ring-offset-1 ring-primary" : ""
+                                       }`}
+                                     >
+                                       {qIdx + 1}
+                                       {rev && done && (
+                                         <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-green-400 ring-1 ring-white" />
+                                       )}
+                                     </button>
+                                   );
+                                })}
+                              </div>
+                            </div>
+                         );
+                      });
+                   } else {
+                      return (
+                         <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 lg:grid-cols-5">
+                           {Array.from({length: activeSubjInfo.end - activeSubjInfo.start + 1}).map((_, i) => {
+                              const qIdx = activeSubjInfo.start + i;
+                              const qq = questions[qIdx];
+                              if (!qq) return null;
+                              const done = (answers[qq.id] ?? []).length > 0;
+                              const rev = reviewed.has(qq.id);
+                              const seen = visited.has(qq.id);
+                              let cls = "border-border bg-background text-foreground";
+                              if (rev && done) cls = "border-purple-500 bg-purple-500 text-white";
+                              else if (rev) cls = "border-purple-500 bg-purple-500 text-white";
+                              else if (done) cls = "border-green-500 bg-green-500 text-white";
+                              else if (seen) cls = "border-red-500 bg-red-500 text-white";
+                              const isCurrent = qIdx === current;
+                              return (
+                                <button
+                                  key={qq.id}
+                                  onClick={() => setCurrent(qIdx)}
+                                  className={`relative rounded-md border p-2 text-xs font-medium transition ${cls} ${
+                                    isCurrent ? "ring-2 ring-offset-1 ring-primary" : ""
+                                  }`}
+                                >
+                                  {qIdx + 1}
+                                  {rev && done && (
+                                    <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-green-400 ring-1 ring-white" />
+                                  )}
+                                </button>
+                              );
+                           })}
+                         </div>
+                      );
+                   }
+                })() : (
+                   <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 lg:grid-cols-5">
+                     {questions.map((qq, i) => {
+                       const done = (answers[qq.id] ?? []).length > 0;
+                       const rev = reviewed.has(qq.id);
+                       const seen = visited.has(qq.id);
+                       let cls = "border-border bg-background text-foreground";
+                       if (rev && done) cls = "border-purple-500 bg-purple-500 text-white";
+                       else if (rev) cls = "border-purple-500 bg-purple-500 text-white";
+                       else if (done) cls = "border-green-500 bg-green-500 text-white";
+                       else if (seen) cls = "border-red-500 bg-red-500 text-white";
+                       const isCurrent = i === current;
+                       return (
+                         <button
+                           key={qq.id}
+                           onClick={() => setCurrent(i)}
+                           className={`relative rounded-md border p-2 text-xs font-medium transition ${cls} ${
+                             isCurrent ? "ring-2 ring-offset-1 ring-primary" : ""
+                           }`}
+                         >
+                           {i + 1}
+                           {rev && done && (
+                             <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-green-400 ring-1 ring-white" />
+                           )}
+                         </button>
+                       );
+                     })}
+                   </div>
+                )}
               </div>
               <div className="mt-2 grid grid-cols-2 gap-1 text-[10px] text-muted-foreground">
                 <Legend color="bg-green-500" label="Answered" />
