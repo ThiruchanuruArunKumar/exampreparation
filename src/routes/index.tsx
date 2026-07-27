@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { listStudentExams, startStudentAttempt } from "@/lib/student.functions";
-import { getLastStudentId, setLastStudentId, clearLastStudentId } from "@/lib/lastStudentId";
+import { getLastStudentId, setLastStudentId, clearLastStudentId, getRecentStudentIds, removeRecentStudentId } from "@/lib/lastStudentId";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const Route = createFileRoute("/")({
@@ -65,15 +65,15 @@ function Landing() {
   const [loadingList, setLoadingList] = useState(false);
   const [exams, setExams] = useState<ExamRow[] | null>(null);
   const [studentName, setStudentName] = useState<string>("");
-  const [lastId, setLastId] = useState<string | null>(null);
+  const [recentIds, setRecentIds] = useState<string[]>([]);
 
   useEffect(() => {
-    const saved = getLastStudentId();
-    setLastId(saved);
-    if (saved) {
-      setLookupCode(saved);
-      setStudentCode(saved);
-      void fetchExams(saved);
+    const saved = getRecentStudentIds();
+    setRecentIds(saved);
+    if (saved.length > 0) {
+      setLookupCode(saved[0]);
+      setStudentCode(saved[0]);
+      void fetchExams(saved[0]);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -87,7 +87,7 @@ function Landing() {
       setExams(r.exams);
       setStudentName(r.student.name);
       setLastStudentId(c);
-      setLastId(c);
+      setRecentIds(getRecentStudentIds());
       setStudentCode(c);
     } catch (err) {
       setExams(null);
@@ -186,23 +186,31 @@ function Landing() {
                     maxLength={6}
                     className="font-mono tracking-widest"
                   />
-                  {lastId && lastId !== studentCode.toUpperCase() && (
+                  {recentIds.filter(id => id !== studentCode.toUpperCase()).length > 0 && (
                     <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <span>Last used:</span>
-                      <button
-                        type="button"
-                        onClick={() => setStudentCode(lastId)}
-                        className="rounded-md border border-border bg-muted/50 px-2 py-0.5 font-mono text-xs font-semibold text-foreground transition-colors hover:border-primary/50 hover:bg-muted hover:text-primary"
-                      >
-                        {lastId}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { clearLastStudentId(); setLastId(null); }}
-                        className="text-xs text-muted-foreground/80 hover:text-foreground hover:underline"
-                      >
-                        Forget
-                      </button>
+                      <span>Recent:</span>
+                      {recentIds.filter(id => id !== studentCode.toUpperCase()).map(id => (
+                        <div key={id} className="flex items-center rounded-md border border-border bg-muted/50 group transition-colors hover:border-primary/50">
+                          <button
+                            type="button"
+                            onClick={() => setStudentCode(id)}
+                            className="px-2 py-0.5 font-mono text-xs font-semibold text-foreground hover:text-primary rounded-l-md"
+                          >
+                            {id}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              removeRecentStudentId(id);
+                              setRecentIds(getRecentStudentIds());
+                            }}
+                            className="px-1.5 py-0.5 border-l border-border/50 text-muted-foreground hover:text-destructive transition-colors rounded-r-md opacity-50 group-hover:opacity-100"
+                            title="Forget this ID"
+                          >
+                            &times;
+                          </button>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -268,16 +276,19 @@ function Landing() {
                   {loadingList ? <Loader2 className="h-4 w-4 animate-spin" /> : "Show"}
                 </Button>
               </div>
-              {lastId && lastId !== lookupCode.toUpperCase() && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span>Last used:</span>
-                  <button
-                    type="button"
-                    onClick={() => { setLookupCode(lastId); void fetchExams(lastId); }}
-                    className="rounded-md border border-border bg-muted/50 px-2 py-0.5 font-mono text-xs font-semibold text-foreground hover:bg-muted"
-                  >
-                    {lastId}
-                  </button>
+              {recentIds.filter(id => id !== lookupCode.toUpperCase()).length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                  <span>Recent:</span>
+                  {recentIds.filter(id => id !== lookupCode.toUpperCase()).map(id => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => { setLookupCode(id); void fetchExams(id); }}
+                      className="rounded-md border border-border bg-muted/50 px-2 py-0.5 font-mono text-xs font-semibold text-foreground hover:bg-muted transition-colors hover:border-primary/50"
+                    >
+                      {id}
+                    </button>
+                  ))}
                 </div>
               )}
               <Link

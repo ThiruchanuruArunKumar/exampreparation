@@ -591,9 +591,6 @@ function ResultScreen({
                   </p>
                 )}
               </div>
-              <Link to="/">
-                <Button variant="outline" size="sm">← Back to home</Button>
-              </Link>
             </div>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
@@ -630,9 +627,6 @@ function ResultScreen({
                   </p>
                 )}
               </div>
-              <Link to="/">
-                <Button variant="outline" size="sm">← Back to home</Button>
-              </Link>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">

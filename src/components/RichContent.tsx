@@ -117,61 +117,28 @@ function formatMatchQuestion(input: string): string {
 function cleanChemicalFormulas(input: string): string {
   let s = input;
 
-  // 2. Fix bare \mathrm{...} without $...$ (supporting nested braces like _{2})
-  s = s.replace(/(?<!\$)\\mathrm\s*\{([\s\S]+)/g, (fullMatch) => {
-    let depth = 1;
-    let endIdx = -1;
-    const fullText = fullMatch.slice(fullMatch.indexOf("{") + 1);
-    for (let i = 0; i < fullText.length; i++) {
-      if (fullText[i] === "{") depth++;
-      else if (fullText[i] === "}") {
-        depth--;
-        if (depth === 0) {
-          endIdx = i;
-          break;
-        }
-      }
-    }
-    if (endIdx !== -1) {
-      let content = fullText.slice(0, endIdx);
-      content = content.replace(/<=>|<==>|<->/g, "\\rightleftharpoons ");
-      const remaining = fullText.slice(endIdx + 1);
-      return `$\\mathrm{${content.trim()}}$${remaining}`;
-    }
-    return fullMatch;
-  });
-
   // 3. Fix misplaced/unbalanced closing braces in \ce{...} e.g. \ce{CH3-CH}=CH-CHO} -> \ce{CH3-CH=CH-CHO}
   s = s.replace(/\\ce\s*\{([^{}\n]+)\}([^$\s\n]*\})/g, (_m, inner1, inner2) => {
     const clean2 = inner2.replace(/\}$/, "");
     return `\\ce{${inner1}${clean2}}`;
   });
 
-  // 4. Transform \ce{content} -> $\mathrm{content}$ (with automatic number subscripts)
+  // 4. Transform \ce{content} -> \mathrm{content} (with automatic number subscripts)
   s = s.replace(/\\ce\s*\{([^{}\n]+)\}/g, (_m, rawFormula) => {
     let formula = rawFormula.trim();
     formula = formula.replace(/<=>|<==>|<->/g, "\\rightleftharpoons ");
     formula = formula.replace(/([A-Za-z])([0-9]+)/g, "$1_{$2}");
     formula = formula.replace(/\^?([0-9]*[\+\-])/g, "^{$1}");
-    return `$\\mathrm{${formula}}$`;
+    return `\\mathrm{${formula}}`;
   });
 
-  // 5. Transform bare \ce without braces e.g. \ceO2^- -> $\mathrm{O_2^-}$
+  // 5. Transform bare \ce without braces e.g. \ceO2^- -> \mathrm{O_2^-}
   s = s.replace(/\\ce\s*([A-Za-z0-9_+\-^\(\)]+)/g, (_m, rawFormula) => {
     let formula = rawFormula.trim();
     formula = formula.replace(/([A-Za-z])([0-9]+)/g, "$1_{$2}");
     formula = formula.replace(/\^?([0-9]*[\+\-])/g, "^{$1}");
-    return `$\\mathrm{${formula}}$`;
+    return `\\mathrm{${formula}}`;
   });
-
-  // 6. Wrap bare Greek letters in inline math e.g. "3 \sigma and 2 \pi" -> "3 $\sigma$ and 2 $\pi$"
-  s = s.replace(
-    /(?<!\$)\\(sigma|pi|alpha|beta|gamma|delta|theta|lambda|mu|nu|omega|phi|psi|rho|tau|eta|zeta|kappa|chi|epsilon|Delta|Gamma|Theta|Lambda|Sigma|Omega)\b(?!\$)/g,
-    (_m, g) => `$\\${g}$`
-  );
-
-  // 7. Clean stray dollar at end of symbol e.g. "K_c$:" -> "$K_c$:"
-  s = s.replace(/([A-Za-z0-9_]+)\$:/g, "$$$1$:");
 
   return s;
 }
