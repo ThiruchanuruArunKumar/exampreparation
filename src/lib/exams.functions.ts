@@ -96,7 +96,11 @@ SELF-VERIFICATION (MANDATORY): Re-read every prompt, option and correct_answer b
           },
         ],
       });
-      return output;
+      return {
+        ...output,
+        questions: output.questions.map((q) => repairQuestionLatex(q)),
+      };
+
     } catch (error) {
       if (NoObjectGeneratedError.isInstance(error)) {
         throw new Error(
