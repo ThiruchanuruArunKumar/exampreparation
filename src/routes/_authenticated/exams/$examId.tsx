@@ -106,8 +106,8 @@ function ExamDetail() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [due, setDue] = useState("");
   const [maxAttempts, setMaxAttempts] = useState(1);
+  const [individualAttempts, setIndividualAttempts] = useState<Record<string, number>>({});
   const [analytics, setAnalytics] = useState<any>(null);
   const [savingSettings, setSavingSettings] = useState(false);
   const [savingQuestions, setSavingQuestions] = useState(false);
@@ -250,21 +250,29 @@ function ExamDetail() {
           data: {
             examId,
             studentIds: Array.from(selected),
-            due_at: due || null,
+            due_at: null,
             max_attempts: maxAttempts,
           },
         });
         assignedCount = r.assigned;
       }
-      // Also apply due/max to existing assignments so admins can edit them
+      // Apply max_attempts to existing assignments
       if (assignments.length) {
         await supabase
           .from("assignments")
-          .update({ due_at: due || null, max_attempts: maxAttempts })
+          .update({ max_attempts: maxAttempts })
           .eq("exam_id", examId);
       }
       toast.success(assignedCount ? `Saved · assigned to ${assignedCount}` : "Saved");
       setSelected(new Set());
+      reload();
+    } catch (e) { toast.error((e as Error).message); }
+  };
+
+  const saveIndividualAttempts = async (assignmentId: string, val: number) => {
+    try {
+      await supabase.from("assignments").update({ max_attempts: val }).eq("id", assignmentId);
+      toast.success("Attempts updated");
       reload();
     } catch (e) { toast.error((e as Error).message); }
   };
@@ -276,10 +284,10 @@ function ExamDetail() {
   };
 
   const reassign = async (id: string) => {
-    if (!confirm("Reset all attempts for this student?")) return;
+    if (!confirm("Reassign attempt? This will revoke the last in-progress attempt so the student can start fresh. Previously submitted attempts are kept.")) return;
     try {
       await reassignAttempt({ data: { assignmentId: id } });
-      toast.success("Reset");
+      toast.success("Attempt reassigned — student can now start a new attempt");
       reload();
     } catch (e) { toast.error((e as Error).message); }
   };
@@ -491,16 +499,10 @@ function ExamDetail() {
             <Card>
               <CardHeader><CardTitle className="text-base">Bulk assign</CardTitle></CardHeader>
               <CardContent className="space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label>Due date</Label>
-                    <Input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} />
-                  </div>
-                  <div>
-                    <Label>Max attempts per student</Label>
-                    <NumberField value={maxAttempts} onChange={setMaxAttempts} min={1} fallback={1} />
-                    <p className="mt-1 text-xs text-muted-foreground">Each selected student gets this many attempts.</p>
-                  </div>
+                <div>
+                  <Label>Max attempts per student</Label>
+                  <NumberField value={maxAttempts} onChange={setMaxAttempts} min={1} fallback={1} />
+                  <p className="mt-1 text-xs text-muted-foreground">Default for newly assigned students. You can override per student below.</p>
                 </div>
                 <div className="flex items-center justify-between">
                   <p className="text-xs text-muted-foreground">{selected.size} selected</p>
@@ -537,26 +539,55 @@ function ExamDetail() {
                         null as Assignment["attempts"][number] | null,
                       );
                       return (
-                        <div key={a.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border p-3">
-                          <div className="min-w-0 flex-1">
-                            <div className="truncate text-sm font-medium">{studentName(a.student_id)}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {a.attempts.length} attempt{a.attempts.length === 1 ? "" : "s"}
-                              {best?.score != null && ` · best ${best.score}/${best.max_score}`}
-                              {a.due_at && ` · due ${new Date(a.due_at).toLocaleDateString()}`}
+                        <div key={a.id} className="rounded-md border border-border p-3 space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate text-sm font-medium">{studentName(a.student_id)}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {a.attempts.length} attempt{a.attempts.length === 1 ? "" : "s"}
+                                {best?.score != null && ` · best ${best.score}/${best.max_score}`}
+                                {` · max ${a.max_attempts}`}
+                              </div>
+                            </div>
+                            <div className="flex shrink-0 items-center gap-1">
+                              {best && (
+                                <Link to="/attempt-results/$attemptId" params={{ attemptId: best.id }}>
+                                  <Button variant="outline" size="sm">View</Button>
+                                </Link>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => reassign(a.id)}
+                                title="Reassign attempt"
+                                className="flex items-center gap-1 text-xs"
+                              >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline">Reassign</span>
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => removeAssignment(a.id)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             </div>
                           </div>
-                          <div className="flex shrink-0 items-center gap-1">
-                            {best && (
-                              <Link to="/attempt-results/$attemptId" params={{ attemptId: best.id }}>
-                                <Button variant="outline" size="sm">View</Button>
-                              </Link>
-                            )}
-                            <Button variant="ghost" size="sm" onClick={() => reassign(a.id)} title="Reset attempts">
-                              <RotateCcw className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => removeAssignment(a.id)}>
-                              <Trash2 className="h-4 w-4" />
+                          {/* Per-student attempts override */}
+                          <div className="flex items-center gap-2 border-t border-border/50 pt-2">
+                            <Label className="text-xs shrink-0 text-muted-foreground">Attempts allowed:</Label>
+                            <div className="w-28">
+                              <NumberField
+                                value={individualAttempts[a.id] ?? a.max_attempts}
+                                onChange={(val) => setIndividualAttempts((prev) => ({ ...prev, [a.id]: val }))}
+                                min={1}
+                                fallback={a.max_attempts}
+                              />
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs h-8"
+                              onClick={() => saveIndividualAttempts(a.id, individualAttempts[a.id] ?? a.max_attempts)}
+                            >
+                              Save
                             </Button>
                           </div>
                         </div>
