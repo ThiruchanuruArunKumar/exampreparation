@@ -748,13 +748,16 @@ function resolveCorrectAnswer(options: string[] | null, rawCorrect: string[]): s
 function normalizeGenerated(questions: GenQuestion[], genMode: string, toughness: string) {
   return questions.map((rawQ) => {
     const fixedQ = fixMatchOptionsInQuestion(rawQ);
+    const normalizedPrompt = repairLatex(fixedQ.prompt);
     const normalizedOptions = fixedQ.options ? fixedQ.options.map(normalizeOptionMath) : null;
     const normalizedCorrect = fixedQ.type !== "short"
-      ? resolveCorrectAnswer(normalizedOptions, fixedQ.correct_answer)
+      ? resolveCorrectAnswer(normalizedOptions, fixedQ.correct_answer.map((a) => repairLatex(a)))
       : fixedQ.correct_answer;
 
     return {
       ...fixedQ,
+      prompt: normalizedPrompt,
+
       options: normalizedOptions,
       correct_answer: normalizedCorrect,
       difficulty: toughness as GenQuestion["difficulty"],
