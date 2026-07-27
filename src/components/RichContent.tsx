@@ -117,17 +117,6 @@ function formatMatchQuestion(input: string): string {
 function cleanChemicalFormulas(input: string): string {
   let s = input;
 
-  // 1. Un-wrap English prose sentences/options that were mistakenly wrapped in $...$ e.g. "$3 \sigma and 2 \pi$" -> "3 $\sigma$ and 2 $\pi$"
-  s = s.replace(
-    /\$([^\$\n]*\b(?:if|the|of|and|or|in|is|are|was|were|then|when|moles|product|equilibrium|constant|increased|decreased|volume|temperature|pressure|number|formed|at|by|decreasing|with|to|for|a|an|only)\b[^\$\n]*)\$/gi,
-    (_m, inner) => {
-      return inner.replace(
-        /(?<!\$)\\(sigma|pi|alpha|beta|gamma|delta|theta|lambda|mu|nu|omega|phi|psi|rho|tau|eta|zeta|kappa|chi|epsilon|Delta|Gamma|Theta|Lambda|Sigma|Omega|frac|sqrt)\b(?!\$)/g,
-        (__m: string, g: string) => `$\\${g}$`
-      );
-    }
-  );
-
   // 2. Fix bare \mathrm{...} without $...$ (supporting nested braces like _{2})
   s = s.replace(/(?<!\$)\\mathrm\s*\{([\s\S]+)/g, (fullMatch) => {
     let depth = 1;
@@ -193,11 +182,14 @@ function formatChemistryMath(mathText: string): string {
 
     // Safeguard: Never format English prose sentences containing common words as math
     if (
-      /\b(if|the|of|and|or|in|is|are|was|were|then|when|moles|product|equilibrium|constant|increased|decreased|volume|temperature|pressure)\b/i.test(
+      /\b(if|the|of|and|or|in|is|are|was|were|then|when|moles|product|equilibrium|constant|increased|decreased|volume|temperature|pressure|number|formed|at|by|decreasing|with|to|for|a|an|only)\b/i.test(
         inner
       )
     ) {
-      return inner;
+      return inner.replace(
+        /(?<!\$)\\(sigma|pi|alpha|beta|gamma|delta|theta|lambda|mu|nu|omega|phi|psi|rho|tau|eta|zeta|kappa|chi|epsilon|Delta|Gamma|Theta|Lambda|Sigma|Omega|frac|sqrt)\b(?!\$)/g,
+        (__m: string, g: string) => `$\\${g}$`
+      );
     }
 
     if (
