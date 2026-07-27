@@ -702,14 +702,11 @@ function fixMatchOptionsInQuestion(q: GenQuestion): GenQuestion {
 
 function normalizeOptionMath(opt: string): string {
   if (!opt) return opt;
-  let s = opt.trim().replace(/\\\\/g, "\\");
-  const hasLatex = /\\[a-zA-Z]+/.test(s);
-  const isWrapped = /^\$[^$]+\$$/.test(s) || /^\$\$[\s\S]+\$\$$/.test(s);
-  if (hasLatex && !isWrapped) {
-    return `$${s}$`;
-  }
-  return s;
+  // Strip any leading "A)", "(b).", "1." labels the model added, then repair math.
+  const cleaned = opt.trim().replace(/^\(?\s*[A-Da-d1-4]\s*[\).:]\s+/, "");
+  return repairLatex(cleaned);
 }
+
 
 function resolveCorrectAnswer(options: string[] | null, rawCorrect: string[]): string[] {
   if (!options || !options.length) return rawCorrect;
