@@ -101,11 +101,10 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
   };
 
   const doGenFromDesc = async () => {
-    if (!description.trim()) return toast.error("Describe topics for the AI first");
     setBusy(true);
     try {
       const res = await generateFromDescription({
-        data: { pattern, count, subject: subject || null, description: description.trim(), genMode, toughness },
+        data: { pattern, count, subject: subject || null, description: description.trim() || null, genMode, toughness },
       });
       onQuestions(res.questions as GeneratedQuestion[]);
       toast.success(`Generated ${res.questions.length} questions for ${subject || "the exam"}`);
@@ -117,7 +116,6 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
   };
 
   const doGenAllSubjects = async () => {
-    if (!description.trim()) return toast.error("Describe topics for the AI first");
     const preset = pattern !== "custom" ? PATTERN_PRESETS[pattern] : null;
     const sections = preset ? preset.sections : subjects.map((s) => ({ name: s, count, marks_per_q: 1 }));
     if (!sections.length) return toast.error("No subjects configured");
@@ -127,7 +125,7 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
       const results: number[] = await Promise.all(
         sections.map((sec) =>
           generateFromDescription({
-            data: { pattern, count: sec.count, subject: sec.name, description: description.trim(), genMode, toughness },
+            data: { pattern, count: sec.count, subject: sec.name, description: description.trim() || null, genMode, toughness },
           }).then((res) => {
             onQuestions(res.questions as GeneratedQuestion[]);
             return res.questions.length;
@@ -265,8 +263,8 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
 
           <TabsContent value="describe" className="mt-3 space-y-3">
             <Textarea
-              rows={5}
-              placeholder="Describe the exam topics, chapters, or brief for the AI. E.g. 'Class 12 Physics — Ray Optics, mirrors and lenses, numerical + conceptual, hard'."
+              rows={4}
+              placeholder="Optional: Describe specific topics, chapters, or brief for the AI (e.g. 'Class 12 Physics — Ray Optics, mirrors and lenses'). If left blank, questions will be generated automatically for the full syllabus using the selected pattern, mode & toughness level."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
             />

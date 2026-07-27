@@ -885,7 +885,7 @@ export const generateFromDescription = createServerFn({ method: "POST" })
         pattern: PatternEnum,
         count: z.number().int().min(1).max(100),
         subject: z.string().max(120).nullable().optional(),
-        description: z.string().min(3).max(4000),
+        description: z.string().max(4000).nullable().optional(),
         genMode: GenModeEnum.default("ai"),
         toughness: ToughnessEnum.default("medium"),
       })
@@ -894,8 +894,11 @@ export const generateFromDescription = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const sys = baseGenPrompt(data.pattern, data.count, data.subject, data.genMode, data.toughness);
+    const descText = data.description?.trim()
+      ? `Exam brief / topics from admin:\n${data.description.trim()}\n\nProduce exactly ${data.count} questions — no more, no less.`
+      : `No specific topic brief provided. Generate questions covering the standard syllabus for ${data.subject || "this exam"} strictly following the pattern, generation mode, and toughness level specified above. Produce exactly ${data.count} questions — no more, no less.`;
     const questions = await runGenerateExact(sys, [
-      { type: "text", text: `Exam brief / topics from admin:\n${data.description}\n\nProduce exactly ${data.count} questions — no more, no less.` },
+      { type: "text", text: descText },
     ], data.count);
     return { questions: normalizeGenerated(questions, data.genMode, data.toughness) };
   });
