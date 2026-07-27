@@ -3,6 +3,8 @@ import { z } from "zod";
 import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createLovableAiGatewayProvider } from "./ai-gateway.server";
+import { repairQuestionLatex } from "./latex-repair";
+
 
 const QuestionSchema = z.object({
   type: z.enum(["mcq", "multi", "tf", "short"]),
