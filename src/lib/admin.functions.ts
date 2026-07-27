@@ -740,31 +740,79 @@ async function runGenerateOnce(prompt: string, userContent: any[]) {
   }
 }
 
-// Split large generations into parallel chunks for much faster wall-clock time.
+// Split large generations into parallel chunks for much faster wall-clock time,
+// with prompt count sanitization per chunk and a top-up pass to guarantee exact count.
 async function runGenerateExact(prompt: string, userContent: any[], count: number) {
   const CHUNK = 20;
+
+  const sanitizeContentForCount = (contentArray: any[], targetCount: number) => {
+    return contentArray.map((item) => {
+      if (item && item.type === "text" && typeof item.text === "string") {
+        return {
+          ...item,
+          text: item.text
+            .replace(/exactly \d+ questions/gi, `exactly ${targetCount} questions`)
+            .replace(/Produce exactly \d+/gi, `Produce exactly ${targetCount}`),
+        };
+      }
+      return item;
+    });
+  };
+
+  const sanitizePromptForCount = (promptStr: string, targetCount: number) => {
+    return promptStr
+      .replace(/exactly \d+ high-quality questions/gi, `exactly ${targetCount} high-quality questions`)
+      .replace(/exactly \d+ questions/gi, `exactly ${targetCount} questions`);
+  };
+
+  let accumulated: GenQuestion[] = [];
+
   if (count <= CHUNK) {
-    const qs = await runGenerateOnce(prompt, userContent);
-    return qs.slice(0, count);
+    const p = sanitizePromptForCount(prompt, count);
+    const c = sanitizeContentForCount(userContent, count);
+    accumulated = await runGenerateOnce(p, c).catch(() => []);
+  } else {
+    const chunks: number[] = [];
+    let remaining = count;
+    while (remaining > 0) {
+      const n = Math.min(CHUNK, remaining);
+      chunks.push(n);
+      remaining -= n;
+    }
+
+    const results = await Promise.all(
+      chunks.map((n, i) => {
+        const chunkPrompt = sanitizePromptForCount(prompt, n);
+        const cleanedUserContent = sanitizeContentForCount(userContent, n);
+        const chunkContent = [
+          ...cleanedUserContent,
+          {
+            type: "text",
+            text: `Batch ${i + 1} of ${chunks.length}. Produce exactly ${n} questions for THIS batch only. Vary topics/difficulty from other batches; do not repeat questions. Use a distinct random seed: ${Math.random().toString(36).slice(2, 10)}.`,
+          },
+        ];
+        return runGenerateOnce(chunkPrompt, chunkContent).then((qs) => qs.slice(0, n)).catch(() => []);
+      }),
+    );
+    accumulated = results.flat();
   }
-  const chunks: number[] = [];
-  let remaining = count;
-  while (remaining > 0) {
-    const n = Math.min(CHUNK, remaining);
-    chunks.push(n);
-    remaining -= n;
+
+  // Guarantee exact target count: if any chunk returned fewer items, run a top-up pass for the missing questions.
+  if (accumulated.length < count) {
+    const missing = count - accumulated.length;
+    const topUpPrompt = sanitizePromptForCount(prompt, missing);
+    const topUpContent = [
+      ...sanitizeContentForCount(userContent, missing),
+      {
+        type: "text",
+        text: `Top-up batch: Produce exactly ${missing} additional unique questions to complete the set. Do not repeat existing topics.`,
+      },
+    ];
+    const extra = await runGenerateOnce(topUpPrompt, topUpContent).then((qs) => qs.slice(0, missing)).catch(() => []);
+    accumulated = [...accumulated, ...extra];
   }
-  const results = await Promise.all(
-    chunks.map((n, i) => {
-      const chunkPrompt = prompt.replace(/exactly \d+ high-quality questions/, `exactly ${n} high-quality questions`);
-      const chunkContent = [
-        ...userContent,
-        { type: "text", text: `Batch ${i + 1} of ${chunks.length}. Produce exactly ${n} questions for THIS batch only. Vary topics/difficulty from other batches; do not repeat questions. Use a distinct random seed: ${Math.random().toString(36).slice(2, 10)}.` },
-      ];
-      return runGenerateOnce(chunkPrompt, chunkContent).then((qs) => qs.slice(0, n));
-    }),
-  );
-  return results.flat().slice(0, count);
+
+  return accumulated.slice(0, count);
 }
 
 
