@@ -4,6 +4,7 @@ import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createLovableAiGatewayProvider } from "./ai-gateway.server";
 import { repairLatex } from "./latex-repair";
+import { stripNullBytes } from "./utils";
 
 
 const PatternEnum = z.enum(["neet", "eamcet", "ts_eamcet_bipc", "mains", "custom"]);
@@ -101,7 +102,8 @@ export const createExam = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data: rawData, context }) => {
+    const data = stripNullBytes(rawData);
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -297,7 +299,8 @@ export const saveQuestions = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data: rawData, context }) => {
+    const data = stripNullBytes(rawData);
     await assertAdmin(context);
     await assertOwnsExam(context, data.examId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

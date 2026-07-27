@@ -167,7 +167,7 @@ export function PatternPicker({ pattern, config, onChange }: Props) {
                     className="h-9 text-sm font-medium sm:h-8 sm:text-xs"
                     placeholder="Subject name"
                   />
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 sm:contents">
                     <div className="flex-1 sm:flex-none">
                       <span className="text-[10px] text-muted-foreground mb-0.5 block sm:hidden">Questions</span>
                       <NumberField value={s.count} onChange={(n) => patchSection(i, { count: n })} min={0} fallback={0} disabled={readonly} className="h-9 text-sm sm:h-8 sm:text-xs" />
@@ -181,7 +181,7 @@ export function PatternPicker({ pattern, config, onChange }: Props) {
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     ) : (
-                      <span className="text-[11px] font-mono text-muted-foreground px-1 shrink-0">{s.count} Qs</span>
+                      <span className="text-[11px] font-mono text-muted-foreground px-1 shrink-0 flex items-center justify-center min-w-[28px]">{s.count} Qs</span>
                     )}
                   </div>
                 </div>

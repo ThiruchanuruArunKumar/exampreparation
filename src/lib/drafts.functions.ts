@@ -63,10 +63,13 @@ export const getDraft = createServerFn({ method: "GET" })
   });
 
 
+import { stripNullBytes } from "./utils";
+
 export const saveDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => DraftPayload.parse(input))
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data: rawData, context }) => {
+    const data = stripNullBytes(rawData);
     const row = {
       owner_id: context.userId,
       title: data.title,
