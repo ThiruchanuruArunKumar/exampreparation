@@ -6,6 +6,8 @@ import "katex/dist/katex.min.css";
 import "katex/dist/contrib/mhchem.js";
 
 import { cn } from "@/lib/utils";
+import { repairLatex } from "@/lib/latex-repair";
+
 
 /**
  * Detects "Match the following" questions that contain List-I and List-II
