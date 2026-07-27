@@ -16,16 +16,16 @@ export type PatternConfig = {
 export const PATTERN_PRESETS: Record<Exclude<ExamPattern, "custom">, PatternConfig & { label: string; description: string }> = {
   neet: {
     label: "NEET",
-    description: "180 min · 200 questions · +4 / −1 · Physics, Chemistry, Botany, Zoology",
-    duration_minutes: 180,
+    description: "200 min · 200 questions · +4 / −1 · Physics (50), Chemistry (50), Botany (50), Zoology (50)",
+    duration_minutes: 200,
     negative_mark_per_wrong: 1,
     sections: [
-      { name: "Physics", count: 45, marks_per_q: 4 },
-      { name: "Chemistry", count: 45, marks_per_q: 4 },
-      { name: "Botany", count: 45, marks_per_q: 4 },
-      { name: "Zoology", count: 45, marks_per_q: 4 },
+      { name: "Physics", count: 50, marks_per_q: 4 },
+      { name: "Chemistry", count: 50, marks_per_q: 4 },
+      { name: "Botany", count: 50, marks_per_q: 4 },
+      { name: "Zoology", count: 50, marks_per_q: 4 },
     ],
-    notes: "NEET UG single-correct MCQs. Follow NCERT Class 11 & 12 syllabus. 4 options each.",
+    notes: "NEET UG official 200 questions paper (50 questions each for Physics, Chemistry, Botany, Zoology). Follow NCERT Class 11 & 12 syllabus. 4 options each.",
   },
   eamcet: {
     label: "AP/TS EAMCET",

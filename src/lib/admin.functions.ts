@@ -694,8 +694,17 @@ Never emit just "1" or "A" — emit the whole matching option string.`;
 
 const PATTERN_GUIDE: Record<string, string> = {
   neet:
-    `NEET UG (India) standard. NCERT Class 11 & 12 syllabus. Subjects: Physics, Chemistry, Botany, Zoology. Marks per question = 4 (+4 correct, −1 wrong). Style must match previous NEET papers.
-Approximate format ratio for NEET: ~70% direct single-correct MCQ, ~15% Assertion & Reason, ~10% Statement-based, ~5% Match-the-following. No numerical/integer type. All questions type="mcq" with exactly 4 options.${PATTERN_FORMAT_MIX}`,
+    `NEET UG (India) official exam standard. NCERT Class 11 & 12 syllabus. Subjects: Physics, Chemistry, Botany, Zoology. Each subject has 50 questions (total 200 questions in the paper). Marks per question = 4 (+4 for correct, −1 for wrong).
+
+CRITICAL EXAM PATTERN & QUESTION TYPE RATIO FOR NEET:
+- Every question MUST follow NCERT Class 11 & Class 12 biology, chemistry, and physics textbook concepts and line-by-line facts.
+- EXACT QUESTION FORMAT RATIO (matching real NTA NEET UG papers):
+  1) ~50% Direct Single-Correct MCQs: Conceptual, diagrammatic, or numerical single-choice questions with 4 options.
+  2) ~20% Match the Following (List-I / List-II): Two-column matching questions (List-I A,B,C,D vs List-II i,ii,iii,iv) with options formatted like "A-ii, B-iv, C-i, D-iii". This format is HEAVILY tested in NEET Botany, Zoology & Chemistry!
+  3) ~15% Statement-based (Statement-I and Statement-II): Two labelled statements with standard options ("Both Statement-I and Statement-II are correct", "Both Statement-I and Statement-II are incorrect", etc.).
+  4) ~15% Assertion & Reason (Assertion (A) and Reason (R)): Labelled Assertion (A) & Reason (R) with standard NEET options ("Both A and R are true and R is the correct explanation of A", etc.).
+- No short/numerical answer type. ALL questions MUST be type="mcq" with exactly 4 options.
+${PATTERN_FORMAT_MIX}`,
   eamcet:
     `AP/TS EAMCET (Engineering, MPC) standard. Intermediate 1st & 2nd year syllabus. Subjects: Mathematics, Physics, Chemistry. Marks per question = 1, no negative marks.
 Approximate format ratio: ~80% direct single-correct MCQ, ~10% Match-the-following, ~5% Assertion & Reason, ~5% Statement-based / Multiple-correct-combination. No numerical/integer type. All questions type="mcq" with exactly 4 options.${PATTERN_FORMAT_MIX}`,
@@ -845,7 +854,7 @@ export const generateFromNotes = createServerFn({ method: "POST" })
     z
       .object({
         pattern: PatternEnum,
-        count: z.number().int().min(1).max(60),
+        count: z.number().int().min(1).max(100),
         subject: z.string().max(120).nullable().optional(),
         fileBase64: z.string(),
         mimeType: z.string(),
@@ -874,7 +883,7 @@ export const generateFromDescription = createServerFn({ method: "POST" })
     z
       .object({
         pattern: PatternEnum,
-        count: z.number().int().min(1).max(60),
+        count: z.number().int().min(1).max(100),
         subject: z.string().max(120).nullable().optional(),
         description: z.string().min(3).max(4000),
         genMode: GenModeEnum.default("ai"),

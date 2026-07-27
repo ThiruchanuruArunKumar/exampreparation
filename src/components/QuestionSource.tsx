@@ -52,7 +52,7 @@ type Props = {
 
 export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggested }: Props) {
   const [busy, setBusy] = useState(false);
-  const [count, setCount] = useState(10);
+  const [count, setCount] = useState(50);
   const [subject, setSubject] = useState<string>(subjects[0] ?? "");
   const [description, setDescription] = useState("");
   const [genMode, setGenMode] = useState<GenMode>("ai");
@@ -176,7 +176,7 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div>
               <Label>How many questions</Label>
-              <NumberField value={count} onChange={setCount} min={1} max={60} fallback={10} />
+              <NumberField value={count} onChange={setCount} min={1} max={100} fallback={50} />
             </div>
             <div>
               <Label>Subject / topic</Label>
