@@ -164,23 +164,38 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="notes">
-          <TabsList className="w-full justify-start overflow-x-auto">
-            <TabsTrigger value="notes"><Sparkles className="mr-1 h-3 w-3" />From notes</TabsTrigger>
-            <TabsTrigger value="describe"><FileText className="mr-1 h-3 w-3" />Describe</TabsTrigger>
-            <TabsTrigger value="extract"><Upload className="mr-1 h-3 w-3" />Extract</TabsTrigger>
-            <TabsTrigger value="manual"><Plus className="mr-1 h-3 w-3" />Manual</TabsTrigger>
+          <TabsList className="w-full grid grid-cols-4">
+            <TabsTrigger value="notes" className="text-xs px-1.5 gap-1">
+              <Sparkles className="h-3 w-3 shrink-0" />
+              <span className="hidden sm:inline">From notes</span>
+              <span className="sm:hidden">Notes</span>
+            </TabsTrigger>
+            <TabsTrigger value="describe" className="text-xs px-1.5 gap-1">
+              <FileText className="h-3 w-3 shrink-0" />
+              <span className="hidden sm:inline">Describe</span>
+              <span className="sm:hidden">AI</span>
+            </TabsTrigger>
+            <TabsTrigger value="extract" className="text-xs px-1.5 gap-1">
+              <Upload className="h-3 w-3 shrink-0" />
+              <span>Extract</span>
+            </TabsTrigger>
+            <TabsTrigger value="manual" className="text-xs px-1.5 gap-1">
+              <Plus className="h-3 w-3 shrink-0" />
+              <span>Manual</span>
+            </TabsTrigger>
           </TabsList>
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {/* Shared controls: count + subject */}
+          <div className="mt-3 grid gap-3 grid-cols-2">
             <div>
-              <Label>How many questions</Label>
-              <NumberField value={count} onChange={setCount} min={1} max={100} fallback={50} />
+              <Label className="text-xs">How many</Label>
+              <NumberField value={count} onChange={setCount} min={1} max={100} fallback={50} className="mt-1" />
             </div>
             <div>
-              <Label>Subject / topic</Label>
+              <Label className="text-xs">Subject</Label>
               {subjects.length ? (
                 <select
-                  className="w-full rounded-md border border-input bg-background px-2 py-2 text-sm"
+                  className="mt-1 w-full rounded-md border border-input bg-background px-2 py-2 text-sm"
                   value={subject}
                   onChange={(e) => setSubject(e.target.value)}
                 >
@@ -190,15 +205,16 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
                   ))}
                 </select>
               ) : (
-                <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Kinematics" />
+                <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Kinematics" className="mt-1" />
               )}
             </div>
           </div>
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {/* Generation type + toughness */}
+          <div className="mt-3 space-y-3">
             <div>
-              <Label>Generation type</Label>
-              <div className="mt-1 grid grid-cols-2 gap-2">
+              <Label className="text-xs">Generation type</Label>
+              <div className="mt-1.5 grid grid-cols-2 gap-2">
                 {([
                   { v: "ai", label: "AI generated", hint: "Close variants of real past questions" },
                   { v: "pyq", label: "Previous year", hint: "Actual PYQs with year & shift" },
@@ -207,19 +223,19 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
                     key={o.v}
                     type="button"
                     onClick={() => setGenMode(o.v)}
-                    className={`rounded-lg border p-2 text-left text-xs transition ${
+                    className={`rounded-lg border p-2.5 text-left text-xs transition ${
                       genMode === o.v ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/50"
                     }`}
                   >
                     <div className="font-medium">{o.label}</div>
-                    <div className="text-[11px] text-muted-foreground">{o.hint}</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5 leading-tight">{o.hint}</div>
                   </button>
                 ))}
               </div>
             </div>
             <div>
-              <Label>Toughness level</Label>
-              <div className="mt-1 grid grid-cols-2 gap-2">
+              <Label className="text-xs">Toughness level</Label>
+              <div className="mt-1.5 grid grid-cols-4 gap-1.5">
                 {([
                   { v: "easy", label: "Easy" },
                   { v: "medium", label: "Medium" },
@@ -230,7 +246,7 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
                     key={o.v}
                     type="button"
                     onClick={() => setToughness(o.v)}
-                    className={`rounded-lg border px-2 py-1.5 text-xs font-medium transition ${
+                    className={`rounded-lg border px-2 py-2 text-xs font-medium transition ${
                       toughness === o.v ? "border-primary bg-primary/5 text-primary" : "border-border hover:border-primary/50"
                     }`}
                   >
@@ -247,10 +263,11 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
           </div>
 
           <TabsContent value="notes" className="mt-3">
-            <label className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-6 text-center hover:border-primary">
+            <label className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-5 text-center hover:border-primary transition-colors">
               <Sparkles className="h-6 w-6 text-muted-foreground" />
-              <span className="text-sm">{busy ? "Generating…" : `Upload notes — AI generates ${pattern.toUpperCase()}-style questions`}</span>
-              <span className="text-xs text-muted-foreground">PDF, DOCX, PPTX, images</span>
+              <span className="text-sm font-medium">{busy ? "Generating…" : `Upload notes`}</span>
+              <span className="text-xs text-muted-foreground">AI generates {pattern.toUpperCase()}-style questions from your file</span>
+              <span className="text-[11px] text-muted-foreground">PDF, DOCX, PPTX, images</span>
               <input
                 type="file"
                 className="hidden"
@@ -263,21 +280,22 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
 
           <TabsContent value="describe" className="mt-3 space-y-3">
             <Textarea
-              rows={4}
-              placeholder="Optional: Describe specific topics, chapters, or brief for the AI (e.g. 'Class 12 Physics — Ray Optics, mirrors and lenses'). If left blank, questions will be generated automatically for the full syllabus using the selected pattern, mode & toughness level."
+              rows={3}
+              placeholder="Optional: Describe specific topics or chapters (e.g. 'Class 12 Physics — Ray Optics'). Leave blank for full syllabus."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
+              className="text-sm"
             />
-            <p className="text-xs text-muted-foreground">
-              Tip: pick a subject above and click Generate — repeat for each subject to build the full paper. Or use “Generate for all subjects” to do it in one go.
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Pick a subject above → Generate. Repeat per subject or use "Generate all" for the full paper.
             </p>
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2 grid-cols-1 sm:grid-cols-2">
               <Button onClick={doGenFromDesc} disabled={busy} className="w-full">
-                <Sparkles className="mr-2 h-4 w-4" />{busy ? "Generating…" : `Generate ${count} for ${subject || "any"}`}
+                <Sparkles className="mr-2 h-4 w-4" />{busy ? "Generating…" : `Generate ${count}`}
               </Button>
               {subjects.length > 1 && (
                 <Button onClick={doGenAllSubjects} disabled={busy} variant="outline" className="w-full">
-                  <Sparkles className="mr-2 h-4 w-4" />{busy ? "Generating…" : `Generate for all ${subjects.length} subjects`}
+                  <Sparkles className="mr-2 h-4 w-4" />{busy ? "Generating…" : `All ${subjects.length} subjects`}
                 </Button>
               )}
             </div>
@@ -285,10 +303,11 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
 
 
           <TabsContent value="extract" className="mt-3">
-            <label className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-6 text-center hover:border-primary">
+            <label className="flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed border-border p-5 text-center hover:border-primary transition-colors">
               <Upload className="h-6 w-6 text-muted-foreground" />
-              <span className="text-sm">{busy ? "Reading file…" : "Upload an existing question paper — AI extracts questions"}</span>
-              <span className="text-xs text-muted-foreground">PDF, DOCX, PPTX, XLSX, images</span>
+              <span className="text-sm font-medium">{busy ? "Reading file…" : "Upload a question paper"}</span>
+              <span className="text-xs text-muted-foreground">AI extracts questions from your file</span>
+              <span className="text-[11px] text-muted-foreground">PDF, DOCX, PPTX, XLSX, images</span>
               <input
                 type="file"
                 className="hidden"

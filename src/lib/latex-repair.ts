@@ -66,6 +66,30 @@ export function repairLatex(input: string | null | undefined): string {
   // Un-double escaped macros ("\\ce{" -> "\ce{") produced by JSON round-trips.
   s = s.replace(/\\\\(?=[a-zA-Z])/g, "\\");
 
+  // Fix invalid backslashes before plain chemical formulas like \NH3 -> NH3
+  s = s.replace(/\\([A-Z][a-z0-9_+\-^\(\)]+)/g, (_m, inner) => {
+    const valid = [
+      "Delta",
+      "Alpha",
+      "Beta",
+      "Gamma",
+      "Theta",
+      "Pi",
+      "Sigma",
+      "Omega",
+      "ce",
+      "mathrm",
+      "text",
+      "frac",
+      "sqrt",
+      "vec",
+      "rightleftharpoons",
+      "left",
+      "right",
+    ];
+    return valid.includes(inner) ? `\\${inner}` : inner;
+  });
+
   if (isLatexHealthy(s)) return s;
 
   // Normalize LaTeX delimiters to dollars first.

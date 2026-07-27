@@ -288,41 +288,42 @@ function NewExam() {
 
   return (
     <AppShell title="New exam">
-      <div className="pb-16 lg:pb-0 space-y-4">
-        {/* Mobile View Switcher Tabs */}
-        <div className="flex items-center rounded-xl border border-border/80 bg-muted/40 p-1 lg:hidden">
+      <div className="pb-20 lg:pb-0 space-y-3 sm:space-y-4">
+        {/* Mobile View Switcher — bigger tap targets */}
+        <div className="grid grid-cols-2 gap-1.5 rounded-xl border border-border/80 bg-muted/40 p-1.5 lg:hidden">
           <button
             type="button"
             onClick={() => setMobileTab("setup")}
             className={cn(
-              "flex-1 rounded-lg py-2 text-xs font-semibold transition-all",
+              "flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-semibold transition-all",
               mobileTab === "setup"
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            ⚙️ Setup & Generator
+            ⚙️ Setup
           </button>
           <button
             type="button"
             onClick={() => setMobileTab("questions")}
             className={cn(
-              "flex-1 rounded-lg py-2 text-xs font-semibold transition-all relative",
+              "flex items-center justify-center gap-1.5 rounded-lg py-2.5 text-sm font-semibold transition-all relative",
               mobileTab === "questions"
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            📋 Questions Preview ({questions.length})
+            📋 Questions
+            <Badge variant="secondary" className="font-mono text-[10px] h-5 px-1.5">{questions.length}</Badge>
             {questions.length > 0 && (
-              <span className="ml-1.5 inline-flex h-2 w-2 rounded-full bg-primary animate-pulse" />
+              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-primary animate-pulse" />
             )}
           </button>
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)]">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)]">
           {/* Left Control Panel */}
-          <div className={cn("space-y-4", mobileTab !== "setup" && "hidden lg:block")}>
+          <div className={cn("space-y-3 sm:space-y-4", mobileTab !== "setup" && "hidden lg:block")}>
             <Card className="border-border/70 shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base font-semibold">Exam Details</CardTitle>
@@ -332,15 +333,15 @@ function NewExam() {
                   <Label htmlFor="t" className="text-xs font-medium">Exam Title</Label>
                   <Input id="t" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. NEET Mock 1 — Aug" className="mt-1" />
                   <p className="mt-1.5 text-[11px] text-muted-foreground">
-                    A 6-character exam access password is generated automatically upon saving.
+                    A 6-character access password is auto-generated on save.
                   </p>
                 </div>
 
-                <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3.5">
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Student Post-Exam Controls</div>
-                  <ToggleRow label="Show result to student" hint="Score, %, and AI feedback." checked={showResult} onChange={setShowResult} />
-                  <ToggleRow label="Show answer sheet" hint="Reveals correct answers alongside student response." checked={showSheet} onChange={setShowSheet} />
-                  <ToggleRow label="Show answer book" hint="Detailed AI explanations with formulas & steps." checked={showBook} onChange={setShowBook} />
+                <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Post-Exam Controls</div>
+                  <ToggleRow label="Show result" hint="Score, %, and AI feedback." checked={showResult} onChange={setShowResult} />
+                  <ToggleRow label="Answer sheet" hint="Correct answers alongside student response." checked={showSheet} onChange={setShowSheet} />
+                  <ToggleRow label="Answer book" hint="AI explanations with formulas & steps." checked={showBook} onChange={setShowBook} />
                 </div>
               </CardContent>
             </Card>
@@ -373,7 +374,7 @@ function NewExam() {
             </Button>
 
             <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
-              <span>{draftStatus === "saving" ? "Saving draft to cloud…" : draftStatus === "saved" ? "✓ Cloud auto-saved." : "Draft auto-saves."}</span>
+              <span>{draftStatus === "saving" ? "Saving draft…" : draftStatus === "saved" ? "✓ Auto-saved" : "Auto-saves"}</span>
               {(title || questions.length > 0) && (
                 <button type="button" onClick={clearDraft} className="underline underline-offset-2 hover:text-destructive">
                   Discard draft
@@ -384,252 +385,255 @@ function NewExam() {
 
           {/* Right Questions Preview Panel */}
           <div className={cn("space-y-3", mobileTab !== "questions" && "hidden lg:block")}>
-          {/* Header Card with Subject Dropdown & Filter Pills */}
-          <Card className="lg:sticky lg:top-20 z-20 shadow-sm border-border bg-background/95 backdrop-blur">
-            <CardContent className="p-3.5 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2.5">
-                <div>
-                  <div className="flex items-center gap-2 font-semibold text-base">
-                    <span>Questions Preview</span>
-                    <Badge variant="secondary" className="font-mono text-xs">
-                      {questions.length} Total
-                    </Badge>
+            {/* Header Card with Filters */}
+            <Card className="lg:sticky lg:top-20 z-20 shadow-sm border-border bg-background/95 backdrop-blur">
+              <CardContent className="p-3 sm:p-3.5 space-y-2.5">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="flex items-center gap-2 font-semibold text-sm sm:text-base">
+                      <span>Questions</span>
+                      <Badge variant="secondary" className="font-mono text-xs">
+                        {filteredQuestions.length}/{questions.length}
+                      </Badge>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                      {selectedSubject === "all"
+                        ? "All subjects"
+                        : `${selectedSubject} · ${subjectCounts[selectedSubject] ?? 0} Qs`}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {selectedSubject === "all"
-                      ? "Showing questions across all subjects"
-                      : `Viewing ${selectedSubject} (${subjectCounts[selectedSubject] ?? 0} questions)`}
-                  </p>
-                </div>
 
-                {/* Subject Dropdown Select */}
-                {availableSubjects.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Label htmlFor="subj-select" className="text-xs shrink-0 font-medium text-muted-foreground">
-                      <Filter className="inline h-3 w-3 mr-1" /> Subject:
-                    </Label>
+                  {/* Subject Dropdown — always visible on mobile too */}
+                  {availableSubjects.length > 0 && (
                     <select
-                      id="subj-select"
                       value={selectedSubject}
                       onChange={(e) => setSelectedSubject(e.target.value)}
-                      className="rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-semibold shadow-sm transition-colors hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                      className="rounded-lg border border-input bg-background px-3 py-2 text-xs font-semibold shadow-sm transition-colors hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary w-full sm:w-auto"
                     >
                       <option value="all">All Subjects ({questions.length})</option>
                       {availableSubjects.map((s) => (
                         <option key={s} value={s}>
-                          {s} ({subjectCounts[s] ?? 0} Qs)
+                          {s} ({subjectCounts[s] ?? 0})
                         </option>
                       ))}
                     </select>
+                  )}
+                </div>
+
+                {/* Quick-Filter Subject Pill Tabs */}
+                {availableSubjects.length > 0 && (
+                  <div className="flex items-center gap-1.5 border-t border-border/50 pt-2 overflow-x-auto no-scrollbar pb-0.5">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedSubject("all")}
+                      className={cn(
+                        "shrink-0 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+                        selectedSubject === "all"
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      All ({questions.length})
+                    </button>
+                    {availableSubjects.map((s) => {
+                      const c = subjectCounts[s] ?? 0;
+                      const isActive = selectedSubject.toLowerCase() === s.toLowerCase();
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => setSelectedSubject(s)}
+                          className={cn(
+                            "shrink-0 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
+                            isActive
+                              ? "bg-primary text-primary-foreground shadow-sm"
+                              : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                          )}
+                        >
+                          {s} ({c})
+                        </button>
+                      );
+                    })}
                   </div>
                 )}
-              </div>
 
-              {/* Quick-Filter Subject Pill Tabs */}
-              {availableSubjects.length > 0 && (
-                <div className="flex items-center gap-1.5 border-t border-border/50 pt-2 overflow-x-auto no-scrollbar pb-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSubject("all")}
-                    className={cn(
-                      "shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                      selectedSubject === "all"
-                        ? "bg-primary text-primary-foreground shadow-sm"
-                        : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                  >
-                    All ({questions.length})
-                  </button>
-                  {availableSubjects.map((s) => {
-                    const c = subjectCounts[s] ?? 0;
-                    const isActive = selectedSubject.toLowerCase() === s.toLowerCase();
-                    return (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => setSelectedSubject(s)}
-                        className={cn(
-                          "shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                          isActive
-                            ? "bg-primary text-primary-foreground shadow-sm"
-                            : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
-                        )}
-                      >
-                        {s} ({c})
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* Search Bar */}
-              {questions.length > 0 && (
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    placeholder="Search question text or topics..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="h-8 pl-8 text-xs"
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Question List View */}
-          {questions.length === 0 ? (
-            <Card>
-              <CardContent className="py-16 text-center text-sm text-muted-foreground">
-                Pick an exam pattern and use the AI panel on the left to generate questions.
+                {/* Search Bar */}
+                {questions.length > 0 && (
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Search questions…"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="h-9 pl-8 text-xs"
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
-          ) : filteredQuestions.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center text-sm text-muted-foreground">
-                No questions found matching your filter/search criteria.
-              </CardContent>
-            </Card>
-          ) : (
-            filteredQuestions.map(({ q, originalIndex, section }) => (
-              <Card key={originalIndex} className="border-border/70 shadow-sm transition-all hover:border-primary/40">
-                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                  <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground">Q{originalIndex + 1}</span>
-                    <span>·</span>
-                    <span className="uppercase tracking-wider font-semibold text-primary">{section}</span>
-                    {q.topic && q.topic.toLowerCase() !== section.toLowerCase() && (
-                      <>
-                        <span>—</span>
-                        <span className="font-medium text-foreground">{q.topic}</span>
-                      </>
-                    )}
-                    <span>·</span>
-                    <span className="uppercase">{q.type}</span>
-                    <span>·</span>
-                    <span>{q.marks}M</span>
-                    {q.source_ref && (
-                      <Badge variant="secondary" className="ml-1 border-0 bg-primary/10 text-[10px] font-semibold text-primary">
-                        {q.source_ref}
-                      </Badge>
-                    )}
-                  </div>
 
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                    onClick={() => setQuestions((qs) => qs.filter((_, j) => j !== originalIndex))}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </CardHeader>
-
-                <CardContent className="space-y-3 text-sm pt-1">
-                  <RichContent>{q.prompt || "*(empty prompt)*"}</RichContent>
-                  
-                  {q.options && (
-                    <div className="space-y-2 pt-1 text-xs">
-                      {q.options.map((o, oi) => {
-                        const cleanForComparison = (str: string) =>
-                          str
-                            .trim()
-                            .replace(/\\\\/g, "\\")
-                            .replace(/\\ce\{([^{}]+)\}/g, "$1")
-                            .replace(/\\ce\s*([A-Za-z0-9_+\-^\(\)]+)/g, "$1")
-                            .replace(/\\text\{([^{}]+)\}/g, "$1")
-                            .replace(/[\$\`\\\{\}\(\)\<\>]/g, "")
-                            .replace(/\s+/g, "")
-                            .toLowerCase();
-
-                        const isCorrect = q.correct_answer.some((ans) => {
-                          if (ans === o) return true;
-                          const cleanAns = cleanForComparison(ans);
-                          const cleanOpt = cleanForComparison(o);
-                          if (cleanAns && cleanAns === cleanOpt) return true;
-
-                          const letterMatch = ans.match(/^(?:Option\s*)?\(?\s*([A-D1-4])\s*[\)\.]?$/i);
-                          if (letterMatch) {
-                            const char = letterMatch[1].toUpperCase();
-                            const targetIdx = ["A", "B", "C", "D"].includes(char)
-                              ? ["A", "B", "C", "D"].indexOf(char)
-                              : parseInt(char, 10) - 1;
-                            if (targetIdx === oi) return true;
-                          }
-                          return false;
-                        });
-                        const letter = String.fromCharCode(65 + oi);
-                        return (
-                          <div
-                            key={oi}
-                            className={cn(
-                              "flex items-center gap-2.5 rounded-lg border px-3 py-2 text-xs transition-colors",
-                              isCorrect
-                                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-medium"
-                                : "border-border/60 bg-muted/20 text-foreground"
-                            )}
-                          >
-                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-bold text-muted-foreground">
-                              {letter}
-                            </span>
-                            <div className="min-w-0 flex-1 py-0.5 leading-normal">
-                              <RichContent inline>{o}</RichContent>
-                            </div>
-                            {isCorrect && (
-                              <span className="ml-auto shrink-0 rounded-md bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
-                                Correct
-                              </span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {q.type === "short" && (
-                    <div className="text-xs text-muted-foreground">Accepted: {q.correct_answer.join(", ") || "—"}</div>
-                  )}
-
-                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/40">
-                    <div>
-                      <Label className="text-xs">Marks</Label>
-                      <NumberField
-                        value={q.marks}
-                        onChange={(n) => setQuestions((qs) => qs.map((x, j) => j === originalIndex ? { ...x, marks: n } : x))}
-                        min={0}
-                        step={0.25}
-                        fallback={1}
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Topic / Chapter</Label>
-                      <Input
-                        value={q.topic ?? ""}
-                        onChange={(e) => setQuestions((qs) => qs.map((x, j) => j === originalIndex ? { ...x, topic: e.target.value || null } : x))}
-                      />
-                    </div>
-                  </div>
+            {/* Question List View */}
+            {questions.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 sm:py-16 text-center text-sm text-muted-foreground">
+                  <div className="text-3xl mb-2">📝</div>
+                  Use the Setup tab to generate or upload questions.
                 </CardContent>
               </Card>
-            ))
-          )}
-        </div>
-      </div>
+            ) : filteredQuestions.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center text-sm text-muted-foreground">
+                  No questions match your filter.
+                </CardContent>
+              </Card>
+            ) : (
+              filteredQuestions.map(({ q, originalIndex, section }) => (
+                <Card key={originalIndex} className="border-border/70 shadow-sm transition-all hover:border-primary/40">
+                  <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2 px-3 sm:px-6">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <span className="font-bold text-foreground text-sm">Q{originalIndex + 1}</span>
+                        <Badge variant="outline" className="text-[10px] font-semibold text-primary border-primary/30 uppercase">
+                          {section}
+                        </Badge>
+                        <span className="text-muted-foreground uppercase text-[10px]">{q.type}</span>
+                        <span className="text-muted-foreground text-[10px]">{q.marks}M</span>
+                      </div>
+                      {q.topic && q.topic.toLowerCase() !== section.toLowerCase() && (
+                        <div className="text-[11px] text-muted-foreground mt-0.5 truncate">{q.topic}</div>
+                      )}
+                      {q.source_ref && (
+                        <Badge variant="secondary" className="mt-1 border-0 bg-primary/10 text-[10px] font-semibold text-primary">
+                          {q.source_ref}
+                        </Badge>
+                      )}
+                    </div>
 
-      {/* Floating Mobile Bottom Action Bar */}
-      <div className="fixed bottom-0 inset-x-0 z-40 border-t border-border/80 bg-background/95 p-3 backdrop-blur-md lg:hidden flex items-center justify-between gap-3 shadow-lg">
-        <div className="min-w-0 flex-1">
-          <div className="text-xs font-semibold text-foreground truncate">
-            {title.trim() || "Untitled Exam"}
-          </div>
-          <div className="text-[10px] text-muted-foreground">
-            {questions.length} Questions · {config?.duration_minutes ?? 60} mins
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive shrink-0"
+                      onClick={() => setQuestions((qs) => qs.filter((_, j) => j !== originalIndex))}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </CardHeader>
+
+                  <CardContent className="space-y-3 text-sm pt-1 px-3 sm:px-6">
+                    <RichContent>{q.prompt || "*(empty prompt)*"}</RichContent>
+                    
+                    {q.options && (
+                      <div className="space-y-1.5 pt-1 text-xs">
+                        {q.options.map((o, oi) => {
+                          const cleanForComparison = (str: string) =>
+                            str
+                              .trim()
+                              .replace(/\\\\/g, "\\")
+                              .replace(/\\ce\{([^{}]+)\}/g, "$1")
+                              .replace(/\\ce\s*([A-Za-z0-9_+\-^\(\)]+)/g, "$1")
+                              .replace(/\\text\{([^{}]+)\}/g, "$1")
+                              .replace(/[\$\`\\\{\}\(\)\<\>]/g, "")
+                              .replace(/\s+/g, "")
+                              .toLowerCase();
+
+                          const isCorrect = q.correct_answer.some((ans) => {
+                            if (ans === o) return true;
+                            const cleanAns = cleanForComparison(ans);
+                            const cleanOpt = cleanForComparison(o);
+                            if (cleanAns && cleanAns === cleanOpt) return true;
+
+                            const letterMatch = ans.match(/^(?:Option\s*)?\(?\s*([A-D1-4])\s*[\)\.]?$/i);
+                            if (letterMatch) {
+                              const char = letterMatch[1].toUpperCase();
+                              const targetIdx = ["A", "B", "C", "D"].includes(char)
+                                ? ["A", "B", "C", "D"].indexOf(char)
+                                : parseInt(char, 10) - 1;
+                              if (targetIdx === oi) return true;
+                            }
+                            return false;
+                          });
+                          const letter = String.fromCharCode(65 + oi);
+                          return (
+                            <div
+                              key={oi}
+                              className={cn(
+                                "flex items-center gap-2 rounded-lg border px-2.5 py-2 text-xs transition-colors",
+                                isCorrect
+                                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-medium"
+                                  : "border-border/60 bg-muted/20 text-foreground"
+                              )}
+                            >
+                              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-bold text-muted-foreground">
+                                {letter}
+                              </span>
+                              <div className="min-w-0 flex-1 py-0.5 leading-normal">
+                                <RichContent inline>{o}</RichContent>
+                              </div>
+                              {isCorrect && (
+                                <span className="ml-auto shrink-0 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
+                                  ✓
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {q.type === "short" && (
+                      <div className="text-xs text-muted-foreground">Accepted: {q.correct_answer.join(", ") || "—"}</div>
+                    )}
+
+                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/40">
+                      <div>
+                        <Label className="text-xs">Marks</Label>
+                        <NumberField
+                          value={q.marks}
+                          onChange={(n) => setQuestions((qs) => qs.map((x, j) => j === originalIndex ? { ...x, marks: n } : x))}
+                          min={0}
+                          step={0.25}
+                          fallback={1}
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs">Topic</Label>
+                        <Input
+                          value={q.topic ?? ""}
+                          onChange={(e) => setQuestions((qs) => qs.map((x, j) => j === originalIndex ? { ...x, topic: e.target.value || null } : x))}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
           </div>
         </div>
-        <Button size="sm" onClick={save} disabled={saving} className="shrink-0 shadow-sm px-4">
-          {saving ? "Saving…" : "Save Exam"}
-        </Button>
-      </div>
+
+        {/* Floating Mobile Bottom Bar */}
+        <div className="fixed bottom-0 inset-x-0 z-40 lg:hidden">
+          <div className="border-t border-border/80 bg-background/95 backdrop-blur-md shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+            <div className="flex items-center justify-between gap-3 px-4 py-3">
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-semibold text-foreground truncate">
+                  {title.trim() || "Untitled Exam"}
+                </div>
+                <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+                  <span>{questions.length} Qs</span>
+                  <span>·</span>
+                  <span>{config?.duration_minutes ?? 60} min</span>
+                  <span>·</span>
+                  <span className={draftStatus === "saved" ? "text-emerald-600 dark:text-emerald-400" : ""}>
+                    {draftStatus === "saving" ? "Saving…" : draftStatus === "saved" ? "✓ Saved" : "Draft"}
+                  </span>
+                </div>
+              </div>
+              <Button size="default" onClick={save} disabled={saving} className="shrink-0 shadow-sm px-5 font-semibold">
+                {saving ? "Saving…" : "Save Exam"}
+              </Button>
+            </div>
+          </div>
+        </div>
     </div>
   </AppShell>
 );
