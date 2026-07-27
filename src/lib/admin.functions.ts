@@ -703,9 +703,45 @@ function fixMatchOptionsInQuestion(q: GenQuestion): GenQuestion {
 function normalizeOptionMath(opt: string): string {
   if (!opt) return opt;
   let s = opt.trim().replace(/\\\\/g, "\\");
-  const hasLatex = /\\[a-zA-Z]+/.test(s);
+
+  // 1. Fix misplaced closing braces in \ce e.g. \ce{CH3-CH}=CH-CHO} -> \ce{CH3-CH=CH-CHO}
+  s = s.replace(/\\ce\s*\{([^{}\n]+)\}([^$\s\n]*\})/g, (_m, inner1, inner2) => {
+    const clean2 = inner2.replace(/\}$/, "");
+    return `\\ce{${inner1}${clean2}}`;
+  });
+
+  // 2. Transform \ce{content} -> $\mathrm{content}$
+  s = s.replace(/\\ce\s*\{([^{}\n]+)\}/g, (_m, rawFormula) => {
+    let formula = rawFormula.trim();
+    formula = formula.replace(/([A-Za-z])([0-9]+)/g, "$1_{$2}");
+    formula = formula.replace(/\^?([0-9]*[\+\-])/g, "^{$1}");
+    return `$\\mathrm{${formula}}$`;
+  });
+
+  // 3. Transform bare \ce -> $\mathrm{...}$
+  s = s.replace(/\\ce\s*([A-Za-z0-9_+\-^\(\)]+)/g, (_m, rawFormula) => {
+    let formula = rawFormula.trim();
+    formula = formula.replace(/([A-Za-z])([0-9]+)/g, "$1_{$2}");
+    formula = formula.replace(/\^?([0-9]*[\+\-])/g, "^{$1}");
+    return `$\\mathrm{${formula}}$`;
+  });
+
+  // 4. Fix mismatched dollar wrappers
+  s = s.replace(/\$\$([^\$\n]+)\$/g, (_m, inner) => `$${inner.trim()}$`);
+  s = s.replace(/\$([^\$\n]+)\$\$/g, (_m, inner) => `$${inner.trim()}$`);
+
+  // 5. Wrap bare Greek letters in inline math (e.g. "3 \sigma and 2 \pi" -> "3 $\sigma$ and 2 $\pi$")
+  s = s.replace(
+    /(?<!\$)\\(sigma|pi|alpha|beta|gamma|delta|theta|lambda|mu|nu|omega|phi|psi|rho|tau|eta|zeta|kappa|chi|epsilon|Delta|Gamma|Theta|Lambda|Sigma|Omega)\b(?!\$)/g,
+    (_m, g) => `$\\${g}$`
+  );
+
+  // 6. Only wrap in full $...$ if it's a lone LaTeX macro without English prose words
   const isWrapped = /^\$[^$]+\$$/.test(s) || /^\$\$[\s\S]+\$\$$/.test(s);
-  if (hasLatex && !isWrapped) {
+  const hasProseWords = /\b(and|or|with|is|are|in|of|the|to|for|a|an|only)\b/i.test(s);
+  const hasLatex = /\\[a-zA-Z]+/.test(s);
+
+  if (hasLatex && !isWrapped && !hasProseWords) {
     return `$${s}$`;
   }
   return s;
@@ -713,7 +749,16 @@ function normalizeOptionMath(opt: string): string {
 
 function resolveCorrectAnswer(options: string[] | null, rawCorrect: string[]): string[] {
   if (!options || !options.length) return rawCorrect;
-  const clean = (str: string) => str.trim().replace(/\\\\/g, "\\").replace(/[\$\`]/g, "").toLowerCase();
+  const clean = (str: string) =>
+    str
+      .trim()
+      .replace(/\\\\/g, "\\")
+      .replace(/\\ce\{([^{}]+)\}/g, "$1")
+      .replace(/\\ce\s*([A-Za-z0-9_+\-^\(\)]+)/g, "$1")
+      .replace(/\\text\{([^{}]+)\}/g, "$1")
+      .replace(/[\$\`\\\{\}\(\)\<\>]/g, "")
+      .replace(/\s+/g, "")
+      .toLowerCase();
 
   const resolved: string[] = [];
   for (const ans of rawCorrect) {
@@ -805,7 +850,13 @@ still type="mcq" with exactly 4 options — the STRUCTURE lives inside the promp
    correct_answer is the numeric value as string (e.g. ["12"] or ["3.14"]).
 
 correct_answer for structured formats MUST be the FULL option text, verbatim.
-Never emit just "1" or "A" — emit the whole matching option string.`;
+Never emit just "1" or "A" — emit the whole matching option string.
+
+CRITICAL LAWS FOR MATH & CHEMISTRY FORMATTING:
+1) NEVER output bare \\ce{...} or bare \\mathrm{...} without $...$ dollar wrappers around them.
+2) ALWAYS wrap chemical equations, formulas, and symbols in inline dollars: $...$. Example: $2SO_2(g) + O_2(g) \rightleftharpoons 2SO_3(g)$, $K_c$, $pH$, $O_2^-$, $Cu^{2+}$.
+3) NEVER wrap English prose or full sentences in dollars ($...$). Keep prose as normal text.
+4) Options MUST be clean single-line strings without stray delimiters.`;
 
 const PATTERN_GUIDE: Record<string, string> = {
   neet:

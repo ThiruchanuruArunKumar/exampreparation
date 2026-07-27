@@ -97,27 +97,26 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
         className="pointer-events-none fixed inset-0 -z-10 bg-gradient-hero"
       />
 
-      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3 lg:px-8">
+      <header className="sticky top-0 z-30 border-b border-border/80 bg-background/95 backdrop-blur-md supports-[backdrop-filter]:bg-background/90 shadow-sm">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-2.5 sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-4 lg:gap-8">
-            <Link to="/dashboard" className="group flex shrink-0 items-center gap-2.5">
-              <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-primary shadow-elegant transition-transform group-hover:scale-105">
-                <GraduationCap className="h-5 w-5 text-primary-foreground" />
-                <span className="absolute inset-0 rounded-xl bg-gradient-primary opacity-0 blur-lg transition-opacity group-hover:opacity-70" />
+            <Link to="/dashboard" className="group flex shrink-0 items-center gap-2">
+              <span className="relative flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-primary shadow-sm transition-transform group-hover:scale-105">
+                <GraduationCap className="h-4 w-4 text-primary-foreground" />
               </span>
-              <span className="font-display text-lg font-semibold tracking-tight">
+              <span className="font-display text-base font-bold tracking-tight sm:text-lg">
                 Exam<span className="text-gradient">Prep</span>
               </span>
             </Link>
             <nav className="hidden items-center gap-1 md:flex">{NavLinks}</nav>
             {title && (
-              <span className="hidden truncate text-sm text-muted-foreground lg:inline">
+              <span className="hidden truncate text-xs font-medium text-muted-foreground lg:inline">
                 {title}
               </span>
             )}
           </div>
 
-          <div className="flex shrink-0 items-center gap-2">
+          <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
             {identity?.admin_code && (
               <button
                 onClick={copyCode}
@@ -134,19 +133,20 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
               </Badge>
             )}
             <ThemeToggle />
-            <Button variant="ghost" size="sm" onClick={signOut}>
-              <LogOut className="h-4 w-4 sm:mr-2" />
+            <Button variant="ghost" size="sm" onClick={signOut} className="h-8 px-2 sm:h-9 sm:px-3">
+              <LogOut className="h-4 w-4 sm:mr-1.5" />
               <span className="hidden sm:inline">Sign out</span>
             </Button>
           </div>
         </div>
 
-        <nav className="flex items-center gap-1 overflow-x-auto border-t border-border/60 px-3 py-2 md:hidden">
+        {/* Compact Mobile Navigation Bar */}
+        <nav className="flex items-center gap-1 overflow-x-auto border-t border-border/40 px-3 py-1.5 md:hidden no-scrollbar bg-muted/20">
           {NavLinks}
         </nav>
       </header>
 
-      <main className="mx-auto w-full max-w-7xl animate-fade-in-up px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-10">
+      <main className="mx-auto w-full max-w-7xl animate-fade-in-up px-3.5 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
         {children}
       </main>
     </div>

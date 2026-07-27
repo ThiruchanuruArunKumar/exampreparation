@@ -275,76 +275,117 @@ function NewExam() {
     }
   };
 
+  const [mobileTab, setMobileTab] = useState<"setup" | "questions">("setup");
+
+  // Auto-switch to questions tab on mobile when new questions are added
+  const prevQuestionsCount = useRef(questions.length);
+  useEffect(() => {
+    if (questions.length > prevQuestionsCount.current && window.innerWidth < 1024) {
+      setMobileTab("questions");
+    }
+    prevQuestionsCount.current = questions.length;
+  }, [questions.length]);
+
   return (
     <AppShell title="New exam">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)]">
-        {/* Left Control Panel */}
-        <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Exam details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="t">Title</Label>
-                <Input id="t" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. NEET Mock 1 — Aug" />
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  A 6-character exam password is generated automatically.
-                </p>
-              </div>
-
-              <div className="space-y-3 rounded-lg border border-border bg-muted/30 p-3">
-                <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">After submission</div>
-                <ToggleRow label="Show result to student" hint="Score, %, and AI feedback." checked={showResult} onChange={setShowResult} />
-                <ToggleRow label="Show answer sheet" hint="Reveals correct answers alongside the student's response." checked={showSheet} onChange={setShowSheet} />
-                <ToggleRow label="Show answer book" hint="Detailed AI explanations with formulas & steps." checked={showBook} onChange={setShowBook} />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Exam pattern</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <PatternPicker
-                pattern={pattern}
-                config={config}
-                onChange={(p, c) => {
-                  setPattern(p);
-                  setConfig(c);
-                }}
-              />
-            </CardContent>
-          </Card>
-
-          <QuestionSource
-            pattern={pattern}
-            subjects={subjects}
-            onQuestions={(qs) => setQuestions((prev) => [...prev, ...qs])}
-            onTitleSuggested={(t) => !title && setTitle(t)}
-          />
-
-          <Button className="w-full" size="lg" onClick={save} disabled={saving}>
-            {saving ? "Saving…" : `Save exam (${questions.length} questions)`}
-          </Button>
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>{draftStatus === "saving" ? "Saving draft to cloud…" : draftStatus === "saved" ? "✓ Draft saved to cloud — safe to close and come back." : "Draft auto-saves to cloud."}</span>
-            {(title || questions.length > 0) && (
-              <button type="button" onClick={clearDraft} className="underline underline-offset-2 hover:text-destructive">
-                Discard draft
-              </button>
+      <div className="pb-16 lg:pb-0 space-y-4">
+        {/* Mobile View Switcher Tabs */}
+        <div className="flex items-center rounded-xl border border-border/80 bg-muted/40 p-1 lg:hidden">
+          <button
+            type="button"
+            onClick={() => setMobileTab("setup")}
+            className={cn(
+              "flex-1 rounded-lg py-2 text-xs font-semibold transition-all",
+              mobileTab === "setup"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
             )}
-          </div>
-          <p className="text-center text-xs text-muted-foreground">
-            You can add more questions any time — even after publishing — from the exam page.
-          </p>
+          >
+            ⚙️ Setup & Generator
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileTab("questions")}
+            className={cn(
+              "flex-1 rounded-lg py-2 text-xs font-semibold transition-all relative",
+              mobileTab === "questions"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            📋 Questions Preview ({questions.length})
+            {questions.length > 0 && (
+              <span className="ml-1.5 inline-flex h-2 w-2 rounded-full bg-primary animate-pulse" />
+            )}
+          </button>
         </div>
 
-        {/* Right Questions Preview Panel */}
-        <div className="space-y-3">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)]">
+          {/* Left Control Panel */}
+          <div className={cn("space-y-4", mobileTab !== "setup" && "hidden lg:block")}>
+            <Card className="border-border/70 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">Exam Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="t" className="text-xs font-medium">Exam Title</Label>
+                  <Input id="t" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. NEET Mock 1 — Aug" className="mt-1" />
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
+                    A 6-character exam access password is generated automatically upon saving.
+                  </p>
+                </div>
+
+                <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3.5">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Student Post-Exam Controls</div>
+                  <ToggleRow label="Show result to student" hint="Score, %, and AI feedback." checked={showResult} onChange={setShowResult} />
+                  <ToggleRow label="Show answer sheet" hint="Reveals correct answers alongside student response." checked={showSheet} onChange={setShowSheet} />
+                  <ToggleRow label="Show answer book" hint="Detailed AI explanations with formulas & steps." checked={showBook} onChange={setShowBook} />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border/70 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-semibold">Exam Pattern</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PatternPicker
+                  pattern={pattern}
+                  config={config}
+                  onChange={(p, c) => {
+                    setPattern(p);
+                    setConfig(c);
+                  }}
+                />
+              </CardContent>
+            </Card>
+
+            <QuestionSource
+              pattern={pattern}
+              subjects={subjects}
+              onQuestions={(qs) => setQuestions((prev) => [...prev, ...qs])}
+              onTitleSuggested={(t) => !title && setTitle(t)}
+            />
+
+            <Button className="w-full hidden lg:flex" size="lg" onClick={save} disabled={saving}>
+              {saving ? "Saving…" : `Save Exam (${questions.length} questions)`}
+            </Button>
+
+            <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+              <span>{draftStatus === "saving" ? "Saving draft to cloud…" : draftStatus === "saved" ? "✓ Cloud auto-saved." : "Draft auto-saves."}</span>
+              {(title || questions.length > 0) && (
+                <button type="button" onClick={clearDraft} className="underline underline-offset-2 hover:text-destructive">
+                  Discard draft
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Right Questions Preview Panel */}
+          <div className={cn("space-y-3", mobileTab !== "questions" && "hidden lg:block")}>
           {/* Header Card with Subject Dropdown & Filter Pills */}
-          <Card className="sticky top-16 z-20 shadow-sm border-border bg-background/95 backdrop-blur">
+          <Card className="lg:sticky lg:top-20 z-20 shadow-sm border-border bg-background/95 backdrop-blur">
             <CardContent className="p-3.5 space-y-3">
               <div className="flex flex-wrap items-center justify-between gap-2.5">
                 <div>
@@ -386,12 +427,12 @@ function NewExam() {
 
               {/* Quick-Filter Subject Pill Tabs */}
               {availableSubjects.length > 0 && (
-                <div className="flex flex-wrap items-center gap-1.5 border-t border-border/50 pt-2">
+                <div className="flex items-center gap-1.5 border-t border-border/50 pt-2 overflow-x-auto no-scrollbar pb-0.5">
                   <button
                     type="button"
                     onClick={() => setSelectedSubject("all")}
                     className={cn(
-                      "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                      "shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
                       selectedSubject === "all"
                         ? "bg-primary text-primary-foreground shadow-sm"
                         : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -408,7 +449,7 @@ function NewExam() {
                         type="button"
                         onClick={() => setSelectedSubject(s)}
                         className={cn(
-                          "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                          "shrink-0 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
                           isActive
                             ? "bg-primary text-primary-foreground shadow-sm"
                             : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -490,11 +531,23 @@ function NewExam() {
                   {q.options && (
                     <div className="space-y-2 pt-1 text-xs">
                       {q.options.map((o, oi) => {
+                        const cleanForComparison = (str: string) =>
+                          str
+                            .trim()
+                            .replace(/\\\\/g, "\\")
+                            .replace(/\\ce\{([^{}]+)\}/g, "$1")
+                            .replace(/\\ce\s*([A-Za-z0-9_+\-^\(\)]+)/g, "$1")
+                            .replace(/\\text\{([^{}]+)\}/g, "$1")
+                            .replace(/[\$\`\\\{\}\(\)\<\>]/g, "")
+                            .replace(/\s+/g, "")
+                            .toLowerCase();
+
                         const isCorrect = q.correct_answer.some((ans) => {
                           if (ans === o) return true;
-                          const cleanAns = ans.trim().replace(/\\\\/g, "\\").replace(/[\$\`]/g, "").toLowerCase();
-                          const cleanOpt = o.trim().replace(/\\\\/g, "\\").replace(/[\$\`]/g, "").toLowerCase();
-                          if (cleanAns === cleanOpt) return true;
+                          const cleanAns = cleanForComparison(ans);
+                          const cleanOpt = cleanForComparison(o);
+                          if (cleanAns && cleanAns === cleanOpt) return true;
+
                           const letterMatch = ans.match(/^(?:Option\s*)?\(?\s*([A-D1-4])\s*[\)\.]?$/i);
                           if (letterMatch) {
                             const char = letterMatch[1].toUpperCase();
@@ -562,6 +615,22 @@ function NewExam() {
           )}
         </div>
       </div>
-    </AppShell>
-  );
+
+      {/* Floating Mobile Bottom Action Bar */}
+      <div className="fixed bottom-0 inset-x-0 z-40 border-t border-border/80 bg-background/95 p-3 backdrop-blur-md lg:hidden flex items-center justify-between gap-3 shadow-lg">
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-semibold text-foreground truncate">
+            {title.trim() || "Untitled Exam"}
+          </div>
+          <div className="text-[10px] text-muted-foreground">
+            {questions.length} Questions · {config?.duration_minutes ?? 60} mins
+          </div>
+        </div>
+        <Button size="sm" onClick={save} disabled={saving} className="shrink-0 shadow-sm px-4">
+          {saving ? "Saving…" : "Save Exam"}
+        </Button>
+      </div>
+    </div>
+  </AppShell>
+);
 }
