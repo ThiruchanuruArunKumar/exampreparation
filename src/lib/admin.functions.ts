@@ -3,6 +3,8 @@ import { z } from "zod";
 import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createLovableAiGatewayProvider } from "./ai-gateway.server";
+import { repairLatex } from "./latex-repair";
+
 
 const PatternEnum = z.enum(["neet", "eamcet", "ts_eamcet_bipc", "mains", "custom"]);
 const PatternConfigSchema = z
