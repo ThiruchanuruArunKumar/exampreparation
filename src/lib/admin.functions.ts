@@ -850,7 +850,7 @@ ${MODE_GUIDE[genMode] ?? MODE_GUIDE.ai}
 ${TOUGHNESS_GUIDE[toughness] ?? TOUGHNESS_GUIDE.medium}
 
 Generate exactly ${count} high-quality questions${subject ? ` on subject/topic: ${subject}` : ""}.
-Return JSON matching the schema. For MCQ use type "mcq" with 4 options and one correct answer in correct_answer array. For true/false use "tf" with options ["True","False"]. For numerical/short use "short" with options null and correct_answer as accepted answers. Set topic to the subject or sub-topic. Set difficulty to the toughness level requested above. Set source_ref as described above (null only when genMode is AI and no source paper applies). Do not repeat questions.
+Return JSON matching the schema. For MCQ use type "mcq" with 4 options and one correct answer in correct_answer array. For true/false use "tf" with options ["True","False"]. For numerical/short use "short" with options null and correct_answer as accepted answers. CRITICAL: Set 'topic' to the specific chapter or topic name (e.g. 'Units and Measurements', 'Dual Nature of Radiation', 'Kinematics', 'Genetics', 'Thermodynamics'). NEVER set 'topic' to general subject names like 'Physics' or 'Chemistry'. Set difficulty to the toughness level requested above. Set source_ref as described above (null only when genMode is AI and no source paper applies). Do not repeat questions.
 
 
 LANGUAGE (CRITICAL): Every question prompt, every option, and every correct_answer MUST be written in ENGLISH only. If the source material contains Telugu, Hindi, or any other non-English text, translate it to clear, natural English before producing the question. Never emit non-English script (no Telugu, Devanagari, or other native scripts) in any field.

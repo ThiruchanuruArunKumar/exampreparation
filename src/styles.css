@@ -299,4 +299,19 @@
     background: color-mix(in oklab, var(--primary) 30%, transparent);
     color: var(--foreground);
   }
+
+  /* KaTeX math layout fixes for formulas & fractions */
+  .katex {
+    font-size: 1.05em;
+    line-height: 1.2;
+    display: inline-block;
+    vertical-align: middle;
+    padding: 0.15em 0.1em;
+  }
+
+  .katex-display {
+    margin: 0.5em 0 !important;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
 }

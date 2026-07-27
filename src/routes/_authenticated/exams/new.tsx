@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Trash2, Search, Filter } from "lucide-react";
 import { NumberField } from "@/components/NumberField";
 import { PatternPicker } from "@/components/PatternPicker";
 import { QuestionSource, type GeneratedQuestion } from "@/components/QuestionSource";
@@ -16,9 +17,29 @@ import { getDraft, saveDraft, deleteDraft } from "@/lib/drafts.functions";
 import { z } from "zod";
 import { type ExamPattern, type PatternConfig, presetToConfig } from "@/lib/exam-patterns";
 import { RichContent } from "@/components/RichContent";
-import { useEffect, useRef } from "react";
+import { cn } from "@/lib/utils";
 
+function getQuestionSection(q: GeneratedQuestion, index: number, config: PatternConfig | null): string {
+  if (!config || !config.sections.length) return q.topic ?? "General";
 
+  const topicLower = (q.topic ?? "").toLowerCase();
+  for (const sec of config.sections) {
+    if (topicLower.includes(sec.name.toLowerCase())) {
+      return sec.name;
+    }
+  }
+
+  let currentOffset = 0;
+  for (const sec of config.sections) {
+    const secCount = Number(sec.count) || 0;
+    if (index >= currentOffset && index < currentOffset + secCount) {
+      return sec.name;
+    }
+    currentOffset += secCount;
+  }
+
+  return config.sections[0]?.name ?? "General";
+}
 
 function ToggleRow({
   label,
@@ -73,9 +94,44 @@ function NewExam() {
   const skipNextSave = useRef(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Restore existing draft when ?draftId= is provided; otherwise
-  // immediately create a fresh draft row so it shows up in the Exams
-  // drafts list right away.
+  // Subject filter & search state for the right panel
+  const [selectedSubject, setSelectedSubject] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const availableSubjects = useMemo(() => config?.sections.map((s) => s.name) ?? [], [config]);
+
+  const subjectCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (let i = 0; i < questions.length; i++) {
+      const s = getQuestionSection(questions[i], i, config);
+      counts[s] = (counts[s] || 0) + 1;
+    }
+    return counts;
+  }, [questions, config]);
+
+  const filteredQuestions = useMemo(() => {
+    return questions
+      .map((q, originalIndex) => ({
+        q,
+        originalIndex,
+        section: getQuestionSection(q, originalIndex, config),
+      }))
+      .filter(({ q, section }) => {
+        if (selectedSubject !== "all" && section.toLowerCase() !== selectedSubject.toLowerCase()) {
+          return false;
+        }
+        if (searchQuery.trim()) {
+          const query = searchQuery.toLowerCase();
+          const matchPrompt = q.prompt.toLowerCase().includes(query);
+          const matchTopic = (q.topic ?? "").toLowerCase().includes(query);
+          const matchRef = (q.source_ref ?? "").toLowerCase().includes(query);
+          return matchPrompt || matchTopic || matchRef;
+        }
+        return true;
+      });
+  }, [questions, config, selectedSubject, searchQuery]);
+
+  // Restore existing draft when ?draftId= is provided; otherwise create a fresh draft row
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -178,7 +234,6 @@ function NewExam() {
     };
   }, [restored, flushSave]);
 
-
   const clearDraft = async () => {
     if (draftId) {
       try { await deleteDraft({ data: { id: draftId } }); } catch { /* ignore */ }
@@ -189,7 +244,6 @@ function NewExam() {
     setDraftStatus("idle");
     toast.success("Draft cleared");
   };
-
 
   const duration = config?.duration_minutes ?? 60;
   const subjects = config?.sections.map((s) => s.name) ?? [];
@@ -221,10 +275,10 @@ function NewExam() {
     }
   };
 
-
   return (
     <AppShell title="New exam">
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.6fr)]">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1.5fr)]">
+        {/* Left Control Panel */}
         <div className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
@@ -285,64 +339,206 @@ function NewExam() {
           <p className="text-center text-xs text-muted-foreground">
             You can add more questions any time — even after publishing — from the exam page.
           </p>
-
         </div>
 
+        {/* Right Questions Preview Panel */}
         <div className="space-y-3">
+          {/* Header Card with Subject Dropdown & Filter Pills */}
+          <Card className="sticky top-16 z-20 shadow-sm border-border bg-background/95 backdrop-blur">
+            <CardContent className="p-3.5 space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2.5">
+                <div>
+                  <div className="flex items-center gap-2 font-semibold text-base">
+                    <span>Questions Preview</span>
+                    <Badge variant="secondary" className="font-mono text-xs">
+                      {questions.length} Total
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedSubject === "all"
+                      ? "Showing questions across all subjects"
+                      : `Viewing ${selectedSubject} (${subjectCounts[selectedSubject] ?? 0} questions)`}
+                  </p>
+                </div>
+
+                {/* Subject Dropdown Select */}
+                {availableSubjects.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Label htmlFor="subj-select" className="text-xs shrink-0 font-medium text-muted-foreground">
+                      <Filter className="inline h-3 w-3 mr-1" /> Subject:
+                    </Label>
+                    <select
+                      id="subj-select"
+                      value={selectedSubject}
+                      onChange={(e) => setSelectedSubject(e.target.value)}
+                      className="rounded-lg border border-input bg-background px-3 py-1.5 text-xs font-semibold shadow-sm transition-colors hover:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      <option value="all">All Subjects ({questions.length})</option>
+                      {availableSubjects.map((s) => (
+                        <option key={s} value={s}>
+                          {s} ({subjectCounts[s] ?? 0} Qs)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+              </div>
+
+              {/* Quick-Filter Subject Pill Tabs */}
+              {availableSubjects.length > 0 && (
+                <div className="flex flex-wrap items-center gap-1.5 border-t border-border/50 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedSubject("all")}
+                    className={cn(
+                      "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                      selectedSubject === "all"
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    All ({questions.length})
+                  </button>
+                  {availableSubjects.map((s) => {
+                    const c = subjectCounts[s] ?? 0;
+                    const isActive = selectedSubject.toLowerCase() === s.toLowerCase();
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setSelectedSubject(s)}
+                        className={cn(
+                          "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                          isActive
+                            ? "bg-primary text-primary-foreground shadow-sm"
+                            : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        )}
+                      >
+                        {s} ({c})
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Search Bar */}
+              {questions.length > 0 && (
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Search question text or topics..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="h-8 pl-8 text-xs"
+                  />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Question List View */}
           {questions.length === 0 ? (
             <Card>
               <CardContent className="py-16 text-center text-sm text-muted-foreground">
-                Pick a pattern and use the AI panel on the left to generate questions.
+                Pick an exam pattern and use the AI panel on the left to generate questions.
+              </CardContent>
+            </Card>
+          ) : filteredQuestions.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center text-sm text-muted-foreground">
+                No questions found matching your filter/search criteria.
               </CardContent>
             </Card>
           ) : (
-            questions.map((q, i) => (
-              <Card key={i}>
+            filteredQuestions.map(({ q, originalIndex, section }) => (
+              <Card key={originalIndex} className="border-border/70 shadow-sm transition-all hover:border-primary/40">
                 <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                    Q{i + 1} · {q.type} · {q.marks}m {q.topic && `· ${q.topic}`}
+                  <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">Q{originalIndex + 1}</span>
+                    <span>·</span>
+                    <span className="uppercase tracking-wider font-semibold text-primary">{section}</span>
+                    {q.topic && q.topic.toLowerCase() !== section.toLowerCase() && (
+                      <>
+                        <span>—</span>
+                        <span className="font-medium text-foreground">{q.topic}</span>
+                      </>
+                    )}
+                    <span>·</span>
+                    <span className="uppercase">{q.type}</span>
+                    <span>·</span>
+                    <span>{q.marks}M</span>
                     {q.source_ref && (
-                      <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-primary">
+                      <Badge variant="secondary" className="ml-1 border-0 bg-primary/10 text-[10px] font-semibold text-primary">
                         {q.source_ref}
-                      </span>
+                      </Badge>
                     )}
                   </div>
 
-                  <Button variant="ghost" size="sm" onClick={() => setQuestions((qs) => qs.filter((_, j) => j !== i))}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                    onClick={() => setQuestions((qs) => qs.filter((_, j) => j !== originalIndex))}
+                  >
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </CardHeader>
-                <CardContent className="space-y-2 text-sm">
+
+                <CardContent className="space-y-3 text-sm pt-1">
                   <RichContent>{q.prompt || "*(empty prompt)*"}</RichContent>
+                  
                   {q.options && (
-                    <ul className="ml-4 list-disc text-xs">
-                      {q.options.map((o, oi) => (
-                        <li key={oi} className={q.correct_answer.includes(o) ? "font-medium text-primary" : ""}>
-                          <RichContent inline>{o}</RichContent>
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="space-y-2 pt-1 text-xs">
+                      {q.options.map((o, oi) => {
+                        const isCorrect = q.correct_answer.includes(o);
+                        const letter = String.fromCharCode(65 + oi);
+                        return (
+                          <div
+                            key={oi}
+                            className={cn(
+                              "flex items-center gap-2.5 rounded-lg border px-3 py-2 text-xs transition-colors",
+                              isCorrect
+                                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 font-medium"
+                                : "border-border/60 bg-muted/20 text-foreground"
+                            )}
+                          >
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border bg-background text-[10px] font-bold text-muted-foreground">
+                              {letter}
+                            </span>
+                            <div className="min-w-0 flex-1 py-0.5 leading-normal">
+                              <RichContent inline>{o}</RichContent>
+                            </div>
+                            {isCorrect && (
+                              <span className="ml-auto shrink-0 rounded-md bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                                Correct
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
 
                   {q.type === "short" && (
                     <div className="text-xs text-muted-foreground">Accepted: {q.correct_answer.join(", ") || "—"}</div>
                   )}
-                  <div className="grid grid-cols-2 gap-2 pt-1">
+
+                  <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/40">
                     <div>
                       <Label className="text-xs">Marks</Label>
                       <NumberField
                         value={q.marks}
-                        onChange={(n) => setQuestions((qs) => qs.map((x, j) => j === i ? { ...x, marks: n } : x))}
+                        onChange={(n) => setQuestions((qs) => qs.map((x, j) => j === originalIndex ? { ...x, marks: n } : x))}
                         min={0}
                         step={0.25}
                         fallback={1}
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">Topic</Label>
+                      <Label className="text-xs">Topic / Chapter</Label>
                       <Input
                         value={q.topic ?? ""}
-                        onChange={(e) => setQuestions((qs) => qs.map((x, j) => j === i ? { ...x, topic: e.target.value || null } : x))}
+                        onChange={(e) => setQuestions((qs) => qs.map((x, j) => j === originalIndex ? { ...x, topic: e.target.value || null } : x))}
                       />
                     </div>
                   </div>

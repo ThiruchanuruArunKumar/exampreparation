@@ -18,49 +18,92 @@ import { cn } from "@/lib/utils";
  *   - Items labelled i. ii. / (i) (ii) / 1. 2.    on the right
  */
 function formatMatchQuestion(input: string): string {
-  // Require both List-I and List-II to be present
-  const listISep = /List[\s\-–—]*I(?!\s*I)/i;
-  const listIISep = /List[\s\-–—]*II/i;
-  if (!listISep.test(input) || !listIISep.test(input)) return input;
+  // Require both List-I (or Column-I) and List-II (or Column-II) to be present
+  const hasListI = /(?:List|Column)[\s\-–—]*(?:I|1)\b/i.test(input);
+  const hasListII = /(?:List|Column)[\s\-–—]*(?:II|2)\b/i.test(input);
+  if (!hasListI || !hasListII) return input;
 
-  // Split on List-II first (rightmost occurrence wins)
-  const listIIIdx = input.search(listIISep);
-  const listIIdx = input.search(listISep);
-  if (listIIdx === -1 || listIIIdx === -1 || listIIdx >= listIIIdx) return input;
+  const lines = input.split("\n").map((l) => l.trim()).filter(Boolean);
 
-  // Text before List-I (intro / stem)
-  const intro = input.slice(0, listIIdx).trim();
+  const introLines: string[] = [];
+  let listILines: string[] = [];
+  let listIILines: string[] = [];
+  const footerLines: string[] = [];
 
-  // Text between List-I header and List-II header
-  const listIRaw = input
-    .slice(listIIdx, listIIIdx)
-    .replace(listISep, "") // strip the "List-I" header itself
-    .trim();
+  let state: "intro" | "listI" | "listII" | "footer" = "intro";
 
-  // Text from List-II header to end
-  const afterListII = input.slice(listIIIdx);
-  const listIIBody = afterListII.replace(listIISep, "").trim(); // strip "List-II" header
+  const listIHeaderRe = /^(?:List|Column)[\s\-–—]*(?:I|1)[:\s]*$/i;
+  const listIIHeaderRe = /^(?:List|Column)[\s\-–—]*(?:II|2)[:\s]*$/i;
+  const footerStartRe = /^(?:Choose|Select|Which|Options|Match the|Where)\b/i;
 
-  // Extract non-empty lines from each list
-  const listIItems = listIRaw.split("\n").map((l) => l.trim()).filter(Boolean);
-  const listIIItems = listIIBody.split("\n").map((l) => l.trim()).filter(Boolean);
+  const itemAtoDRe = /^(?:\(?\s*[A-Da-d]\s*[\.\):]|\b[A-Da-d]\b[\.\):]?)\s+/;
+  const itemItoIVRe = /^(?:\(?\s*(?:i{1,3}|iv|vi{0,3}|ix|x|[1-9]\d*|[I|V|X]+)\s*[\.\):])\s+/;
 
-  if (!listIItems.length || !listIIItems.length) return input;
+  for (const line of lines) {
+    if (listIHeaderRe.test(line)) {
+      state = "listI";
+      continue;
+    }
+    if (listIIHeaderRe.test(line)) {
+      state = "listII";
+      continue;
+    }
 
-  // Build a GFM markdown table
+    if (state === "listII" && footerStartRe.test(line)) {
+      state = "footer";
+      footerLines.push(line);
+      continue;
+    }
+
+    if (state === "intro") {
+      if (itemAtoDRe.test(line)) {
+        state = "listI";
+        listILines.push(line);
+      } else {
+        introLines.push(line);
+      }
+    } else if (state === "listI") {
+      if (itemItoIVRe.test(line) && listILines.length > 0) {
+        state = "listII";
+        listIILines.push(line);
+      } else {
+        listILines.push(line);
+      }
+    } else if (state === "listII") {
+      listIILines.push(line);
+    } else {
+      footerLines.push(line);
+    }
+  }
+
+  // Filter out any leftover header text lines inside item lists
+  listILines = listILines.filter((l) => !listIHeaderRe.test(l) && !listIIHeaderRe.test(l));
+  listIILines = listIILines.filter((l) => !listIHeaderRe.test(l) && !listIIHeaderRe.test(l));
+
+  if (!listILines.length || !listIILines.length) return input;
+
+  const introText = introLines.join("  \n").trim();
+  const footerText = footerLines.join("  \n").trim();
+
+  // Build markdown two-column table
   const rows: string[] = [
     "| **List-I** | **List-II** |",
     "|:-----------|:------------|",
   ];
-  const maxLen = Math.max(listIItems.length, listIIItems.length);
+
+  const maxLen = Math.max(listILines.length, listIILines.length);
   for (let i = 0; i < maxLen; i++) {
-    // Escape pipe characters inside cell content
-    const left = (listIItems[i] ?? "").replace(/\|/g, "\\|");
-    const right = (listIIItems[i] ?? "").replace(/\|/g, "\\|");
+    const left = (listILines[i] ?? "").replace(/\|/g, "\\|");
+    const right = (listIILines[i] ?? "").replace(/\|/g, "\\|");
     rows.push(`| ${left} | ${right} |`);
   }
 
-  return (intro ? intro + "\n\n" : "") + rows.join("\n");
+  let result = "";
+  if (introText) result += introText + "\n\n";
+  result += rows.join("\n");
+  if (footerText) result += "\n\n" + footerText;
+
+  return result;
 }
 
 /**
