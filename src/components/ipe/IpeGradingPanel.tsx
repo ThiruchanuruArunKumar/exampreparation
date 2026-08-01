@@ -85,8 +85,8 @@ export function IpeGradingPanel({ attemptId, onChanged }: { attemptId: string; o
     setAiBusy(true);
     try {
       const r = await aiEvaluateIpeAnswerSheet({ data: { attemptId, apply: false } });
-      setMarks((m) => ({ ...m, ...Object.fromEntries(r.grades.map((g) => [g.questionId, String(g.marksAwarded)])) }));
-      setFeedback((f) => ({ ...f, ...Object.fromEntries(r.grades.map((g) => [g.questionId, g.feedback ?? ""])) }));
+      setMarks((m) => ({ ...m, ...Object.fromEntries(r.grades.map((g: { questionId: string; marksAwarded: number; feedback?: string }) => [g.questionId, String(g.marksAwarded)])) }));
+      setFeedback((f) => ({ ...f, ...Object.fromEntries(r.grades.map((g: { questionId: string; marksAwarded: number; feedback?: string }) => [g.questionId, g.feedback ?? ""])) }));
       setNotes(r.overallFeedback ?? notes);
       toast.success(`AI proposed ${r.proposedScore}/${r.maxScore}. Review and save.`);
     } catch (e) {
