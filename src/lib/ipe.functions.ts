@@ -1267,7 +1267,7 @@ Your marks are a PROPOSAL that the teacher will review and can edit before publi
 
     return {
       applied: data.apply,
-      proposedScore: grades.reduce((n, g) => n + g.marksAwarded, 0),
+      proposedScore: grades.reduce((n: number, g: { marksAwarded: number }) => n + g.marksAwarded, 0),
       maxScore: Number(exam.total_marks ?? 0),
       grades,
       overallFeedback: output.overall_feedback,
