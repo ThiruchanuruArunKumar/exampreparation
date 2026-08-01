@@ -442,30 +442,45 @@ export function ExamCreationTab() {
           {mode === "mode_b" && (
             <Card className="border-border/80">
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">2. Mode B Verbatim Paper Selection</CardTitle>
+                <CardTitle className="text-base">2. Mode B Previous Year Paper (AI reproduced)</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {previousPapers.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No previous papers saved for this subject yet.</p>
-                ) : (
+                <p className="text-xs text-muted-foreground">
+                  The AI reproduces the actual TS IPE paper of the selected session for this subject, with the exam
+                  session labelled on every question in the result sheet.
+                </p>
+                <div>
+                  <Label className="text-xs font-medium">Exam Session</Label>
+                  <select
+                    className="w-full mt-1 rounded-md border border-input bg-background p-2 text-xs"
+                    value={pyqSession}
+                    onChange={(e) => setPyqSession(e.target.value)}
+                  >
+                    {PYQ_SESSIONS.map((s) => (
+                      <option key={s} value={s}>
+                        TS Intermediate {year === "1st_year" ? "1st Year" : "2nd Year"} — {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <Label className="text-xs font-medium">Select Previous Year Paper</Label>
-                    <select
-                      className="w-full mt-1 rounded-md border border-input bg-background p-2 text-xs"
-                      value={selectedPaperId}
-                      onChange={(e) => setSelectedPaperId(e.target.value)}
-                    >
-                      {previousPapers.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          TS Intermediate {year === "1st_year" ? "1st Year" : "2nd Year"} — {p.year} Paper
-                        </option>
-                      ))}
-                    </select>
+                    <Label className="text-xs">VSAQ Count</Label>
+                    <NumberField value={vsaCount} onChange={setVsaCount} min={0} max={20} fallback={10} className="text-xs mt-1" />
                   </div>
-                )}
+                  <div>
+                    <Label className="text-xs">SAQ Count</Label>
+                    <NumberField value={saCount} onChange={setSaCount} min={0} max={20} fallback={8} className="text-xs mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">LAQ Count</Label>
+                    <NumberField value={laCount} onChange={setLaCount} min={0} max={20} fallback={3} className="text-xs mt-1" />
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}
+
 
           {mode === "mode_c" && (
             <Card className="border-border/80">
