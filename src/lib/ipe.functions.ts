@@ -814,7 +814,8 @@ export const createIpeExam = createServerFn({ method: "POST" })
         vsaCount: z.number().int().min(0).optional(),
         saCount: z.number().int().min(0).optional(),
         laCount: z.number().int().min(0).optional(),
-        // Mode B specific inputs
+        // Mode B specific inputs — AI reproduces the actual paper of this TS IPE session
+        pyqSession: z.string().trim().min(1).max(40).optional(),
         previousPaperId: z.string().uuid().optional(),
         // Mode C & explicit questions input
         questionIds: z.array(z.string().uuid()).optional(),
