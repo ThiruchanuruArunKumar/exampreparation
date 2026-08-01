@@ -81,9 +81,9 @@ export function ExamCreationTab() {
   const [saCount, setSaCount] = useState(6);
   const [laCount, setLaCount] = useState(2);
 
-  // Mode B specific state
-  const [previousPapers, setPreviousPapers] = useState<PreviousPaper[]>([]);
-  const [selectedPaperId, setSelectedPaperId] = useState<string>("");
+  // Mode B specific state — AI reproduces the actual paper of this TS IPE session
+  const [pyqSession, setPyqSession] = useState<string>(PYQ_SESSIONS[0]);
+
 
   // Mode C specific state
   const [bankQuestions, setBankQuestions] = useState<Question[]>([]);
