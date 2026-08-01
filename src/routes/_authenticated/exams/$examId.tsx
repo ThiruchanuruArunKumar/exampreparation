@@ -327,7 +327,7 @@ function ExamDetail() {
 
   if (!exam) return <AppShell><p>Loading…</p></AppShell>;
 
-  const subjects = exam.pattern_config?.sections.map((s) => s.name) ?? [];
+  const subjects = exam.pattern_config?.sections?.map((s) => s.name) ?? [];
 
   return (
     <AppShell title={exam.title}>
