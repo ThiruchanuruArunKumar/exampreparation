@@ -9,6 +9,7 @@ type Options = {
 
 export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: Options) {
   const [warnings, setWarnings] = useState(0);
+  const [isFullscreenExited, setIsFullscreenExited] = useState(false);
   const warnRef = useRef(0);
   const lastTriggerRef = useRef(0);
   const cbRef = useRef({ onWarning, onLimit });
@@ -16,9 +17,9 @@ export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: 
 
   const trigger = (reason: string) => {
     // Debounce: a single tab-switch fires visibilitychange + blur + fullscreenchange
-    // in quick succession. Coalesce anything within 1500ms into a single warning.
+    // in quick succession. Coalesce anything within 1200ms into a single warning.
     const now = Date.now();
-    if (now - lastTriggerRef.current < 1500) return;
+    if (now - lastTriggerRef.current < 1200) return;
     lastTriggerRef.current = now;
     warnRef.current += 1;
     setWarnings(warnRef.current);
@@ -26,17 +27,27 @@ export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: 
     if (warnRef.current >= maxWarnings) cbRef.current.onLimit();
   };
 
-  useEffect(() => {
-    if (!enabled) return;
-
-    const enterFullscreen = async () => {
-      try {
-        if (!document.fullscreenElement) await document.documentElement.requestFullscreen();
-      } catch {
-        /* user gesture required — will re-attempt on interaction */
+  const requestFullscreenMode = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+        setIsFullscreenExited(false);
       }
-    };
-    void enterFullscreen();
+    } catch {
+      /* user gesture required */
+    }
+  };
+
+  useEffect(() => {
+    if (!enabled) {
+      setIsFullscreenExited(false);
+      return;
+    }
+
+    void requestFullscreenMode();
+
+    // Push state to trap back button
+    window.history.pushState({ exam: true }, "", window.location.href);
 
     // Keep the screen awake for the duration of the exam.
     let wakeLock: WakeLockSentinel | null = null;
@@ -56,16 +67,22 @@ export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: 
     const onVisibilityWake = () => { if (!document.hidden && !wakeLock) void requestWakeLock(); };
     document.addEventListener("visibilitychange", onVisibilityWake);
 
-
     const onVisibility = () => {
       if (document.hidden) trigger("Tab switched or window minimized");
     };
     const onBlur = () => trigger("Window lost focus");
     const onFullscreenChange = () => {
       if (!document.fullscreenElement) {
-        trigger("Exited fullscreen");
-        void enterFullscreen();
+        setIsFullscreenExited(true);
+        trigger("Exited fullscreen mode");
+      } else {
+        setIsFullscreenExited(false);
       }
+    };
+    const onPopState = (e: PopStateEvent) => {
+      e.preventDefault();
+      window.history.pushState({ exam: true }, "", window.location.href);
+      trigger("Attempted to navigate back / exit exam");
     };
     const onContextMenu = (e: MouseEvent) => {
       e.preventDefault();
@@ -75,27 +92,57 @@ export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: 
       e.preventDefault();
       trigger("Copy/paste blocked");
     };
+
+    const clearClipboard = () => {
+      try {
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText("");
+        }
+      } catch {
+        /* ignore */
+      }
+    };
+
     const onKey = (e: KeyboardEvent) => {
+      const k = e.key.toLowerCase();
+      const code = e.code ? e.code.toLowerCase() : "";
+
       // Screenshot keys — PrintScreen, macOS Cmd+Shift+3/4/5, Win+Shift+S
       const isScreenshot =
         e.key === "PrintScreen" ||
-        (e.metaKey && e.shiftKey && ["3", "4", "5"].includes(e.key)) ||
-        (e.getModifierState?.("Meta") && e.shiftKey && e.key.toLowerCase() === "s");
+        code === "printscreen" ||
+        k === "printscreen" ||
+        (e.shiftKey && (e.metaKey || e.ctrlKey) && (k === "s" || code === "keys")) ||
+        (e.metaKey && e.shiftKey && ["3", "4", "5", "6"].includes(e.key));
+
       if (isScreenshot) {
         e.preventDefault();
+        e.stopPropagation();
+        clearClipboard();
         trigger("Screenshot attempt detected");
         return;
       }
-      const bad =
+
+      // DevTools and prohibited shortcuts
+      const isDevTools =
         e.key === "F12" ||
-        (e.ctrlKey && ["c", "v", "x", "t", "w", "n", "u", "p", "s"].includes(e.key.toLowerCase())) ||
-        (e.metaKey && ["c", "v", "x", "t", "w", "n"].includes(e.key.toLowerCase())) ||
-        (e.altKey && e.key === "Tab");
-      if (bad) {
+        (e.ctrlKey && e.shiftKey && ["i", "j", "c"].includes(k)) ||
+        (e.metaKey && e.altKey && ["i", "j", "c"].includes(k));
+
+      const isForbiddenShortcut =
+        isDevTools ||
+        (e.ctrlKey && ["c", "v", "x", "t", "w", "n", "u", "p", "s", "r"].includes(k)) ||
+        (e.metaKey && ["c", "v", "x", "t", "w", "n", "u", "p", "s", "r"].includes(k)) ||
+        (e.altKey && e.key === "Tab") ||
+        (e.altKey && e.key === "F4");
+
+      if (isForbiddenShortcut) {
         e.preventDefault();
-        trigger(`Blocked shortcut: ${e.key}`);
+        e.stopPropagation();
+        trigger(isDevTools ? "Developer Tools shortcut blocked" : `Blocked shortcut: ${e.key}`);
       }
     };
+
     const onBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "";
@@ -104,12 +151,13 @@ export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: 
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("blur", onBlur);
     document.addEventListener("fullscreenchange", onFullscreenChange);
+    window.addEventListener("popstate", onPopState);
     document.addEventListener("contextmenu", onContextMenu);
     document.addEventListener("copy", onCopyPaste);
     document.addEventListener("paste", onCopyPaste);
     document.addEventListener("cut", onCopyPaste);
-    document.addEventListener("keydown", onKey);
-    document.addEventListener("keyup", onKey);
+    document.addEventListener("keydown", onKey, true);
+    document.addEventListener("keyup", onKey, true);
     window.addEventListener("beforeunload", onBeforeUnload);
 
     return () => {
@@ -117,12 +165,13 @@ export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: 
       document.removeEventListener("visibilitychange", onVisibilityWake);
       window.removeEventListener("blur", onBlur);
       document.removeEventListener("fullscreenchange", onFullscreenChange);
+      window.removeEventListener("popstate", onPopState);
       document.removeEventListener("contextmenu", onContextMenu);
       document.removeEventListener("copy", onCopyPaste);
       document.removeEventListener("paste", onCopyPaste);
       document.removeEventListener("cut", onCopyPaste);
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("keyup", onKey);
+      document.removeEventListener("keydown", onKey, true);
+      document.removeEventListener("keyup", onKey, true);
       window.removeEventListener("beforeunload", onBeforeUnload);
       if (wakeLock) { void wakeLock.release().catch(() => {}); wakeLock = null; }
       if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
@@ -130,5 +179,5 @@ export function useProctoring({ enabled, maxWarnings = 3, onWarning, onLimit }: 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
 
-  return { warnings };
+  return { warnings, isFullscreenExited, requestFullscreenMode };
 }

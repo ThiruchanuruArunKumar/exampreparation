@@ -228,7 +228,7 @@ function TakeExam() {
     [attemptId, token, exam, showAnswerSheetStep, answerPages],
   );
 
-  const { warnings } = useProctoring({
+  const { warnings, isFullscreenExited, requestFullscreenMode } = useProctoring({
     enabled: started && !submitting && !result && !showAnswerSheetStep,
     maxWarnings: 3,
     onWarning: (count, reason) => {
@@ -241,33 +241,144 @@ function TakeExam() {
     },
   });
 
+  const sectionsList = useMemo(() => {
+    const rawSections = exam?.pattern_config?.sections as any[] | undefined;
+    if (!rawSections || !rawSections.length) {
+      if (!questions.length) return [];
+      return [
+        {
+          id: "sec-default",
+          sectionName: "All Questions",
+          shortLabel: "Questions",
+          typeLabel: "",
+          startIdx: 0,
+          endIdx: questions.length - 1,
+          count: questions.length,
+          attemptLimit: questions.length,
+          marksPerQ: questions[0]?.marks ?? 1,
+          subjectName: null,
+        },
+      ];
+    }
+
+    const list: Array<{
+      id: string;
+      sectionName: string;
+      shortLabel: string;
+      typeLabel: string;
+      startIdx: number;
+      endIdx: number;
+      count: number;
+      attemptLimit: number;
+      marksPerQ: number;
+      subjectName: string | null;
+    }> = [];
+
+    let offset = 0;
+    rawSections.forEach((sec, sIdx) => {
+      if (sec.subsections && sec.subsections.length > 0) {
+        sec.subsections.forEach((sub: any, subIdx: number) => {
+          const count = Number(sub.count) || 0;
+          const startIdx = offset;
+          const endIdx = Math.max(startIdx, startIdx + count - 1);
+          offset += count;
+
+          let shortLabel = sub.name || `Section ${String.fromCharCode(65 + subIdx)}`;
+          if (shortLabel.includes("Section")) {
+            const match = shortLabel.match(/Section\s+[A-Z]/i);
+            if (match) shortLabel = match[0];
+          }
+          list.push({
+            id: `sec-${sIdx}-${subIdx}`,
+            sectionName: `${sec.name} — ${sub.name}`,
+            shortLabel,
+            typeLabel: sub.type || "",
+            startIdx,
+            endIdx,
+            count,
+            attemptLimit: Number(sub.attempt_limit ?? count),
+            marksPerQ: Number(sub.marks_per_q ?? questions[startIdx]?.marks ?? 0),
+            subjectName: sec.name,
+          });
+        });
+      } else {
+        const count = Number(sec.count) || 0;
+        const startIdx = offset;
+        const endIdx = Math.max(startIdx, startIdx + count - 1);
+        offset += count;
+
+        let shortLabel = sec.name || `Section ${String.fromCharCode(65 + sIdx)}`;
+        if (sec.name.includes("Section A")) shortLabel = "Section A";
+        else if (sec.name.includes("Section B")) shortLabel = "Section B";
+        else if (sec.name.includes("Section C")) shortLabel = "Section C";
+
+        let typeLabel = "";
+        if (sec.key === "very_short_answer" || sec.name.includes("VSAQ")) typeLabel = "VSAQ (2M)";
+        else if (sec.key === "short_answer" || sec.name.includes("SAQ")) typeLabel = "SAQ (4M)";
+        else if (sec.key === "long_answer" || sec.name.includes("LAQ")) typeLabel = "LAQ (8M)";
+        else if (sec.marks_per_q) typeLabel = `${sec.marks_per_q} Marks`;
+
+        list.push({
+          id: `sec-${sIdx}`,
+          sectionName: sec.name,
+          shortLabel,
+          typeLabel,
+          startIdx,
+          endIdx,
+          count,
+          attemptLimit: Number(sec.attempt_limit ?? count),
+          marksPerQ: Number(sec.marks_per_q ?? questions[startIdx]?.marks ?? 0),
+          subjectName: null,
+        });
+      }
+    });
+
+    return list;
+  }, [exam?.pattern_config, questions]);
+
+  const activeSectionInfo = useMemo(() => {
+    if (!sectionsList.length) return null;
+    return sectionsList.find((s) => current >= s.startIdx && current <= s.endIdx) ?? sectionsList[0];
+  }, [sectionsList, current]);
+
+  const sectionStats = useMemo(() => {
+    return sectionsList.map((sec) => {
+      let answeredCount = 0;
+      let reviewCount = 0;
+      let visitedCount = 0;
+      for (let i = sec.startIdx; i <= sec.endIdx; i++) {
+        const qId = questions[i]?.id;
+        if (!qId) continue;
+        if ((answers[qId] ?? []).length > 0) answeredCount++;
+        if (reviewed.has(qId)) reviewCount++;
+        if (visited.has(qId)) visitedCount++;
+      }
+      return {
+        ...sec,
+        answeredCount,
+        reviewCount,
+        visitedCount,
+      };
+    });
+  }, [sectionsList, questions, answers, reviewed, visited]);
+
   const setResp = async (qid: string, resp: string[]) => {
-    if (resp.length > 0 && exam?.pattern_config?.sections) {
+    if (resp.length > 0 && activeSectionInfo) {
       const qIndex = questions.findIndex(q => q.id === qid);
       if (qIndex >= 0) {
-        let offset = 0;
-        for (const sec of (exam.pattern_config.sections as any[])) {
-           if (sec.subsections) {
-              for (const sub of sec.subsections) {
-                 const count = Number(sub.count);
-                 if (qIndex >= offset && qIndex < offset + count) {
-                    const limit = Number(sub.attempt_limit ?? sub.count);
-                    let answeredInSub = 0;
-                    for (let i = offset; i < offset + count; i++) {
-                       if (questions[i].id !== qid && (answers[questions[i].id]?.length ?? 0) > 0) {
-                          answeredInSub++;
-                       }
-                    }
-                    if (answeredInSub >= limit && (answers[qid]?.length ?? 0) === 0) {
-                       toast.error(`You can only attempt ${limit} questions in ${sub.name}. Please clear an answer first.`);
-                       return;
-                    }
-                 }
-                 offset += count;
-              }
-           } else {
-              offset += Number(sec.count);
-           }
+        const sec = activeSectionInfo;
+        const limit = sec.attemptLimit;
+        if (limit < sec.count) {
+          let answeredInSec = 0;
+          for (let i = sec.startIdx; i <= sec.endIdx; i++) {
+            if (questions[i].id !== qid && (answers[questions[i].id]?.length ?? 0) > 0) {
+              answeredInSec++;
+            }
+          }
+          if (answeredInSec >= limit && (answers[qid]?.length ?? 0) === 0) {
+            toast.error(`You can only attempt ${limit} questions in ${sec.shortLabel}. Please clear an answer first.`);
+            return;
+          }
         }
       }
     }
@@ -311,6 +422,22 @@ function TakeExam() {
     );
   }
 
+  if (showAnswerSheetStep) {
+    return (
+      <Frame>
+        <AnswerSheetUploadScreen
+          examTitle={exam?.title ?? "Exam"}
+          studentName={student?.name}
+          studentCode={student?.student_code}
+          answerPages={answerPages}
+          setAnswerPages={setAnswerPages}
+          uploading={submitting}
+          onSubmit={() => handleSubmit(pendingAuto, pendingTerminated)}
+          required={exam?.pattern_config?.answer_sheet_required === true}
+        />
+      </Frame>
+    );
+  }
 
   if (!started) {
     return (
@@ -329,16 +456,16 @@ function TakeExam() {
               <div className="flex items-center gap-2 font-medium text-destructive">
                 <ShieldAlert className="h-4 w-4" /> Proctoring rules
               </div>
-              <ul className="mt-2 list-disc pl-5 text-sm text-foreground">
-                <li>The exam runs in fullscreen. Do not exit.</li>
-                <li>Do not switch tabs, minimize, or open other apps.</li>
-                <li>Copy, paste, right-click, and shortcuts are blocked.</li>
-                <li>You get 3 warnings. On the 3rd, the exam auto-submits.</li>
+              <ul className="mt-2 list-disc pl-5 text-sm text-foreground space-y-1">
+                <li>The exam runs in full-screen mode. Do not exit full-screen.</li>
+                <li>Do not switch tabs, minimize, or navigate away from this page.</li>
+                <li>Screenshots, developer tools, copy, paste, and shortcuts are strictly blocked.</li>
+                <li>You get 3 warnings. On the 3rd warning, the exam is automatically submitted.</li>
                 <li>Time limit: {exam?.duration_minutes} minutes.</li>
               </ul>
             </div>
-            <Button size="lg" className="w-full" onClick={() => setStarted(true)}>
-              I understand — start exam
+            <Button size="lg" className="w-full font-semibold" onClick={() => setStarted(true)}>
+              I understand — Start Exam
             </Button>
           </CardContent>
         </Card>
@@ -352,37 +479,113 @@ function TakeExam() {
   const answered = Object.values(answers).filter((v) => v.length > 0).length;
   const reviewCount = reviewed.size;
   const isReviewed = reviewed.has(q.id);
-  const activeSection = subjectBoundaries?.find((s) => current >= s.start && current <= s.end) ?? null;
-  const activeSectionCfg = (exam?.pattern_config?.sections ?? []).find(
-    (s: any) => s.name === activeSection?.name,
-  );
-
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <header className="sticky top-0 z-10 border-b border-border bg-background">
+    <div className="min-h-screen bg-background text-foreground relative">
+      {/* Fullscreen Exit Blocking Overlay */}
+      {isFullscreenExited && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-md p-4 animate-fade-in">
+          <Card className="max-w-md w-full border-destructive/60 shadow-2xl">
+            <CardHeader className="text-center pb-2">
+              <div className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 text-destructive">
+                <ShieldAlert className="h-7 w-7 animate-pulse" />
+              </div>
+              <CardTitle className="text-lg font-bold text-destructive">Fullscreen Exited</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4 text-center">
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                You have exited full-screen mode. Proctoring rules require you to remain in full-screen for the duration of the exam.
+              </p>
+              <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive font-semibold">
+                Warning recorded ({warnings}/3 total warnings).
+              </div>
+              <Button size="lg" className="w-full font-semibold gap-2" onClick={requestFullscreenMode}>
+                Resume Fullscreen & Continue Exam
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      <header className="sticky top-0 z-10 border-b border-border bg-background/95 backdrop-blur">
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-2 px-3 py-2 sm:px-6 sm:py-3">
-          <div className="min-w-0 flex-1 truncate text-sm font-medium">{exam?.title}</div>
+          <div className="min-w-0 flex-1 truncate text-sm font-semibold">{exam?.title}</div>
           <div className="flex shrink-0 items-center gap-3 text-sm">
-            <div className={`flex items-center gap-1 font-mono ${remaining < 60 ? "text-destructive" : ""}`}>
+            <div className={`flex items-center gap-1.5 font-mono font-semibold ${remaining < 60 ? "text-destructive animate-pulse" : ""}`}>
               <Clock className="h-4 w-4" /> {timeStr}
             </div>
-            <div className="flex items-center gap-1 text-destructive">
+            <div className="flex items-center gap-1 font-semibold text-destructive">
               <AlertTriangle className="h-4 w-4" /> {warnings}/3
             </div>
-            <Button size="sm" onClick={() => handleSubmit(false)} disabled={submitting}>
-              Submit
+            <Button size="sm" onClick={() => handleSubmit(false)} disabled={submitting} className="font-semibold">
+              {submitting ? "Submitting…" : isIpe ? "Finish Exam" : "Submit Exam"}
             </Button>
           </div>
         </div>
       </header>
 
-      <div className="mx-auto grid max-w-5xl gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:grid-cols-[240px_1fr]">
-        <div className="space-y-2">
+      {/* Section Navigation Header Bar */}
+      {sectionStats.length > 0 && (
+        <div className="border-b border-border bg-card/60 px-3 py-2 sm:px-6">
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-2 overflow-x-auto no-scrollbar">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mr-1">
+                Sections:
+              </span>
+              {sectionStats.map((sec) => {
+                const isActive = activeSectionInfo?.id === sec.id;
+                return (
+                  <button
+                    key={sec.id}
+                    onClick={() => setCurrent(sec.startIdx)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap border ${
+                      isActive
+                        ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                        : "bg-background text-foreground hover:bg-muted/80 border-border"
+                    }`}
+                  >
+                    <span>{sec.shortLabel}</span>
+                    {sec.typeLabel && (
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                          isActive
+                            ? "bg-primary-foreground/20 text-primary-foreground"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {sec.typeLabel}
+                      </span>
+                    )}
+                    {!isIpe && (
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                          sec.answeredCount >= sec.attemptLimit
+                            ? isActive
+                              ? "bg-green-400/30 text-white"
+                              : "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300"
+                            : isActive
+                              ? "bg-primary-foreground/30 text-primary-foreground"
+                              : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {sec.answeredCount}/{sec.attemptLimit}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="mx-auto grid max-w-5xl gap-4 px-3 py-4 sm:gap-6 sm:px-6 sm:py-6 lg:grid-cols-[260px_1fr]">
+        {/* Sidebar Question Palette */}
+        <div className="space-y-3">
           <div className="flex items-center justify-between gap-2">
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs font-medium text-muted-foreground">
               {isIpe
-                ? `${questions.length} questions · ${reviewCount} marked`
+                ? `${questions.length} total questions · ${reviewCount} marked`
                 : `${answered}/${questions.length} answered · ${reviewCount} marked`}
             </div>
             <Button
@@ -391,143 +594,57 @@ function TakeExam() {
               onClick={() => setShowPalette((v) => !v)}
               className="h-7 px-2 text-xs"
             >
-              {showPalette ? "Hide" : "Show"} all
+              {showPalette ? "Hide" : "Show"} palette
             </Button>
           </div>
-          {subjectBoundaries && subjectBoundaries.length > 1 && (
-             <div className="flex flex-wrap gap-1 mb-2">
-               {subjectBoundaries.map((s) => (
-                  <Button
-                    key={s.name}
-                    variant={activeSubject === s.name ? "default" : "outline"}
-                    size="sm"
-                    className="h-8 text-xs"
-                    onClick={() => {
-                       setActiveSubject(s.name);
-                    }}
-                  >
-                    {s.name}
-                  </Button>
-               ))}
-             </div>
-          )}
-          {showPalette && (
-            <>
-              <div className="space-y-4">
-                {subjectBoundaries && activeSubject ? (() => {
-                   const activeSubjInfo = subjectBoundaries.find(s => s.name === activeSubject);
-                   if (!activeSubjInfo) return null;
-                   if (activeSubjInfo.subsections) {
-                      return activeSubjInfo.subsections.map((sub: any, subIdx: number) => {
-                         let subStart = activeSubjInfo.start;
-                         for(let i=0; i<subIdx; i++) subStart += Number(activeSubjInfo.subsections[i].count);
-                         const subCount = Number(sub.count);
-                         return (
-                            <div key={sub.name} className="space-y-1">
-                              <div className="flex items-center justify-between text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                                <span>{sub.name}</span>
-                                {sub.attempt_limit && sub.attempt_limit < subCount && (
-                                  <span className="text-destructive font-bold">Attempt {sub.attempt_limit} of {subCount}</span>
-                                )}
-                              </div>
-                              <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 lg:grid-cols-5">
-                                {Array.from({length: subCount}).map((_, i) => {
-                                   const qIdx = subStart + i;
-                                   const qq = questions[qIdx];
-                                   if (!qq) return null;
-                                   const done = !isIpe && (answers[qq.id] ?? []).length > 0;
-                                   const rev = reviewed.has(qq.id);
-                                   const seen = visited.has(qq.id);
-                                   let cls = "border-border bg-background text-foreground";
-                                   if (rev && done) cls = "border-purple-500 bg-purple-500 text-white";
-                                   else if (rev) cls = "border-purple-500 bg-purple-500 text-white";
-                                   else if (done) cls = "border-green-500 bg-green-500 text-white";
-                                   else if (seen) cls = "border-red-500 bg-red-500 text-white";
-                                   const isCurrent = qIdx === current;
-                                   return (
-                                     <button
-                                       key={qq.id}
-                                       onClick={() => setCurrent(qIdx)}
-                                       className={`relative rounded-md border p-2 text-xs font-medium transition ${cls} ${
-                                         isCurrent ? "ring-2 ring-offset-1 ring-primary" : ""
-                                       }`}
-                                     >
-                                       {qIdx + 1}
-                                       {rev && done && (
-                                         <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-green-400 ring-1 ring-white" />
-                                       )}
-                                     </button>
-                                   );
-                                })}
-                              </div>
-                            </div>
-                         );
-                      });
-                   } else {
+
+          {(showPalette || true) && (
+            <div className="space-y-4 max-h-[calc(100vh-220px)] overflow-y-auto pr-1">
+              {sectionStats.map((sec) => (
+                <div key={sec.id} className="rounded-lg border border-border bg-card/40 p-3 space-y-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-semibold text-foreground">{sec.shortLabel}</span>
+                    <span className="text-[11px] font-medium text-muted-foreground">
+                      {sec.attemptLimit < sec.count
+                        ? `Attempt ${sec.answeredCount}/${sec.attemptLimit}`
+                        : `${sec.count} Questions`}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {Array.from({ length: sec.count }).map((_, idx) => {
+                      const qIdx = sec.startIdx + idx;
+                      const qq = questions[qIdx];
+                      if (!qq) return null;
+                      const done = !isIpe && (answers[qq.id] ?? []).length > 0;
+                      const rev = reviewed.has(qq.id);
+                      const seen = visited.has(qq.id);
+                      let cls = "border-border bg-background text-foreground";
+                      if (rev && done) cls = "border-purple-500 bg-purple-500 text-white font-bold";
+                      else if (rev) cls = "border-purple-500 bg-purple-500 text-white font-bold";
+                      else if (done) cls = "border-green-500 bg-green-500 text-white font-bold";
+                      else if (seen) cls = "border-red-500 bg-red-500 text-white font-bold";
+                      const isCurrent = qIdx === current;
                       return (
-                         <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 lg:grid-cols-5">
-                           {Array.from({length: activeSubjInfo.end - activeSubjInfo.start + 1}).map((_, i) => {
-                              const qIdx = activeSubjInfo.start + i;
-                              const qq = questions[qIdx];
-                              if (!qq) return null;
-                              const done = !isIpe && (answers[qq.id] ?? []).length > 0;
-                              const rev = reviewed.has(qq.id);
-                              const seen = visited.has(qq.id);
-                              let cls = "border-border bg-background text-foreground";
-                              if (rev && done) cls = "border-purple-500 bg-purple-500 text-white";
-                              else if (rev) cls = "border-purple-500 bg-purple-500 text-white";
-                              else if (done) cls = "border-green-500 bg-green-500 text-white";
-                              else if (seen) cls = "border-red-500 bg-red-500 text-white";
-                              const isCurrent = qIdx === current;
-                              return (
-                                <button
-                                  key={qq.id}
-                                  onClick={() => setCurrent(qIdx)}
-                                  className={`relative rounded-md border p-2 text-xs font-medium transition ${cls} ${
-                                    isCurrent ? "ring-2 ring-offset-1 ring-primary" : ""
-                                  }`}
-                                >
-                                  {qIdx + 1}
-                                  {rev && done && (
-                                    <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-green-400 ring-1 ring-white" />
-                                  )}
-                                </button>
-                              );
-                           })}
-                         </div>
+                        <button
+                          key={qq.id}
+                          onClick={() => setCurrent(qIdx)}
+                          className={`relative flex items-center justify-center rounded-md border py-1.5 text-xs font-semibold transition ${cls} ${
+                            isCurrent ? "ring-2 ring-primary ring-offset-1" : ""
+                          }`}
+                        >
+                          {qIdx + 1}
+                          {rev && done && (
+                            <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full bg-green-300 ring-1 ring-white" />
+                          )}
+                        </button>
                       );
-                   }
-                })() : (
-                   <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 lg:grid-cols-5">
-                     {questions.map((qq, i) => {
-                       const done = !isIpe && (answers[qq.id] ?? []).length > 0;
-                       const rev = reviewed.has(qq.id);
-                       const seen = visited.has(qq.id);
-                       let cls = "border-border bg-background text-foreground";
-                       if (rev && done) cls = "border-purple-500 bg-purple-500 text-white";
-                       else if (rev) cls = "border-purple-500 bg-purple-500 text-white";
-                       else if (done) cls = "border-green-500 bg-green-500 text-white";
-                       else if (seen) cls = "border-red-500 bg-red-500 text-white";
-                       const isCurrent = i === current;
-                       return (
-                         <button
-                           key={qq.id}
-                           onClick={() => setCurrent(i)}
-                           className={`relative rounded-md border p-2 text-xs font-medium transition ${cls} ${
-                             isCurrent ? "ring-2 ring-offset-1 ring-primary" : ""
-                           }`}
-                         >
-                           {i + 1}
-                           {rev && done && (
-                             <span className="absolute right-0.5 top-0.5 h-2 w-2 rounded-full bg-green-400 ring-1 ring-white" />
-                           )}
-                         </button>
-                       );
-                     })}
-                   </div>
-                )}
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-1 text-[10px] text-muted-foreground">
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              <div className="mt-2 grid grid-cols-2 gap-1 text-[10px] text-muted-foreground pt-1">
                 {isIpe ? (
                   <>
                     <Legend color="bg-red-500" label="Visited" />
@@ -542,52 +659,51 @@ function TakeExam() {
                   </>
                 )}
               </div>
-            </>
+            </div>
           )}
         </div>
 
-
-
-
-        <Card>
-          <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-            <div className="min-w-0 flex-1">
-              <div className="text-xs uppercase tracking-wide text-muted-foreground">
-                Question {current + 1} of {questions.length}
-                {isIpe && activeSection ? ` · ${activeSection.name}` : ""}
-              </div>
-              {isIpe && activeSectionCfg?.attempt_limit && activeSectionCfg.attempt_limit < activeSectionCfg.count && (
-                <div className="mt-1 text-xs font-medium text-primary">
-                  Answer any {activeSectionCfg.attempt_limit} of {activeSectionCfg.count} questions in this section
+        {/* Main Question Display Card */}
+        <Card className="border-border">
+          <CardHeader className="flex flex-col gap-2 space-y-0 pb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
+                  <span>{activeSectionInfo?.sectionName}</span>
+                  {activeSectionInfo?.attemptLimit && activeSectionInfo.attemptLimit < activeSectionInfo.count ? (
+                    <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">
+                      Answer ANY {activeSectionInfo.attemptLimit} of {activeSectionInfo.count}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px]">
+                      Answer ALL {activeSectionInfo?.count} questions
+                    </Badge>
+                  )}
                 </div>
-              )}
-              <CardTitle className="mt-2 text-base sm:text-lg">
-                <RichContent>{q.prompt}</RichContent>
-              </CardTitle>
-
-            </div>
-            <Badge variant="secondary" className="shrink-0">
-              {q.marks} marks
-            </Badge>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {isIpe ? (
-              <div className="rounded-md border border-primary/30 bg-primary/5 p-4 text-sm">
-                <p className="font-medium">Write this answer in your answer booklet.</p>
-                <p className="mt-1 text-muted-foreground">
-                  This is a board-pattern descriptive paper — nothing is typed on screen. When the timer ends you
-                  will be asked to photograph every page of your answer booklet and submit it for evaluation.
-                </p>
+                <div className="mt-1 text-xs text-muted-foreground font-medium">
+                  Question {current - (activeSectionInfo?.startIdx ?? 0) + 1} of {activeSectionInfo?.count} in {activeSectionInfo?.shortLabel} (Overall Q{current + 1} of {questions.length})
+                </div>
               </div>
-            ) : (
+              <Badge variant="secondary" className="shrink-0 text-xs font-bold">
+                {q.marks} Marks
+              </Badge>
+            </div>
+
+            <CardTitle className="pt-2 text-base sm:text-lg leading-relaxed">
+              <RichContent>{q.prompt}</RichContent>
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent className="space-y-4 pt-0">
+            {!isIpe && (
               <>
                 {(q.type === "mcq" || q.type === "tf") && q.options && (
                   <div className="space-y-2">
                     {q.options.map((opt) => (
                       <label
                         key={opt}
-                        className={`flex cursor-pointer items-center gap-3 rounded-md border p-3 ${
-                          resp.includes(opt) ? "border-primary bg-primary/5" : "border-border"
+                        className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition ${
+                          resp.includes(opt) ? "border-primary bg-primary/5 font-medium" : "border-border hover:bg-muted/40"
                         }`}
                       >
                         <input
@@ -597,7 +713,6 @@ function TakeExam() {
                           onChange={() => setResp(q.id, [opt])}
                         />
                         <RichContent inline className="text-sm">{opt}</RichContent>
-
                       </label>
                     ))}
                   </div>
@@ -607,8 +722,8 @@ function TakeExam() {
                     {q.options.map((opt) => (
                       <label
                         key={opt}
-                        className={`flex cursor-pointer items-center gap-3 rounded-md border p-3 ${
-                          resp.includes(opt) ? "border-primary bg-primary/5" : "border-border"
+                        className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition ${
+                          resp.includes(opt) ? "border-primary bg-primary/5 font-medium" : "border-border hover:bg-muted/40"
                         }`}
                       >
                         <input
@@ -634,7 +749,7 @@ function TakeExam() {
               </>
             )}
 
-            <div className="flex flex-wrap items-center gap-2 pt-4">
+            <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-border mt-6">
               {!isIpe && (
                 <Button
                   variant="outline"
@@ -649,7 +764,7 @@ function TakeExam() {
               <Button
                 variant={isReviewed ? "default" : "outline"}
                 size="sm"
-                className={isReviewed ? "bg-purple-600 text-white hover:bg-purple-700" : "border-purple-500 text-purple-700 hover:bg-purple-500/10 dark:text-purple-300"}
+                className={isReviewed ? "bg-purple-600 text-white hover:bg-purple-700 font-semibold" : "border-purple-500 text-purple-700 hover:bg-purple-500/10 dark:text-purple-300 font-semibold"}
                 onClick={() =>
                   setReviewed((s) => {
                     const n = new Set(s);
@@ -661,6 +776,7 @@ function TakeExam() {
               >
                 {isReviewed ? "Unmark review" : "Mark for review"}
               </Button>
+
               <div className="ml-auto flex gap-2">
                 <Button
                   variant="outline"
@@ -670,10 +786,10 @@ function TakeExam() {
                   Previous
                 </Button>
                 {current < questions.length - 1 ? (
-                  <Button onClick={() => setCurrent((c) => c + 1)}>Next</Button>
+                  <Button onClick={() => setCurrent((c) => c + 1)}>Next Question</Button>
                 ) : (
-                  <Button onClick={() => handleSubmit(false)} disabled={submitting}>
-                    {submitting ? "Submitting…" : "Submit exam"}
+                  <Button onClick={() => handleSubmit(false)} disabled={submitting} className="font-semibold">
+                    {submitting ? "Submitting…" : isIpe ? "Finish Exam" : "Submit Exam"}
                   </Button>
                 )}
               </div>
@@ -1069,6 +1185,39 @@ function ResultScreen({
   );
 }
 
+async function compressImage(file: File, maxWidth = 1600, quality = 0.75): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let width = img.width;
+      let height = img.height;
+      if (width > maxWidth || height > maxWidth) {
+        if (width > height) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        } else {
+          width = Math.round((width * maxWidth) / height);
+          height = maxWidth;
+        }
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(url);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = (err) => reject(err);
+    img.src = url;
+  });
+}
+
 function AnswerSheetUploadScreen({
   examTitle,
   studentName,
@@ -1088,21 +1237,29 @@ function AnswerSheetUploadScreen({
   onSubmit: () => void;
   required: boolean;
 }) {
-  const handleFileCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files ?? []);
-    if (!files.length) return;
+  const [compressing, setCompressing] = useState(false);
 
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = String(reader.result);
+  const processFiles = async (files: File[]) => {
+    if (!files.length) return;
+    setCompressing(true);
+    try {
+      for (const file of files) {
+        const compressedBase64 = await compressImage(file);
         setAnswerPages((prev) => [
           ...prev,
-          { imageUrl: base64, pageNumber: prev.length + 1 },
+          { imageUrl: compressedBase64, pageNumber: prev.length + 1 },
         ]);
-      };
-      reader.readAsDataURL(file);
-    });
+      }
+    } catch {
+      toast.error("Failed to process image. Please try again.");
+    } finally {
+      setCompressing(false);
+    }
+  };
+
+  const handleFileCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    void processFiles(files);
     e.target.value = "";
   };
 
@@ -1111,17 +1268,20 @@ function AnswerSheetUploadScreen({
     input.type = "file";
     input.accept = "image/*";
     input.capture = "environment";
-    input.onchange = (e: any) => {
+    input.onchange = async (e: any) => {
       const file = e.target.files?.[0];
       if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64 = String(reader.result);
+      setCompressing(true);
+      try {
+        const compressedBase64 = await compressImage(file);
         setAnswerPages((prev) =>
-          prev.map((item, idx) => (idx === index ? { ...item, imageUrl: base64 } : item)),
+          prev.map((item, idx) => (idx === index ? { ...item, imageUrl: compressedBase64 } : item)),
         );
-      };
-      reader.readAsDataURL(file);
+      } catch {
+        toast.error("Failed to process photo.");
+      } finally {
+        setCompressing(false);
+      }
     };
     input.click();
   };
@@ -1152,37 +1312,37 @@ function AnswerSheetUploadScreen({
 
   const handleFinalSubmit = () => {
     if (required && answerPages.length === 0) {
-      toast.error("Please photograph and attach at least one page of your answer sheet before submitting.");
+      toast.error("Please take or upload at least one photo of your answer sheet before submitting.");
       return;
     }
     onSubmit();
   };
 
   return (
-    <Card className="mx-auto max-w-3xl border-border/80">
-      <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
+    <Card className="mx-auto max-w-3xl border-border/80 shadow-lg">
+      <CardHeader className="pb-3 border-b border-border">
+        <CardTitle className="flex items-center gap-2 text-lg font-bold">
           <Camera className="h-6 w-6 text-primary" />
           Upload Answer Sheet Photos — {examTitle}
         </CardTitle>
         {studentName && (
-          <p className="text-sm text-muted-foreground">
-            {studentName} · {studentCode}
+          <p className="text-sm text-muted-foreground font-medium">
+            Student: {studentName} · Hall Ticket: {studentCode}
           </p>
         )}
       </CardHeader>
 
-      <CardContent className="space-y-6">
+      <CardContent className="space-y-6 pt-6">
         <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-xs space-y-1.5">
-          <div className="font-semibold text-primary flex items-center gap-1.5">
-            <Upload className="h-4 w-4" /> Photograph Your Handwritten Answer Sheet
+          <div className="font-semibold text-primary flex items-center gap-1.5 text-sm">
+            <Upload className="h-4 w-4" /> Photograph & Attach Answer Sheet Pages
           </div>
           <p className="text-muted-foreground leading-relaxed">
-            Please use your camera to capture clear photos of each page of your written answer sheet in page order (Page 1, Page 2, Page 3...).
+            Take clear, readable photos of each page of your physical answer booklet in page order (Page 1, Page 2, Page 3...). Once all pages are attached, click <strong>Submit Answer Sheet to Admin for Evaluation</strong> below.
           </p>
         </div>
 
-        {/* Hidden Camera Input */}
+        {/* Hidden File Inputs */}
         <input
           type="file"
           id="camera-page-input"
@@ -1192,32 +1352,65 @@ function AnswerSheetUploadScreen({
           className="hidden"
           onChange={handleFileCapture}
         />
+        <input
+          type="file"
+          id="gallery-page-input"
+          accept="image/*"
+          multiple
+          className="hidden"
+          onChange={handleFileCapture}
+        />
 
-        {/* Thumbnail Strip */}
+        {/* Action Buttons / Tabs */}
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            onClick={() => document.getElementById("camera-page-input")?.click()}
+            disabled={compressing || uploading}
+            className="font-semibold gap-2"
+          >
+            <Camera className="h-4 w-4" /> Open Camera / Take Photo
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => document.getElementById("gallery-page-input")?.click()}
+            disabled={compressing || uploading}
+            className="font-semibold gap-2"
+          >
+            <Upload className="h-4 w-4" /> Upload from Gallery / Files
+          </Button>
+          {compressing && (
+            <span className="text-xs text-primary font-medium animate-pulse">
+              Optimizing image quality…
+            </span>
+          )}
+        </div>
+
+        {/* Thumbnail Grid */}
         {answerPages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-border rounded-xl text-center">
-            <Camera className="h-10 w-10 text-muted-foreground mb-2" />
-            <p className="text-sm font-medium">No pages photographed yet</p>
-            <p className="text-xs text-muted-foreground mb-4">Click below to open device camera or upload image</p>
-            <Button onClick={() => document.getElementById("camera-page-input")?.click()}>
-              <Camera className="mr-2 h-4 w-4" /> Open Camera / Take Photo
-            </Button>
+          <div className="flex flex-col items-center justify-center p-10 border-2 border-dashed border-border rounded-xl text-center bg-muted/10">
+            <Camera className="h-12 w-12 text-muted-foreground mb-3" />
+            <p className="text-sm font-semibold">No pages attached yet</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+              Click "Open Camera" to photograph your answer sheet or "Upload from Gallery" to pick existing files.
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-muted-foreground">
-                {answerPages.length} Page{answerPages.length === 1 ? "" : "s"} Captured
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                {answerPages.length} Page{answerPages.length === 1 ? "" : "s"} Attached
               </span>
-              <Button size="sm" variant="outline" onClick={() => document.getElementById("camera-page-input")?.click()} className="text-xs gap-1.5">
-                <Plus className="h-3.5 w-3.5" /> Add Another Page
-              </Button>
+              <span className="text-xs text-muted-foreground">
+                Re-order pages using arrows if needed
+              </span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {answerPages.map((page, idx) => (
                 <div key={idx} className="relative rounded-lg border border-border bg-muted/20 p-3 space-y-2">
-                  <div className="flex items-center justify-between text-xs font-semibold">
+                  <div className="flex items-center justify-between text-xs font-bold">
                     <span>Page {idx + 1}</span>
                     <div className="flex items-center gap-1">
                       <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => moveUp(idx)} disabled={idx === 0}>
@@ -1232,12 +1425,12 @@ function AnswerSheetUploadScreen({
                     </div>
                   </div>
 
-                  <div className="overflow-hidden rounded border border-border bg-black/5 aspect-[3/4] max-h-56 flex items-center justify-center">
+                  <div className="overflow-hidden rounded border border-border bg-black/5 aspect-[3/4] max-h-60 flex items-center justify-center">
                     <img src={page.imageUrl} alt={`Page ${idx + 1}`} className="w-full h-full object-contain" />
                   </div>
 
-                  <Button size="sm" variant="outline" onClick={() => handleRetake(idx)} className="w-full text-xs gap-1">
-                    <RotateCcw className="h-3 w-3" /> Retake Photo
+                  <Button size="sm" variant="outline" onClick={() => handleRetake(idx)} disabled={compressing || uploading} className="w-full text-xs gap-1">
+                    <RotateCcw className="h-3 w-3" /> Retake / Replace Photo
                   </Button>
                 </div>
               ))}
@@ -1245,9 +1438,14 @@ function AnswerSheetUploadScreen({
           </div>
         )}
 
-        <div className="pt-4 border-t border-border flex flex-col sm:flex-row gap-3 justify-end">
-          <Button size="lg" onClick={handleFinalSubmit} disabled={uploading} className="w-full sm:w-auto font-semibold">
-            {uploading ? "Submitting Answer Sheet..." : "Submit Answer Sheet & Finalize Exam"}
+        <div className="pt-6 border-t border-border flex flex-col sm:flex-row gap-3 justify-end items-center">
+          <Button
+            size="lg"
+            onClick={handleFinalSubmit}
+            disabled={uploading || compressing || (required && answerPages.length === 0)}
+            className="w-full sm:w-auto font-bold px-6 text-base"
+          >
+            {uploading ? "Submitting to Admin..." : "Submit Answer Sheet to Admin for Evaluation"}
           </Button>
         </div>
       </CardContent>
