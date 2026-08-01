@@ -181,6 +181,8 @@ CREATE TABLE IF NOT EXISTS public.attempt_answer_sheet_images (
   uploaded_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+ALTER TABLE public.exams DROP CONSTRAINT IF EXISTS exams_pattern_check;
+
 ALTER TABLE public.ipe_subjects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ipe_chapters ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ipe_questions ENABLE ROW LEVEL SECURITY;
@@ -610,7 +612,7 @@ export const createIpeExam = createServerFn({ method: "POST" })
         title: data.title,
         access_code: accessCode,
         duration_minutes: data.durationMinutes,
-        pattern: "ipe",
+        pattern: "custom",
         pattern_config: patternConfig,
         total_marks: totalMarks,
         negative_mark_per_wrong: 0,

@@ -44,6 +44,9 @@ CREATE TABLE IF NOT EXISTS public.attempt_answer_sheet_images (
   uploaded_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Relax existing exams pattern check constraint if present
+ALTER TABLE public.exams DROP CONSTRAINT IF EXISTS exams_pattern_check;
+
 -- RLS Policies
 ALTER TABLE public.ipe_subjects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ipe_chapters ENABLE ROW LEVEL SECURITY;
