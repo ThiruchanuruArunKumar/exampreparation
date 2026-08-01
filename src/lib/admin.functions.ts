@@ -7,21 +7,31 @@ import { repairLatex } from "./latex-repair";
 import { stripNullBytes } from "./utils";
 
 
-const PatternEnum = z.enum(["neet", "eamcet", "ts_eamcet_bipc", "mains", "custom"]);
+const PatternEnum = z.enum(["neet", "eamcet", "ts_eamcet_bipc", "mains", "custom", "ipe"]);
+/**
+ * Pattern config differs per exam family (MCQ patterns vs IPE descriptive papers),
+ * so validate loosely and keep any extra keys the creator stored.
+ */
 const PatternConfigSchema = z
   .object({
-    sections: z.array(
-      z.object({
-        name: z.string().min(1).max(80),
-        count: z.number().int().min(0).max(500),
-        marks_per_q: z.number().min(0).max(100),
-      }),
-    ),
-    negative_mark_per_wrong: z.number().min(0).max(100),
-    duration_minutes: z.number().int().min(1).max(600),
+    sections: z
+      .array(
+        z
+          .object({
+            name: z.string().min(1).max(120),
+            count: z.number().int().min(0).max(500),
+            marks_per_q: z.number().min(0).max(100),
+          })
+          .loose(),
+      )
+      .optional(),
+    negative_mark_per_wrong: z.number().min(0).max(100).optional(),
+    duration_minutes: z.number().int().min(1).max(600).optional(),
     notes: z.string().max(2000).optional().nullable(),
   })
+  .loose()
   .nullable();
+
 
 async function assertAdmin(context: { supabase: any; userId: string }) {
   const { data } = await context.supabase.rpc("has_role", {
@@ -128,7 +138,7 @@ export const createExam = createServerFn({ method: "POST" })
         created_by: context.userId,
         total_marks: total,
         pattern: data.pattern,
-        pattern_config: data.pattern_config ?? null,
+        pattern_config: (data.pattern_config ?? null) as any,
         negative_mark_per_wrong: data.negative_mark_per_wrong,
         show_result_after_submit: data.show_result_after_submit,
         show_answer_sheet: data.show_answer_sheet,
@@ -223,7 +233,7 @@ export const updateExam = createServerFn({ method: "POST" })
         start_at: data.start_at,
         end_at: data.end_at,
         pattern: data.pattern,
-        pattern_config: data.pattern_config ?? null,
+        pattern_config: (data.pattern_config ?? null) as any,
         negative_mark_per_wrong: data.negative_mark_per_wrong,
         show_result_after_submit: data.show_result_after_submit,
         show_answer_sheet: data.show_answer_sheet,
