@@ -121,8 +121,12 @@ export function ExamCreationTab() {
 
   const availableChapters = useMemo(() => {
     if (!selectedSubjectId) return [];
+    if (selectedSubjectId === "all") {
+      const yearSubIds = new Set(filteredSubjects.map((s) => s.id));
+      return chapters.filter((c) => yearSubIds.has(c.subject_id));
+    }
     return chapters.filter((c) => c.subject_id === selectedSubjectId);
-  }, [chapters, selectedSubjectId]);
+  }, [chapters, filteredSubjects, selectedSubjectId]);
 
   // Fetch previous papers when Mode B is chosen or subject changes
   useEffect(() => {
@@ -314,10 +318,13 @@ export function ExamCreationTab() {
                 <div>
                   <Label className="text-xs font-medium">Subject</Label>
                   <select
-                    className="w-full mt-1 rounded-md border border-input bg-background p-2 text-xs"
+                    className="w-full mt-1 rounded-md border border-input bg-background p-2 text-xs font-medium"
                     value={selectedSubjectId}
                     onChange={(e) => setSelectedSubjectId(e.target.value)}
                   >
+                    <option value="all">
+                      ⭐ All Subjects (Full Grand Test — MPC / BIPC)
+                    </option>
                     {filteredSubjects.map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.name}

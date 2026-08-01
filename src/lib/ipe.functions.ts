@@ -291,7 +291,7 @@ export const getIpeQuestions = createServerFn({ method: "POST" })
   .inputValidator((i: unknown) =>
     z
       .object({
-        subjectId: z.string().uuid().optional(),
+        subjectId: z.string().optional(),
         chapterId: z.string().uuid().optional(),
         questionType: z.enum(["very_short_answer", "short_answer", "long_answer"]).optional(),
         source: z.enum(["previous_year", "textbook", "admin_added"]).optional(),
@@ -308,7 +308,7 @@ export const getIpeQuestions = createServerFn({ method: "POST" })
 
     if (data.chapterId) {
       query = query.eq("chapter_id", data.chapterId);
-    } else if (data.subjectId) {
+    } else if (data.subjectId && data.subjectId !== "all") {
       const { data: chaps } = await sb.from("ipe_chapters").select("id").eq("subject_id", data.subjectId);
       const cids = (chaps ?? []).map((c: any) => c.id);
       if (cids.length) {
@@ -461,12 +461,12 @@ export const deleteIpeQuestion = createServerFn({ method: "POST" })
 
 export const getIpePreviousPapers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: unknown) => z.object({ subjectId: z.string().uuid().optional() }).parse(i))
+  .inputValidator((i: unknown) => z.object({ subjectId: z.string().optional() }).parse(i))
   .handler(async ({ data, context }) => {
     await assertAdminRole(context);
     const sb = await admin();
     let q = sb.from("ipe_previous_papers").select("*").order("year", { ascending: false });
-    if (data.subjectId) q = q.eq("subject_id", data.subjectId);
+    if (data.subjectId && data.subjectId !== "all") q = q.eq("subject_id", data.subjectId);
     const { data: papers, error } = await q;
     if (error) {
       if (error.code === "42P01") return [];
@@ -513,7 +513,7 @@ export const createIpeExam = createServerFn({ method: "POST" })
       .object({
         title: z.string().trim().min(1).max(200),
         year: z.enum(["1st_year", "2nd_year"]),
-        subjectId: z.string().uuid(),
+        subjectId: z.string().min(1),
         mode: z.enum(["mode_a", "mode_b", "mode_c"]), // Mode A: Combination, Mode B: Verbatim PYQ, Mode C: Manual selection
         durationMinutes: z.number().int().min(1).max(600),
         accessCode: z.string().trim().min(1).max(20).optional(),
@@ -557,6 +557,14 @@ export const createIpeExam = createServerFn({ method: "POST" })
       let qBuilder = sb.from("ipe_questions").select("*");
       if (data.chapterIds?.length) {
         qBuilder = qBuilder.in("chapter_id", data.chapterIds);
+      } else if (data.subjectId === "all") {
+        const { data: yearSubs } = await sb.from("ipe_subjects").select("id").eq("year", data.year);
+        const subIds = (yearSubs ?? []).map((s: any) => s.id);
+        if (subIds.length) {
+          const { data: chaps } = await sb.from("ipe_chapters").select("id").in("subject_id", subIds);
+          const cids = (chaps ?? []).map((c: any) => c.id);
+          if (cids.length) qBuilder = qBuilder.in("chapter_id", cids);
+        }
       } else {
         const { data: chaps } = await sb.from("ipe_chapters").select("id").eq("subject_id", data.subjectId);
         const cids = (chaps ?? []).map((c: any) => c.id);
