@@ -37,6 +37,8 @@ import {
   addIpeSubject,
   addIpeChapter,
   reseedIpeQuestionBank,
+  bulkFillIpeQuestionBank,
+
   getIpeMigrationSql,
 } from "@/lib/ipe.functions";
 import { extractQuestions } from "@/lib/exams.functions";
@@ -101,6 +103,8 @@ export function QuestionBankTab() {
   // Add Subject state
   const [newSubName, setNewSubName] = useState("");
   const [missingTables, setMissingTables] = useState(false);
+  const [aiFilling, setAiFilling] = useState(false);
+
 
   const fetchStructure = useCallback(async () => {
     try {
