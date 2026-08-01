@@ -926,7 +926,7 @@ export const listStudentExams = createServerFn({ method: "POST" })
       ? await sb
           .from("exams")
           .select(
-            "id, title, description, duration_minutes, total_marks, pattern, start_at, end_at, status, negative_mark_per_wrong",
+            "id, title, description, duration_minutes, total_marks, pattern, pattern_config, start_at, end_at, status, negative_mark_per_wrong",
           )
           .in("id", examIds)
       : { data: [] as any[] };
