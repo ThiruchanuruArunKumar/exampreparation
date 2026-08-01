@@ -673,6 +673,124 @@ export const generateIpeQuestions = createServerFn({ method: "POST" })
     return { questions: generated, saved: saved ?? [] };
   });
 
+/**
+ * Fill the question bank chapter-by-chapter for a whole subject (or a whole year)
+ * so every TS Inter chapter has a drillable set of board-style questions.
+ */
+export const bulkFillIpeQuestionBank = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        // "all" fills every subject of the given year
+        subjectId: z.string().min(1),
+        year: z.enum(["1st_year", "2nd_year"]),
+        perChapter: z
+          .object({
+            very_short_answer: z.number().int().min(0).max(10).default(4),
+            short_answer: z.number().int().min(0).max(10).default(3),
+            long_answer: z.number().int().min(0).max(10).default(2),
+          })
+          .default({ very_short_answer: 4, short_answer: 3, long_answer: 2 }),
+        generationType: z.enum(["ai_pyq_style", "exact_pyq"]).default("exact_pyq"),
+        toughness: z.enum(["easy", "medium", "hard", "extreme"]).default("medium"),
+        /** only top up chapters that are below the requested per-type counts */
+        skipFilled: z.boolean().default(true),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdminRole(context);
+    const sb = await admin();
+
+    let subjectQuery = sb.from("ipe_subjects").select("id, name, year").eq("year", data.year);
+    if (data.subjectId !== "all") subjectQuery = subjectQuery.eq("id", data.subjectId);
+    const { data: subjects } = await subjectQuery;
+    if (!subjects?.length) throw new Error("No subjects found for this selection.");
+
+    const { data: chapters } = await sb
+      .from("ipe_chapters")
+      .select("id, subject_id, chapter_name")
+      .in(
+        "subject_id",
+        subjects.map((s: any) => s.id),
+      )
+      .order("chapter_order");
+    const chapterRows = (chapters ?? []) as any[];
+    if (!chapterRows.length) throw new Error("No chapters found. Seed the syllabus first.");
+
+    const { data: existing } = await sb
+      .from("ipe_questions")
+      .select("chapter_id, question_type")
+      .in(
+        "chapter_id",
+        chapterRows.map((c) => c.id),
+      );
+    const have = new Map<string, Record<string, number>>();
+    for (const row of (existing ?? []) as any[]) {
+      const rec = have.get(row.chapter_id) ?? {};
+      rec[row.question_type] = (rec[row.question_type] ?? 0) + 1;
+      have.set(row.chapter_id, rec);
+    }
+
+    const jobs = chapterRows
+      .map((c) => {
+        const subject = subjects.find((s: any) => s.id === c.subject_id)!;
+        const rec = have.get(c.id) ?? {};
+        const need = {
+          very_short_answer: Math.max(
+            0,
+            data.perChapter.very_short_answer - (data.skipFilled ? (rec.very_short_answer ?? 0) : 0),
+          ),
+          short_answer: Math.max(0, data.perChapter.short_answer - (data.skipFilled ? (rec.short_answer ?? 0) : 0)),
+          long_answer: Math.max(0, data.perChapter.long_answer - (data.skipFilled ? (rec.long_answer ?? 0) : 0)),
+        };
+        return { chapter: c, subject, need };
+      })
+      .filter((j) => j.need.very_short_answer + j.need.short_answer + j.need.long_answer > 0);
+
+    let inserted = 0;
+    const failures: string[] = [];
+    const CONCURRENCY = 4;
+    for (let i = 0; i < jobs.length; i += CONCURRENCY) {
+      const slice = jobs.slice(i, i + CONCURRENCY);
+      await Promise.all(
+        slice.map(async (job) => {
+          try {
+            const generated = await generateIpeQuestionSet({
+              subjectName: job.subject.name,
+              year: job.subject.year,
+              chapterNames: [job.chapter.chapter_name],
+              counts: job.need,
+              generationType: data.generationType,
+              toughness: data.toughness,
+            });
+            if (!generated.length) return;
+            const { error } = await sb.from("ipe_questions").insert(
+              generated.map((q) => ({
+                chapter_id: job.chapter.id,
+                question_type: q.question_type,
+                question_text: q.question_text,
+                expected_answer: q.expected_answer,
+                marks: q.marks,
+                source: data.generationType === "exact_pyq" ? "previous_year" : "admin_added",
+                source_year: q.source_year,
+                verified: false,
+              })),
+            );
+            if (error) throw error;
+            inserted += generated.length;
+          } catch (e) {
+            failures.push(`${job.subject.name} — ${job.chapter.chapter_name}`);
+          }
+        }),
+      );
+    }
+
+    return { inserted, chaptersProcessed: jobs.length, failures };
+  });
+
+
 /* ---------------- IPE Exam Creation Server Functions ---------------- */
 
 export const createIpeExam = createServerFn({ method: "POST" })
