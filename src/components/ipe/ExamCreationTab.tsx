@@ -339,15 +339,16 @@ export function ExamCreationTab() {
                   <Label className="text-xs font-medium">Total Duration (Minutes)</Label>
                   <div className="relative mt-1">
                     <Clock className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      type="number"
+                    <NumberField
                       value={durationMinutes}
-                      onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                      onChange={setDurationMinutes}
                       className="pl-8 text-xs"
                       min={15}
                       max={360}
+                      fallback={180}
                     />
                   </div>
+
                 </div>
 
                 <div>
