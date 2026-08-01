@@ -128,20 +128,8 @@ export function ExamCreationTab() {
     return chapters.filter((c) => c.subject_id === selectedSubjectId);
   }, [chapters, filteredSubjects, selectedSubjectId]);
 
-  // Fetch previous papers when Mode B is chosen or subject changes
-  useEffect(() => {
-    if (mode === "mode_b" && selectedSubjectId) {
-      (async () => {
-        try {
-          const papers = await getIpePreviousPapers({ data: { subjectId: selectedSubjectId } });
-          setPreviousPapers(papers as PreviousPaper[]);
-          if (papers.length > 0) setSelectedPaperId(papers[0].id);
-        } catch (e) {
-          toast.error((e as Error).message);
-        }
-      })();
-    }
-  }, [mode, selectedSubjectId]);
+
+
 
   // Fetch bank questions when Mode C is chosen or subject changes
   useEffect(() => {
