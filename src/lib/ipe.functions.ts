@@ -901,23 +901,44 @@ export const createIpeExam = createServerFn({ method: "POST" })
         source: data.generationType === "exact_pyq" ? "previous_year" : "admin_added",
         source_year: q.source_year,
       }));
-    } else if (data.mode === "mode_b" && data.previousPaperId) {
-      const { data: paper } = await sb
-        .from("ipe_previous_papers")
-        .select("structured_question_ids")
-        .eq("id", data.previousPaperId)
-        .single();
-      const qids = (paper?.structured_question_ids as string[]) ?? [];
-      if (qids.length) {
-        const { data: qs } = await sb.from("ipe_questions").select("*").in("id", qids);
-        selectedQuestionRows = qs ?? [];
-      }
+    } else if (data.mode === "mode_b") {
+      // Mode B: the AI reproduces the actual previous-year TS IPE paper for the chosen session.
+      if (data.subjectId === "all") throw new Error("Pick a single subject for a previous-year paper.");
+      const { data: subject } = await sb
+        .from("ipe_subjects")
+        .select("id, name, year")
+        .eq("id", data.subjectId)
+        .maybeSingle();
+      const { data: chaps } = await sb
+        .from("ipe_chapters")
+        .select("chapter_name")
+        .eq("subject_id", data.subjectId)
+        .order("chapter_order");
+      const session = data.pyqSession?.trim() || "March 2023";
+      const generated = await generateIpeQuestionSet({
+        subjectName: subject?.name ?? subjectName,
+        year: subject?.year ?? data.year,
+        chapterNames: (chaps ?? []).map((c: any) => c.chapter_name),
+        counts: wanted,
+        generationType: "exact_pyq",
+        toughness: data.toughness,
+        sessionHint: session,
+      });
+      selectedQuestionRows = generated.map((q) => ({
+        question_type: q.question_type,
+        question_text: q.question_text,
+        expected_answer: q.expected_answer,
+        marks: q.marks,
+        source: "previous_year",
+        source_year: q.source_year ?? session,
+      }));
     } else if (data.mode === "mode_c" && data.questionIds?.length) {
       const { data: qs } = await sb.from("ipe_questions").select("*").in("id", data.questionIds);
       selectedQuestionRows = qs ?? [];
     } else {
       // Mode A: pull the blueprint's question mix out of the bank
       let qBuilder = sb.from("ipe_questions").select("*");
+      let bankChapterIds: string[] = data.chapterIds ?? [];
       if (data.chapterIds?.length) {
         qBuilder = qBuilder.in("chapter_id", data.chapterIds);
       } else if (data.subjectId === "all") {
@@ -926,11 +947,13 @@ export const createIpeExam = createServerFn({ method: "POST" })
         if (subIds.length) {
           const { data: chaps } = await sb.from("ipe_chapters").select("id").in("subject_id", subIds);
           const cids = (chaps ?? []).map((c: any) => c.id);
+          bankChapterIds = cids;
           if (cids.length) qBuilder = qBuilder.in("chapter_id", cids);
         }
       } else {
         const { data: chaps } = await sb.from("ipe_chapters").select("id").eq("subject_id", data.subjectId);
         const cids = (chaps ?? []).map((c: any) => c.id);
+        bankChapterIds = cids;
         if (cids.length) qBuilder = qBuilder.in("chapter_id", cids);
       }
       const { data: allBankQs } = await qBuilder;
@@ -943,21 +966,67 @@ export const createIpeExam = createServerFn({ method: "POST" })
         ...pick("long_answer", wanted.long_answer),
       ];
 
-      const short = (
-        [
-          ["VSAQ", wanted.very_short_answer, pick("very_short_answer", wanted.very_short_answer).length],
-          ["SAQ", wanted.short_answer, pick("short_answer", wanted.short_answer).length],
-          ["LAQ", wanted.long_answer, pick("long_answer", wanted.long_answer).length],
-        ] as [string, number, number][]
-      ).filter(([, need, got]) => got < need);
-      if (short.length) {
-        throw new Error(
-          `The question bank does not have enough questions for the official TS IPE blueprint: ${short
-            .map(([label, need, got]) => `${label} ${got}/${need}`)
-            .join(", ")}. Add or AI-generate more questions for this subject first.`,
-        );
+      // Top up any shortfall with AI-generated board-style questions instead of failing.
+      const shortfall = {
+        very_short_answer: Math.max(0, wanted.very_short_answer - pick("very_short_answer", wanted.very_short_answer).length),
+        short_answer: Math.max(0, wanted.short_answer - pick("short_answer", wanted.short_answer).length),
+        long_answer: Math.max(0, wanted.long_answer - pick("long_answer", wanted.long_answer).length),
+      };
+      const missing = shortfall.very_short_answer + shortfall.short_answer + shortfall.long_answer;
+      if (missing > 0) {
+        if (data.subjectId === "all") {
+          throw new Error(
+            "The question bank does not have enough questions for this year. Use the Question Bank tab to AI-fill the syllabus, or pick a single subject.",
+          );
+        }
+        const { data: subject } = await sb
+          .from("ipe_subjects")
+          .select("id, name, year")
+          .eq("id", data.subjectId)
+          .maybeSingle();
+        const { data: chapRows } = await sb
+          .from("ipe_chapters")
+          .select("id, chapter_name")
+          .eq("subject_id", data.subjectId)
+          .order("chapter_order");
+        const chapterList = (chapRows ?? []) as any[];
+        const topUp = await generateIpeQuestionSet({
+          subjectName: subject?.name ?? subjectName,
+          year: subject?.year ?? data.year,
+          chapterNames: chapterList.map((c) => c.chapter_name),
+          counts: shortfall,
+          generationType: data.generationType,
+          toughness: data.toughness,
+        });
+        if (chapterList.length && topUp.length) {
+          await sb.from("ipe_questions").insert(
+            topUp.map((q, idx) => ({
+              chapter_id: chapterList[idx % chapterList.length].id,
+              question_type: q.question_type,
+              question_text: q.question_text,
+              expected_answer: q.expected_answer,
+              marks: q.marks,
+              source: data.generationType === "exact_pyq" ? "previous_year" : "admin_added",
+              source_year: q.source_year,
+              verified: false,
+            })),
+          );
+        }
+        selectedQuestionRows = [
+          ...selectedQuestionRows,
+          ...topUp.map((q) => ({
+            question_type: q.question_type,
+            question_text: q.question_text,
+            expected_answer: q.expected_answer,
+            marks: q.marks,
+            source: data.generationType === "exact_pyq" ? "previous_year" : "admin_added",
+            source_year: q.source_year,
+          })),
+        ];
       }
+      void bankChapterIds;
     }
+
 
     if (!selectedQuestionRows.length) {
       throw new Error("No questions available for the selected criteria. Please add questions to the Question Bank first.");
