@@ -22,6 +22,9 @@ import {
   FolderOpen,
   BookOpen,
   RefreshCw,
+  Copy,
+  AlertTriangle,
+  Database,
 } from "lucide-react";
 import {
   getIpeSubjectsAndChapters,
@@ -34,6 +37,7 @@ import {
   addIpeSubject,
   addIpeChapter,
   reseedIpeQuestionBank,
+  getIpeMigrationSql,
 } from "@/lib/ipe.functions";
 import { extractQuestions } from "@/lib/exams.functions";
 
@@ -96,18 +100,34 @@ export function QuestionBankTab() {
 
   // Add Subject state
   const [newSubName, setNewSubName] = useState("");
+  const [missingTables, setMissingTables] = useState(false);
 
   const fetchStructure = useCallback(async () => {
     try {
       const data = await getIpeSubjectsAndChapters();
       setSubjects(data.subjects as Subject[]);
       setChapters(data.chapters as Chapter[]);
+      if ((data as any).missingTables) {
+        setMissingTables(true);
+      } else {
+        setMissingTables(false);
+      }
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const handleCopySql = async () => {
+    try {
+      const sql = await getIpeMigrationSql();
+      await navigator.clipboard.writeText(sql);
+      toast.success("Copied SQL migration script! Paste it into your Supabase Dashboard SQL Editor & click Run.");
+    } catch (e) {
+      toast.error("Failed to copy SQL script");
+    }
+  };
 
   useEffect(() => {
     fetchStructure();
@@ -347,6 +367,25 @@ export function QuestionBankTab() {
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+      {missingTables && (
+        <div className="lg:col-span-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-3">
+          <div className="flex items-center gap-2 text-amber-600 font-semibold text-sm">
+            <AlertTriangle className="h-5 w-5" /> Supabase Database Setup Required for IPE
+          </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            The IPE database tables (<code className="bg-muted px-1 py-0.5 rounded">ipe_subjects</code>, <code className="bg-muted px-1 py-0.5 rounded">ipe_chapters</code>, <code className="bg-muted px-1 py-0.5 rounded">ipe_questions</code>) haven't been created in your Supabase project yet.
+          </p>
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <Button size="sm" onClick={handleCopySql} className="text-xs gap-1.5 bg-amber-600 hover:bg-amber-700 text-white font-medium">
+              <Copy className="h-3.5 w-3.5" /> Copy SQL Setup Script
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleReseedSyllabus} disabled={loading} className="text-xs gap-1">
+              <RefreshCw className="h-3.5 w-3.5" /> Seed Syllabus & Question Bank
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Left Panel: Year → Subject → Chapter */}
       <Card className="lg:col-span-1 border-border/80">
         <CardHeader className="pb-3">
