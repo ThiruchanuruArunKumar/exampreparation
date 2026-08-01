@@ -23,10 +23,20 @@ import {
 import {
   getIpeSubjectsAndChapters,
   getIpeQuestions,
-  getIpePreviousPapers,
   createIpeExam,
 } from "@/lib/ipe.functions";
+import { NumberField } from "@/components/NumberField";
 import { listStudents } from "@/lib/exams.functions";
+
+const PYQ_SESSIONS = [
+  "March 2024",
+  "March 2023",
+  "May 2022",
+  "March 2020",
+  "March 2019",
+  "March 2018",
+  "March 2017",
+] as const;
 
 type Subject = { id: string; name: string; year: "1st_year" | "2nd_year" };
 type Chapter = { id: string; subject_id: string; chapter_name: string; chapter_order: number };
@@ -41,19 +51,13 @@ type Question = {
   verified: boolean;
 };
 
-type PreviousPaper = {
-  id: string;
-  subject_id: string;
-  year: string;
-  structured_question_ids: string[];
-};
-
 type Student = {
   id: string;
   name: string;
   student_code: string;
   class_name: string | null;
 };
+
 
 export function ExamCreationTab() {
   const navigate = useNavigate();
