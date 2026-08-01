@@ -235,8 +235,9 @@ export function ExamCreationTab() {
               },
               {
                 id: "mode_b" as const,
-                title: "Mode B: Previous Year Paper (Verbatim)",
-                desc: "Pick an exact TS Intermediate Previous Year Paper (e.g. March 2023) to run verbatim.",
+                title: "Mode B: Previous Year Paper (AI)",
+                desc: "Pick a TS IPE session (e.g. March 2023) — the AI reproduces that actual paper, labelled with the year.",
+
                 icon: Calendar,
               },
               {
