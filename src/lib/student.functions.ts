@@ -752,22 +752,33 @@ export const getHistoryAttemptDetail = createServerFn({ method: "POST" })
     const { sb, att, student } = await loadAttemptByStudent(data.attemptId, data.studentCode);
     const { data: exam } = await sb
       .from("exams")
-      .select("id, title, duration_minutes, show_result_after_submit, show_answer_sheet, show_answer_book")
+      .select("id, title, duration_minutes, show_result_after_submit, show_answer_sheet, show_answer_book, pattern_config")
       .eq("id", att.exam_id)
       .single();
-    const { data: insight } = await sb
-      .from("insights")
-      .select("summary, weak_topics, strong_topics, recommendations")
-      .eq("attempt_id", att.id)
-      .maybeSingle();
+
+    const isIpe = !!(exam?.pattern_config as any)?.is_ipe;
+    const published = !!(att as any).marks_published;
+    // A descriptive board paper only becomes visible once the teacher publishes the evaluation.
+    const gate = isIpe && !published;
+
+    const { data: insight } = gate
+      ? { data: null }
+      : await sb
+          .from("insights")
+          .select("summary, weak_topics, strong_topics, recommendations")
+          .eq("attempt_id", att.id)
+          .maybeSingle();
 
     let questions: any[] = [];
-    if (exam?.show_answer_sheet || exam?.show_answer_book) {
+    if (!gate && (exam?.show_answer_sheet || exam?.show_answer_book)) {
       const order = (att.question_order as { qid: string; options_order: number[] | null }[]) ?? [];
       const qids = order.map((o) => o.qid);
       const [{ data: qs }, { data: ans }] = await Promise.all([
         sb.from("questions").select("id, type, prompt, options, correct_answer, marks, topic, source_ref").in("id", qids),
-        sb.from("answers").select("question_id, response, is_correct, marks_awarded").eq("attempt_id", att.id),
+        sb
+          .from("answers")
+          .select("question_id, response, is_correct, marks_awarded, grader_feedback")
+          .eq("attempt_id", att.id),
       ]);
       const ansMap = new Map((ans ?? []).map((a) => [a.question_id, a]));
       const qMap = new Map((qs ?? []).map((q) => [q.id, q]));
@@ -775,7 +786,7 @@ export const getHistoryAttemptDetail = createServerFn({ method: "POST" })
         .map((o) => {
           const q = qMap.get(o.qid);
           if (!q) return null;
-          const a = ansMap.get(q.id);
+          const a: any = ansMap.get(q.id);
           return {
             id: q.id,
             type: q.type,
@@ -788,6 +799,7 @@ export const getHistoryAttemptDetail = createServerFn({ method: "POST" })
             response: (a?.response as string[] | null) ?? [],
             is_correct: a?.is_correct ?? null,
             marks_awarded: a?.marks_awarded ?? 0,
+            grader_feedback: (a?.grader_feedback as string | null) ?? null,
           };
         })
         .filter(Boolean);
@@ -795,20 +807,22 @@ export const getHistoryAttemptDetail = createServerFn({ method: "POST" })
 
     return {
       student,
+      isIpe,
+      pendingEvaluation: gate,
       exam: exam
         ? {
             id: exam.id,
             title: exam.title,
             duration_minutes: exam.duration_minutes,
-            showResult: !!exam.show_result_after_submit,
-            showAnswerSheet: !!exam.show_answer_sheet,
-            showAnswerBook: !!exam.show_answer_book,
+            showResult: gate ? false : !!exam.show_result_after_submit,
+            showAnswerSheet: gate ? false : !!exam.show_answer_sheet,
+            showAnswerBook: gate ? false : !!exam.show_answer_book,
           }
         : null,
       attempt: {
         id: att.id,
         status: att.status,
-        score: att.score,
+        score: gate ? null : att.score,
         max_score: att.max_score,
         submitted_at: att.submitted_at,
         started_at: att.started_at,
@@ -818,6 +832,7 @@ export const getHistoryAttemptDetail = createServerFn({ method: "POST" })
       insight: insight ?? null,
       questions,
     };
+
   });
 
 export const getHistoryExplanation = createServerFn({ method: "POST" })
