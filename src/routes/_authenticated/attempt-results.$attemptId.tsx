@@ -37,7 +37,7 @@ function AdminAttemptResult() {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
-  const [tab, setTab] = useState<"summary" | "sheet" | "book">("summary");
+  const [tab, setTab] = useState<"summary" | "sheet" | "book" | "photos">("summary");
   const [explanations, setExplanations] = useState<Record<string, string>>({});
   const [expBusy, setExpBusy] = useState<Record<string, boolean>>({});
 
@@ -118,13 +118,14 @@ function DetailBody({
   loadExplanation,
 }: {
   detail: Detail;
-  tab: "summary" | "sheet" | "book";
-  setTab: (t: "summary" | "sheet" | "book") => void;
+  tab: "summary" | "sheet" | "book" | "photos";
+  setTab: (t: "summary" | "sheet" | "book" | "photos") => void;
   explanations: Record<string, string>;
   expBusy: Record<string, boolean>;
   loadExplanation: (qid: string) => void;
 }) {
   const { exam, attempt, insight: rawInsight, questions, student } = detail;
+  const answerSheetImages = (detail as any).answerSheetImages ?? [];
   const insight = rawInsight as null | {
     summary: string;
     weak_topics: string[] | null;
@@ -189,6 +190,11 @@ function DetailBody({
         <Button variant={tab === "book" ? "default" : "outline"} size="sm" onClick={() => setTab("book")}>
           Answer book{exam.showAnswerBook ? "" : " · Hidden from student"}
         </Button>
+        {answerSheetImages.length > 0 && (
+          <Button variant={tab === "photos" ? "default" : "outline"} size="sm" onClick={() => setTab("photos")}>
+            Uploaded Answer Sheet ({answerSheetImages.length} Pages)
+          </Button>
+        )}
       </div>
 
       {tab === "summary" && (
@@ -207,7 +213,7 @@ function DetailBody({
                     <TrendingUp className="h-4 w-4" /> Strong areas
                   </div>
                   <div className="flex flex-wrap gap-1">
-                    {insight.strong_topics!.map((t) => (
+                    {insight.strong_topics!.map((t: string) => (
                       <Badge key={t} className="bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300">{t}</Badge>
                     ))}
                   </div>
@@ -219,7 +225,7 @@ function DetailBody({
                     <TrendingDown className="h-4 w-4" /> Needs work
                   </div>
                   <div className="flex flex-wrap gap-1">
-                    {insight.weak_topics!.map((t) => (
+                    {insight.weak_topics!.map((t: string) => (
                       <Badge key={t} variant="destructive">{t}</Badge>
                     ))}
                   </div>
@@ -262,6 +268,29 @@ function DetailBody({
           loadExplanation={loadExplanation}
           showBook={true}
         />
+      )}
+
+      {tab === "photos" && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Uploaded Handwritten Answer Sheet Pages</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {answerSheetImages.map((img: any) => (
+                <div key={img.id || img.page_number} className="space-y-2 border border-border p-3 rounded-lg bg-muted/20">
+                  <div className="flex items-center justify-between text-xs font-semibold">
+                    <span>Page {img.page_number}</span>
+                    {img.uploaded_at && <span className="text-muted-foreground">{new Date(img.uploaded_at).toLocaleString()}</span>}
+                  </div>
+                  <a href={img.image_url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded border border-border/70 hover:opacity-90 transition">
+                    <img src={img.image_url} alt={`Answer Sheet Page ${img.page_number}`} className="w-full h-auto max-h-[500px] object-contain bg-black/5" />
+                  </a>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       )}
     </>
   );

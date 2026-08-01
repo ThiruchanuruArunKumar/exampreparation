@@ -14,6 +14,13 @@ import {
   TrendingUp,
   TrendingDown,
   CheckCircle2,
+  Camera,
+  Upload,
+  Plus,
+  ArrowUp,
+  ArrowDown,
+  Trash2,
+  RotateCcw,
 } from "lucide-react";
 import { useProctoring } from "@/hooks/useProctoring";
 import {
@@ -22,6 +29,10 @@ import {
   reportStudentWarning,
   submitStudentAttempt,
 } from "@/lib/student.functions";
+import {
+  uploadAnswerSheetImages,
+  getAttemptAnswerSheetImages,
+} from "@/lib/ipe.functions";
 import { RichContent } from "@/components/RichContent";
 
 
@@ -84,6 +95,10 @@ function TakeExam() {
     showAnswerSheet: boolean;
     showAnswerBook: boolean;
   } | null>(null);
+  const [showAnswerSheetStep, setShowAnswerSheetStep] = useState(false);
+  const [answerPages, setAnswerPages] = useState<{ imageUrl: string; pageNumber: number }[]>([]);
+  const [pendingAuto, setPendingAuto] = useState(false);
+  const [pendingTerminated, setPendingTerminated] = useState(false);
 
   const subjectBoundaries = useMemo(() => {
     if (!exam?.pattern_config?.sections) return null;
@@ -145,7 +160,7 @@ function TakeExam() {
   }, [attemptId, token]);
 
   useEffect(() => {
-    if (!endsAt || result) return;
+    if (!endsAt || result || showAnswerSheetStep) return;
     const tick = () => {
       const r = Math.max(0, Math.floor((new Date(endsAt).getTime() - Date.now()) / 1000));
       setRemaining(r);
@@ -155,14 +170,38 @@ function TakeExam() {
     const i = setInterval(tick, 1000);
     return () => clearInterval(i);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [endsAt, result]);
+  }, [endsAt, result, showAnswerSheetStep]);
 
   const handleSubmit = useCallback(
     async (auto = false, terminated = false) => {
       if (submittingRef.current || !token) return;
+
+      const isIpeExam =
+        (exam as any)?.pattern === "ipe" ||
+        exam?.pattern_config?.is_ipe ||
+        exam?.pattern_config?.answer_sheet_required === true;
+
+      if (isIpeExam && !showAnswerSheetStep) {
+        if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+        setPendingAuto(auto);
+        setPendingTerminated(terminated);
+        setShowAnswerSheetStep(true);
+        return;
+      }
+
       submittingRef.current = true;
       setSubmitting(true);
       try {
+        if (isIpeExam && answerPages.length > 0) {
+          await uploadAnswerSheetImages({
+            data: {
+              attemptId,
+              sessionToken: token,
+              images: answerPages.map((p, idx) => ({ imageUrl: p.imageUrl, pageNumber: idx + 1 })),
+            },
+          });
+        }
+
         const r = await submitStudentAttempt({
           data: { attemptId, sessionToken: token, autoSubmit: auto },
         });
@@ -176,6 +215,7 @@ function TakeExam() {
           showAnswerSheet: r.showAnswerSheet ?? false,
           showAnswerBook: r.showAnswerBook ?? false,
         });
+        setShowAnswerSheetStep(false);
         if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
       } catch (e) {
         toast.error((e as Error).message);
@@ -183,11 +223,11 @@ function TakeExam() {
         setSubmitting(false);
       }
     },
-    [attemptId, token],
+    [attemptId, token, exam, showAnswerSheetStep, answerPages],
   );
 
   const { warnings } = useProctoring({
-    enabled: started && !submitting && !result,
+    enabled: started && !submitting && !result && !showAnswerSheetStep,
     maxWarnings: 3,
     onWarning: (count, reason) => {
       toast.warning(`Warning ${count}/3 — ${reason}`, { duration: 4000 });
@@ -983,5 +1023,191 @@ function ResultScreen({
         </div>
       )}
     </div>
+  );
+}
+
+function AnswerSheetUploadScreen({
+  examTitle,
+  studentName,
+  studentCode,
+  answerPages,
+  setAnswerPages,
+  uploading,
+  onSubmit,
+  required,
+}: {
+  examTitle: string;
+  studentName?: string;
+  studentCode?: string;
+  answerPages: { imageUrl: string; pageNumber: number }[];
+  setAnswerPages: React.Dispatch<React.SetStateAction<{ imageUrl: string; pageNumber: number }[]>>;
+  uploading: boolean;
+  onSubmit: () => void;
+  required: boolean;
+}) {
+  const handleFileCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    if (!files.length) return;
+
+    files.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = String(reader.result);
+        setAnswerPages((prev) => [
+          ...prev,
+          { imageUrl: base64, pageNumber: prev.length + 1 },
+        ]);
+      };
+      reader.readAsDataURL(file);
+    });
+    e.target.value = "";
+  };
+
+  const handleRetake = (index: number) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.capture = "environment";
+    input.onchange = (e: any) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = String(reader.result);
+        setAnswerPages((prev) =>
+          prev.map((item, idx) => (idx === index ? { ...item, imageUrl: base64 } : item)),
+        );
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  };
+
+  const moveUp = (index: number) => {
+    if (index === 0) return;
+    setAnswerPages((prev) => {
+      const next = [...prev];
+      [next[index - 1], next[index]] = [next[index], next[index - 1]];
+      return next.map((item, idx) => ({ ...item, pageNumber: idx + 1 }));
+    });
+  };
+
+  const moveDown = (index: number) => {
+    if (index === answerPages.length - 1) return;
+    setAnswerPages((prev) => {
+      const next = [...prev];
+      [next[index], next[index + 1]] = [next[index + 1], next[index]];
+      return next.map((item, idx) => ({ ...item, pageNumber: idx + 1 }));
+    });
+  };
+
+  const removePage = (index: number) => {
+    setAnswerPages((prev) =>
+      prev.filter((_, idx) => idx !== index).map((item, idx) => ({ ...item, pageNumber: idx + 1 })),
+    );
+  };
+
+  const handleFinalSubmit = () => {
+    if (required && answerPages.length === 0) {
+      toast.error("Please photograph and attach at least one page of your answer sheet before submitting.");
+      return;
+    }
+    onSubmit();
+  };
+
+  return (
+    <Card className="mx-auto max-w-3xl border-border/80">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Camera className="h-6 w-6 text-primary" />
+          Upload Answer Sheet Photos — {examTitle}
+        </CardTitle>
+        {studentName && (
+          <p className="text-sm text-muted-foreground">
+            {studentName} · {studentCode}
+          </p>
+        )}
+      </CardHeader>
+
+      <CardContent className="space-y-6">
+        <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 text-xs space-y-1.5">
+          <div className="font-semibold text-primary flex items-center gap-1.5">
+            <Upload className="h-4 w-4" /> Photograph Your Handwritten Answer Sheet
+          </div>
+          <p className="text-muted-foreground leading-relaxed">
+            Please use your camera to capture clear photos of each page of your written answer sheet in page order (Page 1, Page 2, Page 3...).
+          </p>
+        </div>
+
+        {/* Hidden Camera Input */}
+        <input
+          type="file"
+          id="camera-page-input"
+          accept="image/*"
+          capture="environment"
+          multiple
+          className="hidden"
+          onChange={handleFileCapture}
+        />
+
+        {/* Thumbnail Strip */}
+        {answerPages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-border rounded-xl text-center">
+            <Camera className="h-10 w-10 text-muted-foreground mb-2" />
+            <p className="text-sm font-medium">No pages photographed yet</p>
+            <p className="text-xs text-muted-foreground mb-4">Click below to open device camera or upload image</p>
+            <Button onClick={() => document.getElementById("camera-page-input")?.click()}>
+              <Camera className="mr-2 h-4 w-4" /> Open Camera / Take Photo
+            </Button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground">
+                {answerPages.length} Page{answerPages.length === 1 ? "" : "s"} Captured
+              </span>
+              <Button size="sm" variant="outline" onClick={() => document.getElementById("camera-page-input")?.click()} className="text-xs gap-1.5">
+                <Plus className="h-3.5 w-3.5" /> Add Another Page
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {answerPages.map((page, idx) => (
+                <div key={idx} className="relative rounded-lg border border-border bg-muted/20 p-3 space-y-2">
+                  <div className="flex items-center justify-between text-xs font-semibold">
+                    <span>Page {idx + 1}</span>
+                    <div className="flex items-center gap-1">
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => moveUp(idx)} disabled={idx === 0}>
+                        <ArrowUp className="h-3 w-3" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0" onClick={() => moveDown(idx)} disabled={idx === answerPages.length - 1}>
+                        <ArrowDown className="h-3 w-3" />
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-destructive" onClick={() => removePage(idx)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="overflow-hidden rounded border border-border bg-black/5 aspect-[3/4] max-h-56 flex items-center justify-center">
+                    <img src={page.imageUrl} alt={`Page ${idx + 1}`} className="w-full h-full object-contain" />
+                  </div>
+
+                  <Button size="sm" variant="outline" onClick={() => handleRetake(idx)} className="w-full text-xs gap-1">
+                    <RotateCcw className="h-3 w-3" /> Retake Photo
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="pt-4 border-t border-border flex flex-col sm:flex-row gap-3 justify-end">
+          <Button size="lg" onClick={handleFinalSubmit} disabled={uploading} className="w-full sm:w-auto font-semibold">
+            {uploading ? "Submitting Answer Sheet..." : "Submit Answer Sheet & Finalize Exam"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

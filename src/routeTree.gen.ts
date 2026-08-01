@@ -18,6 +18,7 @@ import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AuthenticatedAdminsRouteImport } from './routes/_authenticated/admins'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedIpeRouteImport } from './routes/_authenticated/ipe'
 import { Route as AuthenticatedStudentsRouteImport } from './routes/_authenticated/students'
 import { Route as ExamInfoExamIdRouteImport } from './routes/exam-info.$examId'
 import { Route as ExamAttemptIdRouteImport } from './routes/exam.$attemptId'
@@ -75,6 +76,11 @@ const AuthenticatedAdminsRoute = AuthenticatedAdminsRouteImport.update({
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedIpeRoute = AuthenticatedIpeRouteImport.update({
+  id: '/ipe',
+  path: '/ipe',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedStudentsRoute = AuthenticatedStudentsRouteImport.update({
@@ -152,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admins': typeof AuthenticatedAdminsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/ipe': typeof AuthenticatedIpeRoute
   '/students': typeof AuthenticatedStudentsRoute
   '/exam-info/$examId': typeof ExamInfoExamIdRoute
   '/exam/$attemptId': typeof ExamAttemptIdRoute
@@ -174,6 +181,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/admins': typeof AuthenticatedAdminsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/ipe': typeof AuthenticatedIpeRoute
   '/students': typeof AuthenticatedStudentsRoute
   '/exam-info/$examId': typeof ExamInfoExamIdRoute
   '/exam/$attemptId': typeof ExamAttemptIdRoute
@@ -198,6 +206,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/_authenticated/admins': typeof AuthenticatedAdminsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/ipe': typeof AuthenticatedIpeRoute
   '/_authenticated/students': typeof AuthenticatedStudentsRoute
   '/exam-info/$examId': typeof ExamInfoExamIdRoute
   '/exam/$attemptId': typeof ExamAttemptIdRoute
@@ -222,6 +231,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/admins'
     | '/dashboard'
+    | '/ipe'
     | '/students'
     | '/exam-info/$examId'
     | '/exam/$attemptId'
@@ -244,6 +254,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/admins'
     | '/dashboard'
+    | '/ipe'
     | '/students'
     | '/exam-info/$examId'
     | '/exam/$attemptId'
@@ -267,6 +278,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/_authenticated/admins'
     | '/_authenticated/dashboard'
+    | '/_authenticated/ipe'
     | '/_authenticated/students'
     | '/exam-info/$examId'
     | '/exam/$attemptId'
@@ -362,6 +374,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/ipe': {
+      id: '/_authenticated/ipe'
+      path: '/ipe'
+      fullPath: '/ipe'
+      preLoaderRoute: typeof AuthenticatedIpeRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/students': {
       id: '/_authenticated/students'
       path: '/students'
@@ -452,6 +471,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminsRoute: typeof AuthenticatedAdminsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedIpeRoute: typeof AuthenticatedIpeRoute
   AuthenticatedStudentsRoute: typeof AuthenticatedStudentsRoute
   AuthenticatedAttemptResultsAttemptIdRoute: typeof AuthenticatedAttemptResultsAttemptIdRoute
   AuthenticatedExamsExamIdRoute: typeof AuthenticatedExamsExamIdRoute
@@ -463,6 +483,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminsRoute: AuthenticatedAdminsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedIpeRoute: AuthenticatedIpeRoute,
   AuthenticatedStudentsRoute: AuthenticatedStudentsRoute,
   AuthenticatedAttemptResultsAttemptIdRoute:
     AuthenticatedAttemptResultsAttemptIdRoute,

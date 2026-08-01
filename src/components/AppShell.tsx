@@ -8,6 +8,7 @@ import {
   ShieldCheck,
   Copy,
   GraduationCap,
+  BookOpen,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -83,6 +84,7 @@ export function AppShell({ children, title }: { children: ReactNode; title?: str
   const NavLinks = (
     <>
       {navItem("/dashboard", <LayoutDashboard className="h-4 w-4" />, "Exams")}
+      {navItem("/ipe", <BookOpen className="h-4 w-4" />, "IPE")}
       {navItem("/students", <Users className="h-4 w-4" />, "Students")}
       {navItem("/results", <ClipboardList className="h-4 w-4" />, "Results")}
       {identity?.is_super_admin && navItem("/admins", <ShieldCheck className="h-4 w-4" />, "Admins")}

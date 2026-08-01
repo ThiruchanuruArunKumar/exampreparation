@@ -118,7 +118,7 @@ export const createExam = createServerFn({ method: "POST" })
       access_code = randomAccessCode();
     }
 
-    const total = data.questions.reduce((s, q) => s + q.marks, 0);
+    const total = data.questions.reduce((s: number, q: any) => s + q.marks, 0);
     const { data: exam, error } = await supabaseAdmin
       .from("exams")
       .insert({
@@ -139,7 +139,7 @@ export const createExam = createServerFn({ method: "POST" })
     if (error) throw error;
 
     if (data.questions.length) {
-      const rows = data.questions.map((q, i) => ({
+      const rows = data.questions.map((q: any, i: number) => ({
         exam_id: exam.id,
         type: q.type,
         prompt: q.prompt,
@@ -308,7 +308,7 @@ export const saveQuestions = createServerFn({ method: "POST" })
     if (data.deletedIds.length) {
       await supabaseAdmin.from("questions").delete().in("id", data.deletedIds);
     }
-    const rows = data.questions.map((q, i) => ({
+    const rows = data.questions.map((q: any, i: number) => ({
       id: q.id,
       exam_id: data.examId,
       type: q.type,
@@ -327,7 +327,7 @@ export const saveQuestions = createServerFn({ method: "POST" })
       const { error } = await supabaseAdmin.from("questions").upsert(rows, { onConflict: "id" });
       if (error) throw error;
     }
-    const total = data.questions.reduce((s, q) => s + q.marks, 0);
+    const total = data.questions.reduce((s: number, q: any) => s + q.marks, 0);
     await supabaseAdmin.from("exams").update({ total_marks: total }).eq("id", data.examId);
     return { ok: true };
   });
@@ -1159,7 +1159,7 @@ export const adminGetAttemptDetail = createServerFn({ method: "POST" })
     // Ownership: caller must own the exam (RLS-scoped read).
     await assertOwnsExam(context, att.exam_id);
 
-    const [{ data: exam }, { data: student }, { data: insight }] = await Promise.all([
+    const [{ data: exam }, { data: student }, { data: insight }, { data: answerSheetImages }] = await Promise.all([
       context.supabase
         .from("exams")
         .select("id, title, duration_minutes, show_result_after_submit, show_answer_sheet, show_answer_book")
@@ -1175,6 +1175,11 @@ export const adminGetAttemptDetail = createServerFn({ method: "POST" })
         .select("summary, weak_topics, strong_topics, recommendations")
         .eq("attempt_id", att.id)
         .maybeSingle(),
+      (context.supabase as any)
+        .from("attempt_answer_sheet_images")
+        .select("id, image_url, page_number, uploaded_at")
+        .eq("attempt_id", att.id)
+        .order("page_number", { ascending: true }),
     ]);
 
     const order = (att.question_order as { qid: string; options_order: number[] | null }[]) ?? [];
@@ -1234,6 +1239,7 @@ export const adminGetAttemptDetail = createServerFn({ method: "POST" })
       },
       insight: insight ?? null,
       questions,
+      answerSheetImages: answerSheetImages ?? [],
     };
   });
 
