@@ -94,6 +94,7 @@ function TakeExam() {
     showResult: boolean;
     showAnswerSheet: boolean;
     showAnswerBook: boolean;
+    pending?: boolean;
   } | null>(null);
   const [showAnswerSheetStep, setShowAnswerSheetStep] = useState(false);
   const [answerPages, setAnswerPages] = useState<{ imageUrl: string; pageNumber: number }[]>([]);
@@ -214,6 +215,7 @@ function TakeExam() {
           showResult: r.showResult ?? true,
           showAnswerSheet: r.showAnswerSheet ?? false,
           showAnswerBook: r.showAnswerBook ?? false,
+          pending: (r as { pendingEvaluation?: boolean }).pendingEvaluation ?? false,
         });
         setShowAnswerSheetStep(false);
         if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
@@ -760,6 +762,7 @@ function ResultScreen({
     showResult: boolean;
     showAnswerSheet: boolean;
     showAnswerBook: boolean;
+    pending?: boolean;
   };
   exam: { title: string; duration_minutes: number } | null;
   student: { name: string; student_code: string } | null;
@@ -880,7 +883,9 @@ function ResultScreen({
               )}
               {!result.showResult && (
                 <p className="text-sm text-muted-foreground">
-                  Results are not published yet. You will be able to view them once your teacher enables it.
+                  {result.pending
+                    ? "Your answer booklet has been sent to your teacher for evaluation. Marks will appear here once the teacher publishes them."
+                    : "Results are not published yet. You will be able to view them once your teacher enables it."}
                 </p>
               )}
               <Link to="/">
