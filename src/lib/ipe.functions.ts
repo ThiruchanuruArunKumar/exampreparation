@@ -569,6 +569,8 @@ async function generateIpeQuestionSet(opts: {
   counts: { very_short_answer: number; short_answer: number; long_answer: number };
   generationType: GenType;
   toughness: Toughness;
+  /** e.g. "March 2023" — force the AI to reproduce that exact TS IPE session's paper */
+  sessionHint?: string;
 }) {
   const key = process.env.LOVABLE_API_KEY;
   if (!key) throw new Error("AI is not configured");
@@ -588,12 +590,12 @@ async function generateIpeQuestionSet(opts: {
         instructions: ipeGenInstructions(opts.generationType, opts.toughness),
         prompt: `Subject: ${opts.subjectName} (TS Intermediate ${opts.year.replace("_", " ")})
 Chapters to cover${opts.chapterNames.length ? "" : " (whole syllabus)"}: ${opts.chapterNames.length ? opts.chapterNames.join("; ") : "all prescribed chapters"}
-
+${opts.sessionHint ? `\nTARGET SESSION: reproduce the questions of the actual TS IPE ${opts.sessionHint} ${opts.subjectName} paper as faithfully as you can. Set source_year to "${opts.sessionHint}" on every question.\n` : ""}
 Produce EXACTLY ${opts.counts[t]} questions of type "${t}" worth ${marksFor(t)} marks each. Spread them evenly across the listed chapters and do not repeat a question.`,
       });
       return output.questions
         .slice(0, opts.counts[t])
-        .map((q) => ({ ...q, question_type: t, marks: marksFor(t) }));
+        .map((q) => ({ ...q, question_type: t, marks: marksFor(t), source_year: opts.sessionHint ?? q.source_year }));
     }),
   );
 
@@ -603,6 +605,7 @@ Produce EXACTLY ${opts.counts[t]} questions of type "${t}" worth ${marksFor(t)} 
     expected_answer: repairLatex(q.expected_answer),
   }));
 }
+
 
 export const generateIpeQuestions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
