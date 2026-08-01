@@ -1,8 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { generateText, Output } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { repairLatex } from "./latex-repair";
 import { SEED_SUBJECTS } from "./ipe-seed-data";
+import { createLovableAiGatewayProvider } from "./ai-gateway.server";
+import { blueprintForSubject, blueprintMaxMarks, sectionLabel } from "./ipe-blueprints";
+
 
 async function admin(): Promise<any> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
