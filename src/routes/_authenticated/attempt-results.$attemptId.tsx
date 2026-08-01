@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { RichContent } from "@/components/RichContent";
 import { adminGetAttemptDetail, adminGetAttemptExplanation } from "@/lib/admin.functions";
 import { useRealtimeSync } from "@/hooks/useRealtimeSync";
+import { IpeGradingPanel } from "@/components/ipe/IpeGradingPanel";
 
 export const Route = createFileRoute("/_authenticated/attempt-results/$attemptId")({
   head: () => ({
@@ -37,7 +38,7 @@ function AdminAttemptResult() {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
-  const [tab, setTab] = useState<"summary" | "sheet" | "book" | "photos">("summary");
+  const [tab, setTab] = useState<"summary" | "sheet" | "book" | "photos" | "grade">("summary");
   const [explanations, setExplanations] = useState<Record<string, string>>({});
   const [expBusy, setExpBusy] = useState<Record<string, boolean>>({});
 
@@ -101,6 +102,7 @@ function AdminAttemptResult() {
               explanations={explanations}
               expBusy={expBusy}
               loadExplanation={loadExplanation}
+              onGraded={() => { fetchDetail().catch(() => {}); }}
             />
           </div>
         </>
@@ -116,13 +118,15 @@ function DetailBody({
   explanations,
   expBusy,
   loadExplanation,
+  onGraded,
 }: {
   detail: Detail;
-  tab: "summary" | "sheet" | "book" | "photos";
-  setTab: (t: "summary" | "sheet" | "book" | "photos") => void;
+  tab: "summary" | "sheet" | "book" | "photos" | "grade";
+  setTab: (t: "summary" | "sheet" | "book" | "photos" | "grade") => void;
   explanations: Record<string, string>;
   expBusy: Record<string, boolean>;
   loadExplanation: (qid: string) => void;
+  onGraded?: () => void;
 }) {
   const { exam, attempt, insight: rawInsight, questions, student } = detail;
   const answerSheetImages = (detail as any).answerSheetImages ?? [];
@@ -195,7 +199,16 @@ function DetailBody({
             Uploaded Answer Sheet ({answerSheetImages.length} Pages)
           </Button>
         )}
+        {(exam as any).isIpe && (
+          <Button variant={tab === "grade" ? "default" : "outline"} size="sm" onClick={() => setTab("grade")}>
+            Evaluate &amp; publish
+          </Button>
+        )}
       </div>
+
+      {tab === "grade" && (exam as any).isIpe && (
+        <IpeGradingPanel attemptId={attempt.id} onChanged={onGraded} />
+      )}
 
       {tab === "summary" && (
         insight ? (
