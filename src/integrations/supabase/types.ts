@@ -107,6 +107,38 @@ export type Database = {
           },
         ]
       }
+      attempt_answer_sheet_images: {
+        Row: {
+          attempt_id: string
+          id: string
+          image_url: string
+          page_number: number
+          uploaded_at: string
+        }
+        Insert: {
+          attempt_id: string
+          id?: string
+          image_url: string
+          page_number?: number
+          uploaded_at?: string
+        }
+        Update: {
+          attempt_id?: string
+          id?: string
+          image_url?: string
+          page_number?: number
+          uploaded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attempt_answer_sheet_images_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "attempts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attempts: {
         Row: {
           assignment_id: string
@@ -328,6 +360,138 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ipe_chapters: {
+        Row: {
+          chapter_name: string
+          chapter_order: number
+          created_at: string
+          id: string
+          subject_id: string
+        }
+        Insert: {
+          chapter_name: string
+          chapter_order?: number
+          created_at?: string
+          id?: string
+          subject_id: string
+        }
+        Update: {
+          chapter_name?: string
+          chapter_order?: number
+          created_at?: string
+          id?: string
+          subject_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ipe_chapters_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "ipe_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ipe_previous_papers: {
+        Row: {
+          created_at: string
+          id: string
+          paper_file_url: string | null
+          structured_question_ids: Json | null
+          subject_id: string
+          year: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          paper_file_url?: string | null
+          structured_question_ids?: Json | null
+          subject_id: string
+          year: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          paper_file_url?: string | null
+          structured_question_ids?: Json | null
+          subject_id?: string
+          year?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ipe_previous_papers_subject_id_fkey"
+            columns: ["subject_id"]
+            isOneToOne: false
+            referencedRelation: "ipe_subjects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ipe_questions: {
+        Row: {
+          chapter_id: string
+          created_at: string
+          id: string
+          marks: number
+          question_text: string
+          question_type: string
+          source: string
+          source_year: string | null
+          verified: boolean
+        }
+        Insert: {
+          chapter_id: string
+          created_at?: string
+          id?: string
+          marks?: number
+          question_text: string
+          question_type: string
+          source: string
+          source_year?: string | null
+          verified?: boolean
+        }
+        Update: {
+          chapter_id?: string
+          created_at?: string
+          id?: string
+          marks?: number
+          question_text?: string
+          question_type?: string
+          source?: string
+          source_year?: string | null
+          verified?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ipe_questions_chapter_id_fkey"
+            columns: ["chapter_id"]
+            isOneToOne: false
+            referencedRelation: "ipe_chapters"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ipe_subjects: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          year: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          year: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          year?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
