@@ -17,6 +17,7 @@ export type Database = {
       answers: {
         Row: {
           attempt_id: string
+          grader_feedback: string | null
           id: string
           is_correct: boolean | null
           marks_awarded: number | null
@@ -27,6 +28,7 @@ export type Database = {
         }
         Insert: {
           attempt_id: string
+          grader_feedback?: string | null
           id?: string
           is_correct?: boolean | null
           marks_awarded?: number | null
@@ -37,6 +39,7 @@ export type Database = {
         }
         Update: {
           attempt_id?: string
+          grader_feedback?: string | null
           id?: string
           is_correct?: boolean | null
           marks_awarded?: number | null
@@ -145,7 +148,10 @@ export type Database = {
           auto_submitted: boolean
           ends_at: string
           exam_id: string
+          graded_at: string | null
+          grader_notes: string | null
           id: string
+          marks_published: boolean
           max_score: number | null
           question_order: Json | null
           score: number | null
@@ -161,7 +167,10 @@ export type Database = {
           auto_submitted?: boolean
           ends_at: string
           exam_id: string
+          graded_at?: string | null
+          grader_notes?: string | null
           id?: string
+          marks_published?: boolean
           max_score?: number | null
           question_order?: Json | null
           score?: number | null
@@ -177,7 +186,10 @@ export type Database = {
           auto_submitted?: boolean
           ends_at?: string
           exam_id?: string
+          graded_at?: string | null
+          grader_notes?: string | null
           id?: string
+          marks_published?: boolean
           max_score?: number | null
           question_order?: Json | null
           score?: number | null
@@ -432,6 +444,7 @@ export type Database = {
         Row: {
           chapter_id: string
           created_at: string
+          expected_answer: string | null
           id: string
           marks: number
           question_text: string
@@ -443,6 +456,7 @@ export type Database = {
         Insert: {
           chapter_id: string
           created_at?: string
+          expected_answer?: string | null
           id?: string
           marks?: number
           question_text: string
@@ -454,6 +468,7 @@ export type Database = {
         Update: {
           chapter_id?: string
           created_at?: string
+          expected_answer?: string | null
           id?: string
           marks?: number
           question_text?: string

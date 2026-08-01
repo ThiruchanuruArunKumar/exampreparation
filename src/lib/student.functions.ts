@@ -160,14 +160,14 @@ export const getStudentHistory = createServerFn({ method: "POST" })
 
     const { data: attempts } = await sb
       .from("attempts")
-      .select("id, exam_id, status, score, max_score, submitted_at, started_at, auto_submitted, warning_count")
+      .select("id, exam_id, status, score, max_score, submitted_at, started_at, auto_submitted, warning_count, marks_published")
       .eq("student_id", student.id)
       .order("started_at", { ascending: false });
 
     const examIds = Array.from(new Set((attempts ?? []).map((a) => a.exam_id)));
     const { data: exams } = examIds.length
-      ? await sb.from("exams").select("id, title, duration_minutes").in("id", examIds)
-      : { data: [] as { id: string; title: string; duration_minutes: number }[] };
+      ? await sb.from("exams").select("id, title, duration_minutes, pattern_config").in("id", examIds)
+      : { data: [] as { id: string; title: string; duration_minutes: number; pattern_config: any }[] };
     const examMap = new Map((exams ?? []).map((e) => [e.id, e]));
 
     const attemptIds = (attempts ?? []).map((a) => a.id);
@@ -181,12 +181,21 @@ export const getStudentHistory = createServerFn({ method: "POST" })
 
     return {
       student,
-      history: (attempts ?? []).map((a) => ({
-        ...a,
-        exam: examMap.get(a.exam_id) ?? null,
-        insight: insightMap.get(a.id) ?? null,
-      })),
+      history: (attempts ?? []).map((a: any) => {
+        const exam: any = examMap.get(a.exam_id) ?? null;
+        const isIpe = !!exam?.pattern_config?.is_ipe;
+        const pending = isIpe && !a.marks_published;
+        return {
+          ...a,
+          score: pending ? null : a.score,
+          pending_evaluation: pending,
+          is_ipe: isIpe,
+          exam: exam ? { id: exam.id, title: exam.title, duration_minutes: exam.duration_minutes } : null,
+          insight: pending ? null : (insightMap.get(a.id) ?? null),
+        };
+      }),
     };
+
   });
 
 async function loadAttempt(attemptId: string, token: string) {
@@ -322,14 +331,16 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
     const { sb, att } = await loadAttempt(data.attemptId, data.sessionToken);
     const { data: examFlags } = await sb
       .from("exams")
-      .select("title, show_result_after_submit, show_answer_sheet, show_answer_book, negative_mark_per_wrong, pattern_config")
+      .select("title, total_marks, show_result_after_submit, show_answer_sheet, show_answer_book, negative_mark_per_wrong, pattern_config")
       .eq("id", att.exam_id)
       .maybeSingle();
+    const isIpe = !!(examFlags?.pattern_config as any)?.is_ipe;
     const flags = {
-      showResult: examFlags?.show_result_after_submit ?? true,
-      showAnswerSheet: examFlags?.show_answer_sheet ?? false,
-      showAnswerBook: examFlags?.show_answer_book ?? false,
+      showResult: isIpe ? false : (examFlags?.show_result_after_submit ?? true),
+      showAnswerSheet: isIpe ? false : (examFlags?.show_answer_sheet ?? false),
+      showAnswerBook: isIpe ? false : (examFlags?.show_answer_book ?? false),
       examTitle: examFlags?.title ?? "",
+      pendingEvaluation: isIpe,
     };
     if (att.status !== "in_progress") {
       const { data: existing } = await sb
@@ -339,6 +350,30 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
         .maybeSingle();
       return { ok: true, alreadySubmitted: true, score: att.score, maxScore: att.max_score, insight: existing, ...flags };
     }
+
+    if (isIpe) {
+      // Descriptive board-pattern paper: nothing is graded on screen. The answer-sheet
+      // photos go to the teacher, who evaluates and publishes marks later.
+      await sb
+        .from("attempts")
+        .update({
+          status: data.autoSubmit ? "auto_submitted" : "submitted",
+          auto_submitted: !!data.autoSubmit,
+          submitted_at: new Date().toISOString(),
+          score: 0,
+          max_score: Number(examFlags?.total_marks ?? 0),
+          marks_published: false,
+        })
+        .eq("id", att.id);
+      return {
+        ok: true,
+        score: 0,
+        maxScore: Number(examFlags?.total_marks ?? 0),
+        insight: null,
+        ...flags,
+      };
+    }
+
 
     const negPerWrong = Number(examFlags?.negative_mark_per_wrong ?? 0);
 
@@ -703,8 +738,9 @@ async function loadAttemptByStudent(attemptId: string, studentCode: string) {
   const { data: att, error } = await sb
     .from("attempts")
     .select(
-      "id, exam_id, student_id, status, score, max_score, submitted_at, started_at, auto_submitted, warning_count, question_order",
+      "id, exam_id, student_id, status, score, max_score, submitted_at, started_at, auto_submitted, warning_count, question_order, marks_published, graded_at",
     )
+
     .eq("id", attemptId)
     .eq("student_id", student.id)
     .maybeSingle();
@@ -725,22 +761,33 @@ export const getHistoryAttemptDetail = createServerFn({ method: "POST" })
     const { sb, att, student } = await loadAttemptByStudent(data.attemptId, data.studentCode);
     const { data: exam } = await sb
       .from("exams")
-      .select("id, title, duration_minutes, show_result_after_submit, show_answer_sheet, show_answer_book")
+      .select("id, title, duration_minutes, show_result_after_submit, show_answer_sheet, show_answer_book, pattern_config")
       .eq("id", att.exam_id)
       .single();
-    const { data: insight } = await sb
-      .from("insights")
-      .select("summary, weak_topics, strong_topics, recommendations")
-      .eq("attempt_id", att.id)
-      .maybeSingle();
+
+    const isIpe = !!(exam?.pattern_config as any)?.is_ipe;
+    const published = !!(att as any).marks_published;
+    // A descriptive board paper only becomes visible once the teacher publishes the evaluation.
+    const gate = isIpe && !published;
+
+    const { data: insight } = gate
+      ? { data: null }
+      : await sb
+          .from("insights")
+          .select("summary, weak_topics, strong_topics, recommendations")
+          .eq("attempt_id", att.id)
+          .maybeSingle();
 
     let questions: any[] = [];
-    if (exam?.show_answer_sheet || exam?.show_answer_book) {
+    if (!gate && (exam?.show_answer_sheet || exam?.show_answer_book)) {
       const order = (att.question_order as { qid: string; options_order: number[] | null }[]) ?? [];
       const qids = order.map((o) => o.qid);
       const [{ data: qs }, { data: ans }] = await Promise.all([
         sb.from("questions").select("id, type, prompt, options, correct_answer, marks, topic, source_ref").in("id", qids),
-        sb.from("answers").select("question_id, response, is_correct, marks_awarded").eq("attempt_id", att.id),
+        sb
+          .from("answers")
+          .select("question_id, response, is_correct, marks_awarded, grader_feedback")
+          .eq("attempt_id", att.id),
       ]);
       const ansMap = new Map((ans ?? []).map((a) => [a.question_id, a]));
       const qMap = new Map((qs ?? []).map((q) => [q.id, q]));
@@ -748,7 +795,7 @@ export const getHistoryAttemptDetail = createServerFn({ method: "POST" })
         .map((o) => {
           const q = qMap.get(o.qid);
           if (!q) return null;
-          const a = ansMap.get(q.id);
+          const a: any = ansMap.get(q.id);
           return {
             id: q.id,
             type: q.type,
@@ -761,6 +808,7 @@ export const getHistoryAttemptDetail = createServerFn({ method: "POST" })
             response: (a?.response as string[] | null) ?? [],
             is_correct: a?.is_correct ?? null,
             marks_awarded: a?.marks_awarded ?? 0,
+            grader_feedback: (a?.grader_feedback as string | null) ?? null,
           };
         })
         .filter(Boolean);
@@ -768,20 +816,22 @@ export const getHistoryAttemptDetail = createServerFn({ method: "POST" })
 
     return {
       student,
+      isIpe,
+      pendingEvaluation: gate,
       exam: exam
         ? {
             id: exam.id,
             title: exam.title,
             duration_minutes: exam.duration_minutes,
-            showResult: !!exam.show_result_after_submit,
-            showAnswerSheet: !!exam.show_answer_sheet,
-            showAnswerBook: !!exam.show_answer_book,
+            showResult: gate ? false : !!exam.show_result_after_submit,
+            showAnswerSheet: gate ? false : !!exam.show_answer_sheet,
+            showAnswerBook: gate ? false : !!exam.show_answer_book,
           }
         : null,
       attempt: {
         id: att.id,
         status: att.status,
-        score: att.score,
+        score: gate ? null : att.score,
         max_score: att.max_score,
         submitted_at: att.submitted_at,
         started_at: att.started_at,
@@ -791,6 +841,7 @@ export const getHistoryAttemptDetail = createServerFn({ method: "POST" })
       insight: insight ?? null,
       questions,
     };
+
   });
 
 export const getHistoryExplanation = createServerFn({ method: "POST" })
@@ -875,7 +926,7 @@ export const listStudentExams = createServerFn({ method: "POST" })
       ? await sb
           .from("exams")
           .select(
-            "id, title, description, duration_minutes, total_marks, pattern, start_at, end_at, status, negative_mark_per_wrong",
+            "id, title, description, duration_minutes, total_marks, pattern, pattern_config, start_at, end_at, status, negative_mark_per_wrong",
           )
           .in("id", examIds)
       : { data: [] as any[] };
@@ -884,7 +935,7 @@ export const listStudentExams = createServerFn({ method: "POST" })
     const { data: attempts } = attemptIds.length
       ? await sb
           .from("attempts")
-          .select("id, assignment_id, status, submitted_at, score, max_score")
+          .select("id, assignment_id, status, submitted_at, score, max_score, marks_published")
           .in("assignment_id", attemptIds)
           .order("submitted_at", { ascending: false })
       : { data: [] as any[] };
@@ -907,6 +958,8 @@ export const listStudentExams = createServerFn({ method: "POST" })
       else if (endMs && now > endMs) state = "closed";
       else if (dueMs && now > dueMs) state = "closed";
       else state = "ongoing";
+      const isIpe = !!(exam as any).pattern_config?.is_ipe;
+      const pending = !!latest && isIpe && !(latest as any).marks_published;
       return {
         assignment_id: asg.id,
         exam: {
@@ -916,6 +969,7 @@ export const listStudentExams = createServerFn({ method: "POST" })
           duration_minutes: exam.duration_minutes,
           total_marks: exam.total_marks,
           pattern: exam.pattern,
+          is_ipe: isIpe,
           start_at: exam.start_at,
           end_at: exam.end_at,
           negative_mark_per_wrong: exam.negative_mark_per_wrong,
@@ -927,13 +981,15 @@ export const listStudentExams = createServerFn({ method: "POST" })
         latest_attempt: latest
           ? {
               id: latest.id,
-              score: latest.score,
+              score: pending ? null : latest.score,
               max_score: latest.max_score,
               submitted_at: latest.submitted_at,
+              pending_evaluation: pending,
             }
           : null,
         state,
       };
+
     });
 
     const order = { ongoing: 0, upcoming: 1, closed: 2, completed: 3 } as const;

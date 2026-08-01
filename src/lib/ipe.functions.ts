@@ -1,8 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { generateText, Output } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { repairLatex } from "./latex-repair";
 import { SEED_SUBJECTS } from "./ipe-seed-data";
+import { createLovableAiGatewayProvider } from "./ai-gateway.server";
+import { blueprintForSubject, blueprintMaxMarks, sectionLabel } from "./ipe-blueprints";
+
 
 async function admin(): Promise<any> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -506,6 +510,166 @@ export const addIpePreviousPaper = createServerFn({ method: "POST" })
     return created;
   });
 
+/* ---------------- AI generation of TS IPE questions ---------------- */
+
+const AiIpeQuestionSchema = z.object({
+  question_type: z.enum(["very_short_answer", "short_answer", "long_answer"]),
+  question_text: z.string(),
+  expected_answer: z.string(),
+  marks: z.number().int().min(1).max(12),
+  source_year: z.string().nullable(),
+});
+const AiIpeBatchSchema = z.object({ questions: z.array(AiIpeQuestionSchema) });
+
+type GenType = "ai_pyq_style" | "exact_pyq";
+type Toughness = "easy" | "medium" | "hard" | "extreme";
+
+function ipeGenInstructions(gen: GenType, toughness: Toughness) {
+  const base = `You are a senior Telangana State Board of Intermediate Education (TSBIE) examiner who has set Intermediate Public Examination (IPE) papers for 20 years.
+
+SYLLABUS: Strictly the TS Intermediate (1st year / 2nd year) prescribed textbooks. Never go outside the TS Inter syllabus.
+
+QUESTION TYPES (use the exact TSBIE wording style):
+- very_short_answer (VSAQ, 2 marks): one-line factual/definition/single-step question.
+- short_answer (SAQ, 4 marks): 3-5 step derivation, explanation, or reasoning question.
+- long_answer (LAQ, 7-8 marks): full derivation, detailed diagram-based explanation, statement + proof, or complete process description.
+
+LANGUAGE: English only. Never emit Telugu or any non-English script.
+
+FORMATTING (renders with Markdown + KaTeX + mhchem):
+- Plain English prose. Use LaTeX ONLY for real formulas and symbols, never for ordinary words.
+- Every LaTeX fragment gets its own matching $...$ pair. Never leave an unmatched $.
+- Chemistry uses mhchem inside math: $\\ce{H2SO4}$, $\\ce{2SO2(g) + O2(g) <=> 2SO3(g)}$. Never a bare \\ce{...}.
+- No "Q1."/"1)" numbering inside question_text. No option letters (these are descriptive questions).
+
+expected_answer: a concise but complete model answer / marking key a teacher can grade against (key points, formula, final result). Keep it under 120 words for VSAQ/SAQ and under 250 words for LAQ.
+
+SELF-VERIFICATION (MANDATORY): re-read every question and model answer before returning; fix unbalanced $, bare macros, truncated text, and anything off-syllabus.`;
+
+  const genRule =
+    gen === "exact_pyq"
+      ? `MODE — EXACT PREVIOUS YEAR QUESTIONS: return ONLY questions that were actually asked in past TS IPE papers. Reproduce the original wording as faithfully as possible and set source_year to the real exam session, e.g. "March 2019", "March 2023", "May 2022". Never invent a year. If you are not confident a question truly appeared, do not include it.`
+      : `MODE — AI GENERATED (previous-year style): create fresh questions that are close variants/modifications of questions actually asked in past TS IPE papers. Set source_year to the session the pattern is modelled on, e.g. "Modelled on March 2022", or null when it is a generic board-style question.`;
+
+  const toughRule = {
+    easy: "DIFFICULTY — EASY: direct textbook recall, single-step, frequently repeated board questions.",
+    medium: "DIFFICULTY — MEDIUM: standard board level, typical of an average IPE paper.",
+    hard: "DIFFICULTY — HARD: the tougher end of board papers — multi-step derivations, less frequently asked items.",
+    extreme:
+      "DIFFICULTY — EXTREME: the hardest items ever asked in TS IPE — pick from the toughest sessions and long multi-part derivations.",
+  }[toughness];
+
+  return `${base}\n\n${genRule}\n\n${toughRule}`;
+}
+
+async function generateIpeQuestionSet(opts: {
+  subjectName: string;
+  year: string;
+  chapterNames: string[];
+  counts: { very_short_answer: number; short_answer: number; long_answer: number };
+  generationType: GenType;
+  toughness: Toughness;
+}) {
+  const key = process.env.LOVABLE_API_KEY;
+  if (!key) throw new Error("AI is not configured");
+  const gateway = createLovableAiGatewayProvider(key, { structuredOutputs: true });
+
+  const marksFor = (t: keyof typeof opts.counts) =>
+    t === "very_short_answer" ? 2 : t === "short_answer" ? 4 : /math/i.test(opts.subjectName) ? 7 : 8;
+
+  const types = (Object.keys(opts.counts) as (keyof typeof opts.counts)[]).filter((t) => opts.counts[t] > 0);
+
+  const batches = await Promise.all(
+    types.map(async (t) => {
+      const { output } = await generateText({
+        model: gateway("openai/gpt-5.6-sol"),
+        providerOptions: { lovable: { reasoningEffort: "none", service_tier: "priority" } },
+        output: Output.object({ schema: AiIpeBatchSchema }),
+        instructions: ipeGenInstructions(opts.generationType, opts.toughness),
+        prompt: `Subject: ${opts.subjectName} (TS Intermediate ${opts.year.replace("_", " ")})
+Chapters to cover${opts.chapterNames.length ? "" : " (whole syllabus)"}: ${opts.chapterNames.length ? opts.chapterNames.join("; ") : "all prescribed chapters"}
+
+Produce EXACTLY ${opts.counts[t]} questions of type "${t}" worth ${marksFor(t)} marks each. Spread them evenly across the listed chapters and do not repeat a question.`,
+      });
+      return output.questions
+        .slice(0, opts.counts[t])
+        .map((q) => ({ ...q, question_type: t, marks: marksFor(t) }));
+    }),
+  );
+
+  return batches.flat().map((q) => ({
+    ...q,
+    question_text: repairLatex(q.question_text),
+    expected_answer: repairLatex(q.expected_answer),
+  }));
+}
+
+export const generateIpeQuestions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        subjectId: z.string().uuid(),
+        chapterIds: z.array(z.string().uuid()).default([]),
+        vsaCount: z.number().int().min(0).max(20).default(10),
+        saCount: z.number().int().min(0).max(20).default(8),
+        laCount: z.number().int().min(0).max(20).default(3),
+        generationType: z.enum(["ai_pyq_style", "exact_pyq"]).default("ai_pyq_style"),
+        toughness: z.enum(["easy", "medium", "hard", "extreme"]).default("medium"),
+        saveToBank: z.boolean().default(true),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdminRole(context);
+    const sb = await admin();
+
+    const { data: subject } = await sb.from("ipe_subjects").select("id, name, year").eq("id", data.subjectId).single();
+    if (!subject) throw new Error("Subject not found");
+
+    let chapters: any[] = [];
+    if (data.chapterIds.length) {
+      const { data: rows } = await sb.from("ipe_chapters").select("id, chapter_name").in("id", data.chapterIds);
+      chapters = rows ?? [];
+    } else {
+      const { data: rows } = await sb
+        .from("ipe_chapters")
+        .select("id, chapter_name")
+        .eq("subject_id", data.subjectId)
+        .order("chapter_order");
+      chapters = rows ?? [];
+    }
+
+    const generated = await generateIpeQuestionSet({
+      subjectName: subject.name,
+      year: subject.year,
+      chapterNames: chapters.map((c) => c.chapter_name),
+      counts: {
+        very_short_answer: data.vsaCount,
+        short_answer: data.saCount,
+        long_answer: data.laCount,
+      },
+      generationType: data.generationType,
+      toughness: data.toughness,
+    });
+
+    if (!data.saveToBank || !chapters.length) return { questions: generated, saved: [] as any[] };
+
+    const inserts = generated.map((q, idx) => ({
+      chapter_id: chapters[idx % chapters.length].id,
+      question_type: q.question_type,
+      question_text: q.question_text,
+      expected_answer: q.expected_answer,
+      marks: q.marks,
+      source: data.generationType === "exact_pyq" ? "previous_year" : "admin_added",
+      source_year: q.source_year,
+      verified: false,
+    }));
+    const { data: saved, error } = await sb.from("ipe_questions").insert(inserts).select("*");
+    if (error) throw error;
+    return { questions: generated, saved: saved ?? [] };
+  });
+
 /* ---------------- IPE Exam Creation Server Functions ---------------- */
 
 export const createIpeExam = createServerFn({ method: "POST" })
@@ -516,21 +680,26 @@ export const createIpeExam = createServerFn({ method: "POST" })
         title: z.string().trim().min(1).max(200),
         year: z.enum(["1st_year", "2nd_year"]),
         subjectId: z.string().min(1),
-        mode: z.enum(["mode_a", "mode_b", "mode_c"]), // Mode A: Combination, Mode B: Verbatim PYQ, Mode C: Manual selection
-        durationMinutes: z.number().int().min(1).max(600),
+        // Mode A: bank blueprint · Mode B: verbatim PYQ paper · Mode C: manual pick · Mode D: AI generated
+        mode: z.enum(["mode_a", "mode_b", "mode_c", "mode_d"]),
+        durationMinutes: z.number().int().min(1).max(600).optional(),
         accessCode: z.string().trim().min(1).max(20).optional(),
         showResultAfterSubmit: z.boolean().default(true),
         answerSheetRequired: z.boolean().default(true),
         studentIds: z.array(z.string().uuid()).default([]),
         // Mode A specific inputs
         chapterIds: z.array(z.string().uuid()).optional(),
-        vsaCount: z.number().int().min(0).default(10),
-        saCount: z.number().int().min(0).default(6),
-        laCount: z.number().int().min(0).default(2),
+        useBlueprint: z.boolean().default(true),
+        vsaCount: z.number().int().min(0).optional(),
+        saCount: z.number().int().min(0).optional(),
+        laCount: z.number().int().min(0).optional(),
         // Mode B specific inputs
         previousPaperId: z.string().uuid().optional(),
         // Mode C & explicit questions input
         questionIds: z.array(z.string().uuid()).optional(),
+        // Mode D specific inputs
+        generationType: z.enum(["ai_pyq_style", "exact_pyq"]).default("ai_pyq_style"),
+        toughness: z.enum(["easy", "medium", "hard", "extreme"]).default("medium"),
       })
       .parse(i),
   )
@@ -538,9 +707,79 @@ export const createIpeExam = createServerFn({ method: "POST" })
     await assertAdminRole(context);
     const sb = await admin();
 
+    let subjectName = "";
+    if (data.subjectId !== "all") {
+      const { data: subj } = await sb.from("ipe_subjects").select("name").eq("id", data.subjectId).maybeSingle();
+      subjectName = subj?.name ?? "";
+    }
+    const blueprint = blueprintForSubject(subjectName);
+    const bpCount = (k: string) => blueprint.sections.find((s) => s.key === k)?.count ?? 0;
+
+    const wanted = data.useBlueprint
+      ? {
+          very_short_answer: bpCount("very_short_answer"),
+          short_answer: bpCount("short_answer"),
+          long_answer: bpCount("long_answer"),
+        }
+      : {
+          very_short_answer: data.vsaCount ?? bpCount("very_short_answer"),
+          short_answer: data.saCount ?? bpCount("short_answer"),
+          long_answer: data.laCount ?? bpCount("long_answer"),
+        };
+
     let selectedQuestionRows: any[] = [];
 
-    if (data.mode === "mode_b" && data.previousPaperId) {
+    if (data.mode === "mode_d") {
+      if (data.subjectId === "all") throw new Error("Pick a single subject for AI generation.");
+      const { data: subject } = await sb
+        .from("ipe_subjects")
+        .select("id, name, year")
+        .eq("id", data.subjectId)
+        .single();
+      let chapters: any[] = [];
+      if (data.chapterIds?.length) {
+        const { data: rows } = await sb.from("ipe_chapters").select("id, chapter_name").in("id", data.chapterIds);
+        chapters = rows ?? [];
+      } else {
+        const { data: rows } = await sb
+          .from("ipe_chapters")
+          .select("id, chapter_name")
+          .eq("subject_id", data.subjectId)
+          .order("chapter_order");
+        chapters = rows ?? [];
+      }
+      const generated = await generateIpeQuestionSet({
+        subjectName: subject?.name ?? subjectName,
+        year: subject?.year ?? data.year,
+        chapterNames: chapters.map((c) => c.chapter_name),
+        counts: wanted,
+        generationType: data.generationType,
+        toughness: data.toughness,
+      });
+      if (chapters.length) {
+        // Keep every generated question in the bank for reuse (unverified until reviewed).
+        await sb.from("ipe_questions").insert(
+          generated.map((q, idx) => ({
+            chapter_id: chapters[idx % chapters.length].id,
+            question_type: q.question_type,
+            question_text: q.question_text,
+            expected_answer: q.expected_answer,
+            marks: q.marks,
+            source: data.generationType === "exact_pyq" ? "previous_year" : "admin_added",
+            source_year: q.source_year,
+            verified: false,
+          })),
+        );
+      }
+      selectedQuestionRows = generated.map((q) => ({
+        question_type: q.question_type,
+        question_text: q.question_text,
+        expected_answer: q.expected_answer,
+        marks: q.marks,
+        source: data.generationType === "exact_pyq" ? "previous_year" : "admin_added",
+        source_year: q.source_year,
+      }));
+    } else if (data.mode === "mode_b" && data.previousPaperId) {
       const { data: paper } = await sb
         .from("ipe_previous_papers")
         .select("structured_question_ids")
@@ -555,7 +794,7 @@ export const createIpeExam = createServerFn({ method: "POST" })
       const { data: qs } = await sb.from("ipe_questions").select("*").in("id", data.questionIds);
       selectedQuestionRows = qs ?? [];
     } else {
-      // Mode A or fallback Mode C: Pull from chapterIds / bank
+      // Mode A: pull the blueprint's question mix out of the bank
       let qBuilder = sb.from("ipe_questions").select("*");
       if (data.chapterIds?.length) {
         qBuilder = qBuilder.in("chapter_id", data.chapterIds);
@@ -574,36 +813,70 @@ export const createIpeExam = createServerFn({ method: "POST" })
       }
       const { data: allBankQs } = await qBuilder;
       const bank = (allBankQs ?? []) as any[];
+      const pick = (t: string, n: number) => bank.filter((q: any) => q.question_type === t).slice(0, n);
 
-      const vsa = bank.filter((q: any) => q.question_type === "very_short_answer");
-      const sa = bank.filter((q: any) => q.question_type === "short_answer");
-      const la = bank.filter((q: any) => q.question_type === "long_answer");
+      selectedQuestionRows = [
+        ...pick("very_short_answer", wanted.very_short_answer),
+        ...pick("short_answer", wanted.short_answer),
+        ...pick("long_answer", wanted.long_answer),
+      ];
 
-      const pickedVsa = vsa.slice(0, data.vsaCount);
-      const pickedSa = sa.slice(0, data.saCount);
-      const pickedLa = la.slice(0, data.laCount);
-
-      selectedQuestionRows = [...pickedVsa, ...pickedSa, ...pickedLa];
+      const short = (
+        [
+          ["VSAQ", wanted.very_short_answer, pick("very_short_answer", wanted.very_short_answer).length],
+          ["SAQ", wanted.short_answer, pick("short_answer", wanted.short_answer).length],
+          ["LAQ", wanted.long_answer, pick("long_answer", wanted.long_answer).length],
+        ] as [string, number, number][]
+      ).filter(([, need, got]) => got < need);
+      if (short.length) {
+        throw new Error(
+          `The question bank does not have enough questions for the official TS IPE blueprint: ${short
+            .map(([label, need, got]) => `${label} ${got}/${need}`)
+            .join(", ")}. Add or AI-generate more questions for this subject first.`,
+        );
+      }
     }
 
     if (!selectedQuestionRows.length) {
       throw new Error("No questions available for the selected criteria. Please add questions to the Question Bank first.");
     }
 
-    const totalMarks = selectedQuestionRows.reduce((acc, q) => acc + (q.marks ?? 2), 0);
+    // Order the paper strictly Section A -> B -> C
+    const typeOrder = { very_short_answer: 0, short_answer: 1, long_answer: 2 } as Record<string, number>;
+    selectedQuestionRows.sort((a, b) => (typeOrder[a.question_type] ?? 9) - (typeOrder[b.question_type] ?? 9));
+
+    const sections = blueprint.sections
+      .map((s) => {
+        const printed = selectedQuestionRows.filter((q) => q.question_type === s.key).length;
+        if (!printed) return null;
+        const attempt = Math.min(s.attempt_limit, printed);
+        return {
+          key: s.key,
+          name: s.name,
+          count: printed,
+          marks_per_q: s.marks_per_q,
+          attempt_limit: attempt,
+        };
+      })
+      .filter(Boolean) as { key: string; name: string; count: number; marks_per_q: number; attempt_limit: number }[];
+
+    const totalMarks = sections.reduce((n, s) => n + s.attempt_limit * s.marks_per_q, 0);
     const accessCode = data.accessCode?.trim().toUpperCase() || randomAccessCode();
+    const duration = data.durationMinutes ?? blueprint.duration_minutes;
 
     const patternConfig = {
       is_ipe: true,
+      descriptive_only: true,
       mode: data.mode,
       subject_id: data.subjectId,
+      subject_name: subjectName,
       year: data.year,
+      blueprint: blueprint.id,
+      blueprint_max_marks: blueprintMaxMarks(blueprint),
       answer_sheet_required: data.answerSheetRequired,
-      sections: [
-        { name: "Very Short Answer", count: selectedQuestionRows.filter((q) => q.question_type === "very_short_answer").length, marks_per_q: 2 },
-        { name: "Short Answer", count: selectedQuestionRows.filter((q) => q.question_type === "short_answer").length, marks_per_q: 4 },
-        { name: "Long Answer", count: selectedQuestionRows.filter((q) => q.question_type === "long_answer").length, marks_per_q: 8 },
-      ].filter((s) => s.count > 0),
+      generation_type: data.mode === "mode_d" ? data.generationType : undefined,
+      toughness: data.mode === "mode_d" ? data.toughness : undefined,
+      sections,
     };
 
     const { data: examRow, error: examErr } = await sb
@@ -611,8 +884,8 @@ export const createIpeExam = createServerFn({ method: "POST" })
       .insert({
         title: data.title,
         access_code: accessCode,
-        duration_minutes: data.durationMinutes,
-        pattern: "custom",
+        duration_minutes: duration,
+        pattern: "ipe",
         pattern_config: patternConfig,
         total_marks: totalMarks,
         negative_mark_per_wrong: 0,
@@ -626,24 +899,27 @@ export const createIpeExam = createServerFn({ method: "POST" })
 
     if (examErr || !examRow) throw examErr || new Error("Failed to create exam");
 
-    // Convert IPE questions to standard exam questions
     const qInserts = selectedQuestionRows.map((q, idx) => ({
       exam_id: examRow.id,
       order_index: idx,
-      type: "short", // rendered as descriptive/short text field during exam
+      type: "short", // descriptive — answered on paper, not on screen
       prompt: q.question_text,
       options: null,
-      correct_answer: null,
+      correct_answer: q.expected_answer ? [q.expected_answer] : null,
       marks: q.marks ?? 2,
-      topic: `${q.question_type.replace(/_/g, " ").toUpperCase()} (${q.marks} Marks)`,
-      difficulty: "medium",
-      source_ref: q.source === "previous_year" ? `PYQ ${q.source_year ?? ""}` : q.source,
+      topic: `${sectionLabel(q.question_type)} (${q.marks} Marks)`,
+      difficulty: data.mode === "mode_d" ? data.toughness : "medium",
+      source_ref:
+        q.source === "previous_year"
+          ? `TS IPE ${q.source_year ?? "Previous Year"}`
+          : q.source_year
+            ? String(q.source_year)
+            : "TS IPE model question",
     }));
 
     const { error: qErr } = await sb.from("questions").insert(qInserts);
     if (qErr) throw qErr;
 
-    // Assign to students if specified
     if (data.studentIds.length) {
       const asgInserts = data.studentIds.map((sid) => ({
         exam_id: examRow.id,
@@ -654,7 +930,7 @@ export const createIpeExam = createServerFn({ method: "POST" })
       await sb.from("assignments").insert(asgInserts);
     }
 
-    return { examId: examRow.id, accessCode };
+    return { examId: examRow.id, accessCode, totalMarks, durationMinutes: duration, sections };
   });
 
 /* ---------------- Answer Sheet Image Handling ---------------- */
@@ -698,25 +974,27 @@ export const uploadAnswerSheetImages = createServerFn({ method: "POST" })
     const { data: created, error } = await sb
       .from("attempt_answer_sheet_images")
       .insert(inserts)
-      .select("*");
+      .select("id, page_number, uploaded_at");
 
     if (error) {
       if (error.code === "42P01") {
-        // Table not created yet in Supabase environment, return input gracefully
-        return { ok: true, images: data.images };
+        return { ok: true, count: data.images.length };
       }
       throw error;
     }
-    return { ok: true, images: created ?? [] };
+    return { ok: true, count: (created ?? []).length };
   });
 
+/** Teacher-only: the answer sheet photos of one attempt on an exam the caller owns. */
 export const getAttemptAnswerSheetImages = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((i: unknown) => z.object({ attemptId: z.string().uuid() }).parse(i))
-  .handler(async ({ data }) => {
-    const sb = await admin();
-    const { data: images, error } = await sb
+  .handler(async ({ data, context }) => {
+    await assertAdminRole(context);
+    // RLS on attempt_answer_sheet_images already restricts rows to the exam owner.
+    const { data: images, error } = await (context.supabase as any)
       .from("attempt_answer_sheet_images")
-      .select("*")
+      .select("id, image_url, page_number, uploaded_at")
       .eq("attempt_id", data.attemptId)
       .order("page_number", { ascending: true });
 
@@ -726,3 +1004,275 @@ export const getAttemptAnswerSheetImages = createServerFn({ method: "POST" })
     }
     return images ?? [];
   });
+
+/* ---------------- Teacher evaluation of descriptive answer sheets ---------------- */
+
+async function loadGradableAttempt(context: { supabase: any; userId: string }, attemptId: string) {
+  const { data: att } = await context.supabase
+    .from("attempts")
+    .select("id, exam_id, student_id, status, score, max_score, marks_published, grader_notes, question_order")
+    .eq("id", attemptId)
+    .maybeSingle();
+  if (!att) throw new Error("Attempt not found");
+
+  const { data: exam } = await context.supabase
+    .from("exams")
+    .select("id, title, created_by, total_marks, pattern_config")
+    .eq("id", att.exam_id)
+    .maybeSingle();
+  if (!exam || exam.created_by !== context.userId) throw new Error("Forbidden");
+
+  return { att, exam };
+}
+
+/** Teacher-only: questions + current marks + uploaded pages for the grading screen. */
+export const getIpeGradingSheet = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => z.object({ attemptId: z.string().uuid() }).parse(i))
+  .handler(async ({ data, context }) => {
+    await assertAdminRole(context);
+    const { att, exam } = await loadGradableAttempt(context, data.attemptId);
+
+    const [{ data: qs }, { data: ans }, { data: images }, { data: student }] = await Promise.all([
+      context.supabase
+        .from("questions")
+        .select("id, prompt, marks, topic, correct_answer, source_ref, order_index")
+        .eq("exam_id", att.exam_id)
+        .order("order_index"),
+      context.supabase
+        .from("answers")
+        .select("question_id, marks_awarded, grader_feedback")
+        .eq("attempt_id", att.id),
+      (context.supabase as any)
+        .from("attempt_answer_sheet_images")
+        .select("id, image_url, page_number")
+        .eq("attempt_id", att.id)
+        .order("page_number", { ascending: true }),
+      context.supabase.from("students").select("id, name, student_code").eq("id", att.student_id).maybeSingle(),
+    ]);
+
+    const ansMap = new Map((ans ?? []).map((a: any) => [a.question_id, a]));
+    return {
+      exam: { id: exam.id, title: exam.title, totalMarks: exam.total_marks, patternConfig: exam.pattern_config },
+      student: student ?? null,
+      attempt: {
+        id: att.id,
+        status: att.status,
+        score: Number(att.score ?? 0),
+        maxScore: Number(att.max_score ?? exam.total_marks ?? 0),
+        marksPublished: !!att.marks_published,
+        graderNotes: att.grader_notes ?? "",
+      },
+      questions: (qs ?? []).map((q: any) => ({
+        id: q.id,
+        prompt: q.prompt,
+        marks: q.marks,
+        topic: q.topic,
+        section: q.topic,
+        modelAnswer: Array.isArray(q.correct_answer) ? (q.correct_answer[0] ?? null) : null,
+        sourceRef: q.source_ref ?? null,
+        marksAwarded: Number((ansMap.get(q.id) as any)?.marks_awarded ?? 0),
+        feedback: ((ansMap.get(q.id) as any)?.grader_feedback as string | null) ?? "",
+      })),
+      answerSheetImages: images ?? [],
+    };
+  });
+
+const GradeRowSchema = z.object({
+  questionId: z.string().uuid(),
+  marksAwarded: z.number().min(0).max(100),
+  feedback: z.string().max(4000).optional(),
+});
+
+async function persistGrades(
+  sb: any,
+  attemptId: string,
+  maxScore: number,
+  grades: { questionId: string; marksAwarded: number; feedback?: string | null }[],
+  notes?: string | null,
+) {
+  for (const g of grades) {
+    const { data: existing } = await sb
+      .from("answers")
+      .select("id")
+      .eq("attempt_id", attemptId)
+      .eq("question_id", g.questionId)
+      .maybeSingle();
+    const payload = {
+      marks_awarded: g.marksAwarded,
+      grader_feedback: g.feedback ?? null,
+      is_correct: null as boolean | null,
+      updated_at: new Date().toISOString(),
+    };
+    if (existing?.id) {
+      await sb.from("answers").update(payload).eq("id", existing.id);
+    } else {
+      await sb.from("answers").insert({ attempt_id: attemptId, question_id: g.questionId, ...payload });
+    }
+  }
+
+  const score = grades.reduce((n, g) => n + Number(g.marksAwarded || 0), 0);
+  const update: Record<string, unknown> = {
+    score,
+    max_score: maxScore,
+    graded_at: new Date().toISOString(),
+  };
+  if (notes !== undefined) update.grader_notes = notes;
+  await sb.from("attempts").update(update).eq("id", attemptId);
+  return score;
+}
+
+/** Teacher-only: save manually entered marks. Marks stay hidden until published. */
+export const saveIpeGrades = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z
+      .object({
+        attemptId: z.string().uuid(),
+        grades: z.array(GradeRowSchema),
+        notes: z.string().max(4000).optional(),
+      })
+      .parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdminRole(context);
+    const { exam } = await loadGradableAttempt(context, data.attemptId);
+    const sb = await admin();
+    const score = await persistGrades(
+      sb,
+      data.attemptId,
+      Number(exam.total_marks ?? 0),
+      data.grades,
+      data.notes ?? null,
+    );
+    return { ok: true, score };
+  });
+
+/** Teacher-only: publish or unpublish the evaluated marks to the student. */
+export const setIpeMarksPublished = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({ attemptId: z.string().uuid(), published: z.boolean() }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdminRole(context);
+    await loadGradableAttempt(context, data.attemptId);
+    const sb = await admin();
+    await sb.from("attempts").update({ marks_published: data.published }).eq("id", data.attemptId);
+    return { ok: true, published: data.published };
+  });
+
+/** Teacher-only: AI reads the uploaded answer-sheet photos and proposes marks per question. */
+export const aiEvaluateIpeAnswerSheet = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) =>
+    z.object({ attemptId: z.string().uuid(), apply: z.boolean().default(false) }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdminRole(context);
+    const { att, exam } = await loadGradableAttempt(context, data.attemptId);
+    const sb = await admin();
+
+    const [{ data: qs }, { data: images }] = await Promise.all([
+      sb
+        .from("questions")
+        .select("id, prompt, marks, topic, correct_answer, order_index")
+        .eq("exam_id", att.exam_id)
+        .order("order_index"),
+      sb
+        .from("attempt_answer_sheet_images")
+        .select("image_url, page_number")
+        .eq("attempt_id", att.id)
+        .order("page_number", { ascending: true }),
+    ]);
+
+    const questions = qs ?? [];
+    const pages = images ?? [];
+    if (!questions.length) throw new Error("This exam has no questions to evaluate.");
+    if (!pages.length) throw new Error("The student has not uploaded any answer sheet pages for this attempt.");
+
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("AI is not configured");
+    const gateway = createLovableAiGatewayProvider(key, { structuredOutputs: true });
+
+    const EvalSchema = z.object({
+      grades: z.array(
+        z.object({
+          question_number: z.number().int().min(1),
+          marks_awarded: z.number().min(0),
+          feedback: z.string(),
+        }),
+      ),
+      overall_feedback: z.string(),
+      weak_topics: z.array(z.string()),
+      strong_topics: z.array(z.string()),
+    });
+
+    const paper = questions
+      .map(
+        (q: any, i: number) =>
+          `Q${i + 1} [${q.topic ?? ""}] (max ${q.marks} marks)\nQuestion: ${q.prompt}\nModel answer / marking key: ${
+            Array.isArray(q.correct_answer) ? (q.correct_answer[0] ?? "not provided") : "not provided"
+          }`,
+      )
+      .join("\n\n");
+
+    const { output } = await generateText({
+      model: gateway("openai/gpt-5.6-sol"),
+      providerOptions: { lovable: { reasoningEffort: "none" } },
+      output: Output.object({ schema: EvalSchema }),
+      instructions: `You are an experienced TS Intermediate Board (TSBIE) evaluator marking a handwritten descriptive answer script.
+
+RULES:
+- The images are photographs of the student's handwritten answer booklet pages, in page order.
+- Match each answered question to its question number on the printed paper. Students may answer in any order and may skip questions (the paper carries internal choice).
+- Award marks the way a board evaluator does: step marks for correct steps, formula, diagram, final answer. Never exceed the question's maximum marks. Award 0 if the question was not attempted or is illegible/blank.
+- feedback: 1-3 short sentences per question — what earned marks and what was missing. Plain English.
+- Return EXACTLY one entry per question number of the printed paper, in order, even when unattempted.
+- If handwriting is unreadable for a question, award 0 and say "Could not read the answer — please verify manually."
+- Use $...$ / mhchem for any formula in feedback. No emojis.
+
+Your marks are a PROPOSAL that the teacher will review and can edit before publishing.`,
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: `Exam: ${exam.title}\n\nPRINTED QUESTION PAPER:\n\n${paper}\n\nNow evaluate the ${pages.length} attached answer-sheet page image(s).`,
+            },
+            ...pages.map((p: any) => ({ type: "image" as const, image: p.image_url })),
+          ] as any,
+        },
+      ],
+    });
+
+    const grades = questions.map((q: any, i: number) => {
+      const g = output.grades.find((x) => x.question_number === i + 1);
+      const awarded = Math.max(0, Math.min(Number(q.marks ?? 0), Number(g?.marks_awarded ?? 0)));
+      return { questionId: q.id, marksAwarded: awarded, feedback: g?.feedback ?? "" };
+    });
+
+    if (data.apply) {
+      await persistGrades(sb, att.id, Number(exam.total_marks ?? 0), grades);
+      await sb.from("insights").delete().eq("attempt_id", att.id);
+      await sb.from("insights").insert({
+        attempt_id: att.id,
+        summary: output.overall_feedback,
+        weak_topics: output.weak_topics,
+        strong_topics: output.strong_topics,
+        recommendations: output.overall_feedback,
+      });
+    }
+
+    return {
+      applied: data.apply,
+      proposedScore: grades.reduce((n: number, g: { marksAwarded: number }) => n + g.marksAwarded, 0),
+      maxScore: Number(exam.total_marks ?? 0),
+      grades,
+      overallFeedback: output.overall_feedback,
+      weakTopics: output.weak_topics,
+      strongTopics: output.strong_topics,
+    };
+  });
+
