@@ -1,0 +1,2 @@
+ALTER TABLE public.exams DROP CONSTRAINT IF EXISTS exams_pattern_check;
+ALTER TABLE public.exams ADD CONSTRAINT exams_pattern_check CHECK (pattern = ANY (ARRAY['neet'::text,'eamcet'::text,'mains'::text,'custom'::text,'ipe'::text]));
