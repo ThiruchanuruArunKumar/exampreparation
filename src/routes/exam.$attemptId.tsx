@@ -526,10 +526,19 @@ function TakeExam() {
                 )}
               </div>
               <div className="mt-2 grid grid-cols-2 gap-1 text-[10px] text-muted-foreground">
-                <Legend color="bg-green-500" label="Answered" />
-                <Legend color="bg-red-500" label="Not answered" />
-                <Legend color="bg-purple-500" label="Marked for review" />
-                <Legend color="bg-purple-500" label="Review + answered" dot />
+                {isIpe ? (
+                  <>
+                    <Legend color="bg-red-500" label="Visited" />
+                    <Legend color="bg-purple-500" label="Marked for review" />
+                  </>
+                ) : (
+                  <>
+                    <Legend color="bg-green-500" label="Answered" />
+                    <Legend color="bg-red-500" label="Not answered" />
+                    <Legend color="bg-purple-500" label="Marked for review" />
+                    <Legend color="bg-purple-500" label="Review + answered" dot />
+                  </>
+                )}
               </div>
             </>
           )}
@@ -543,7 +552,13 @@ function TakeExam() {
             <div className="min-w-0 flex-1">
               <div className="text-xs uppercase tracking-wide text-muted-foreground">
                 Question {current + 1} of {questions.length}
+                {isIpe && activeSection ? ` · ${activeSection.name}` : ""}
               </div>
+              {isIpe && activeSectionCfg?.attempt_limit && activeSectionCfg.attempt_limit < activeSectionCfg.count && (
+                <div className="mt-1 text-xs font-medium text-primary">
+                  Answer any {activeSectionCfg.attempt_limit} of {activeSectionCfg.count} questions in this section
+                </div>
+              )}
               <CardTitle className="mt-2 text-base sm:text-lg">
                 <RichContent>{q.prompt}</RichContent>
               </CardTitle>
@@ -554,66 +569,81 @@ function TakeExam() {
             </Badge>
           </CardHeader>
           <CardContent className="space-y-4">
-            {(q.type === "mcq" || q.type === "tf") && q.options && (
-              <div className="space-y-2">
-                {q.options.map((opt) => (
-                  <label
-                    key={opt}
-                    className={`flex cursor-pointer items-center gap-3 rounded-md border p-3 ${
-                      resp.includes(opt) ? "border-primary bg-primary/5" : "border-border"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name={q.id}
-                      checked={resp.includes(opt)}
-                      onChange={() => setResp(q.id, [opt])}
-                    />
-                    <RichContent inline className="text-sm">{opt}</RichContent>
+            {isIpe ? (
+              <div className="rounded-md border border-primary/30 bg-primary/5 p-4 text-sm">
+                <p className="font-medium">Write this answer in your answer booklet.</p>
+                <p className="mt-1 text-muted-foreground">
+                  This is a board-pattern descriptive paper — nothing is typed on screen. When the timer ends you
+                  will be asked to photograph every page of your answer booklet and submit it for evaluation.
+                </p>
+              </div>
+            ) : (
+              <>
+                {(q.type === "mcq" || q.type === "tf") && q.options && (
+                  <div className="space-y-2">
+                    {q.options.map((opt) => (
+                      <label
+                        key={opt}
+                        className={`flex cursor-pointer items-center gap-3 rounded-md border p-3 ${
+                          resp.includes(opt) ? "border-primary bg-primary/5" : "border-border"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name={q.id}
+                          checked={resp.includes(opt)}
+                          onChange={() => setResp(q.id, [opt])}
+                        />
+                        <RichContent inline className="text-sm">{opt}</RichContent>
 
-                  </label>
-                ))}
-              </div>
-            )}
-            {q.type === "multi" && q.options && (
-              <div className="space-y-2">
-                {q.options.map((opt) => (
-                  <label
-                    key={opt}
-                    className={`flex cursor-pointer items-center gap-3 rounded-md border p-3 ${
-                      resp.includes(opt) ? "border-primary bg-primary/5" : "border-border"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={resp.includes(opt)}
-                      onChange={(e) =>
-                        setResp(q.id, e.target.checked ? [...resp, opt] : resp.filter((v) => v !== opt))
-                      }
-                    />
-                    <RichContent inline className="text-sm">{opt}</RichContent>
-                  </label>
-                ))}
-              </div>
-            )}
-            {q.type === "short" && (
-              <Textarea
-                value={resp[0] ?? ""}
-                onChange={(e) => setResp(q.id, e.target.value ? [e.target.value] : [])}
-                rows={5}
-                placeholder="Type your answer…"
-              />
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {q.type === "multi" && q.options && (
+                  <div className="space-y-2">
+                    {q.options.map((opt) => (
+                      <label
+                        key={opt}
+                        className={`flex cursor-pointer items-center gap-3 rounded-md border p-3 ${
+                          resp.includes(opt) ? "border-primary bg-primary/5" : "border-border"
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={resp.includes(opt)}
+                          onChange={(e) =>
+                            setResp(q.id, e.target.checked ? [...resp, opt] : resp.filter((v) => v !== opt))
+                          }
+                        />
+                        <RichContent inline className="text-sm">{opt}</RichContent>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {q.type === "short" && (
+                  <Textarea
+                    value={resp[0] ?? ""}
+                    onChange={(e) => setResp(q.id, e.target.value ? [e.target.value] : [])}
+                    rows={5}
+                    placeholder="Type your answer…"
+                  />
+                )}
+              </>
             )}
 
             <div className="flex flex-wrap items-center gap-2 pt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setResp(q.id, [])}
-                disabled={resp.length === 0}
-              >
-                Clear
-              </Button>
+              {!isIpe && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setResp(q.id, [])}
+                  disabled={resp.length === 0}
+                >
+                  Clear
+                </Button>
+              )}
+
               <Button
                 variant={isReviewed ? "default" : "outline"}
                 size="sm"
