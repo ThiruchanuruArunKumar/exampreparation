@@ -121,7 +121,13 @@ function ExamDetail() {
         .eq("exam_id", examId),
     ]);
     setExam(e as Exam);
-    setQuestions((q as Question[]) ?? []);
+    setQuestions(
+      ((q as Question[]) ?? []).map((row) => ({
+        ...row,
+        options: Array.isArray(row.options) ? row.options : null,
+        correct_answer: Array.isArray(row.correct_answer) ? row.correct_answer : [],
+      })),
+    );
     setAssignments((a as Assignment[]) ?? []);
     try {
       setStudents((await listStudents()) as Student[]);
