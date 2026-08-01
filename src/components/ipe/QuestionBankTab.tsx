@@ -535,6 +535,26 @@ export function QuestionBankTab() {
                 <Button size="sm" variant="secondary" onClick={handleReseedSyllabus} disabled={loading} className="h-8 text-xs gap-1">
                   <RefreshCw className="h-3.5 w-3.5 text-primary" /> Populate TS Syllabus & Bank
                 </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleAiFillSyllabus("subject")}
+                  disabled={aiFilling || !selectedSubjectId}
+                  className="h-8 text-xs gap-1"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  {aiFilling ? "AI filling…" : "AI fill this subject"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleAiFillSyllabus("year")}
+                  disabled={aiFilling}
+                  className="h-8 text-xs gap-1"
+                >
+                  <Database className="h-3.5 w-3.5" /> AI fill whole year
+                </Button>
+
                 <Button size="sm" variant="outline" onClick={handleBulkVerify} className="h-8 text-xs gap-1">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Bulk Verify
                 </Button>
