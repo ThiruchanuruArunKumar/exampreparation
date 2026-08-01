@@ -345,10 +345,16 @@ function TakeExam() {
   }
 
   const q = questions[current];
+  const isIpe = !!exam?.pattern_config?.is_ipe;
   const resp = answers[q.id] ?? [];
   const answered = Object.values(answers).filter((v) => v.length > 0).length;
   const reviewCount = reviewed.size;
   const isReviewed = reviewed.has(q.id);
+  const activeSection = subjectBoundaries?.find((s) => current >= s.start && current <= s.end) ?? null;
+  const activeSectionCfg = (exam?.pattern_config?.sections ?? []).find(
+    (s: any) => s.name === activeSection?.name,
+  );
+
 
   return (
     <div className="min-h-screen bg-background text-foreground">
