@@ -37,6 +37,8 @@ import {
   addIpeSubject,
   addIpeChapter,
   reseedIpeQuestionBank,
+  bulkFillIpeQuestionBank,
+
   getIpeMigrationSql,
 } from "@/lib/ipe.functions";
 import { extractQuestions } from "@/lib/exams.functions";
@@ -101,6 +103,8 @@ export function QuestionBankTab() {
   // Add Subject state
   const [newSubName, setNewSubName] = useState("");
   const [missingTables, setMissingTables] = useState(false);
+  const [aiFilling, setAiFilling] = useState(false);
+
 
   const fetchStructure = useCallback(async () => {
     try {
@@ -365,6 +369,38 @@ export function QuestionBankTab() {
     }
   };
 
+  const handleAiFillSyllabus = async (scope: "subject" | "year") => {
+    if (scope === "subject" && !selectedSubjectId) return toast.error("Select a subject first");
+    setAiFilling(true);
+    const t = toast.loading(
+      scope === "year"
+        ? "AI is filling every chapter of this year — this can take a few minutes…"
+        : "AI is filling every chapter of this subject…",
+    );
+    try {
+      const res = await bulkFillIpeQuestionBank({
+        data: {
+          subjectId: scope === "year" ? "all" : selectedSubjectId!,
+          year,
+          perChapter: { very_short_answer: 4, short_answer: 3, long_answer: 2 },
+          generationType: "exact_pyq",
+          toughness: "medium",
+          skipFilled: true,
+        },
+      });
+      await fetchQuestions();
+      toast.success(
+        `Added ${res.inserted} questions across ${res.chaptersProcessed} chapters${res.failures.length ? ` (${res.failures.length} chapters failed)` : ""}`,
+        { id: t },
+      );
+    } catch (e) {
+      toast.error((e as Error).message, { id: t });
+    } finally {
+      setAiFilling(false);
+    }
+  };
+
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
       {missingTables && (
@@ -499,6 +535,26 @@ export function QuestionBankTab() {
                 <Button size="sm" variant="secondary" onClick={handleReseedSyllabus} disabled={loading} className="h-8 text-xs gap-1">
                   <RefreshCw className="h-3.5 w-3.5 text-primary" /> Populate TS Syllabus & Bank
                 </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => handleAiFillSyllabus("subject")}
+                  disabled={aiFilling || !selectedSubjectId}
+                  className="h-8 text-xs gap-1"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  {aiFilling ? "AI filling…" : "AI fill this subject"}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleAiFillSyllabus("year")}
+                  disabled={aiFilling}
+                  className="h-8 text-xs gap-1"
+                >
+                  <Database className="h-3.5 w-3.5" /> AI fill whole year
+                </Button>
+
                 <Button size="sm" variant="outline" onClick={handleBulkVerify} className="h-8 text-xs gap-1">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Bulk Verify
                 </Button>

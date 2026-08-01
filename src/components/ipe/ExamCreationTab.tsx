@@ -23,10 +23,20 @@ import {
 import {
   getIpeSubjectsAndChapters,
   getIpeQuestions,
-  getIpePreviousPapers,
   createIpeExam,
 } from "@/lib/ipe.functions";
+import { NumberField } from "@/components/NumberField";
 import { listStudents } from "@/lib/exams.functions";
+
+const PYQ_SESSIONS = [
+  "March 2024",
+  "March 2023",
+  "May 2022",
+  "March 2020",
+  "March 2019",
+  "March 2018",
+  "March 2017",
+] as const;
 
 type Subject = { id: string; name: string; year: "1st_year" | "2nd_year" };
 type Chapter = { id: string; subject_id: string; chapter_name: string; chapter_order: number };
@@ -41,19 +51,13 @@ type Question = {
   verified: boolean;
 };
 
-type PreviousPaper = {
-  id: string;
-  subject_id: string;
-  year: string;
-  structured_question_ids: string[];
-};
-
 type Student = {
   id: string;
   name: string;
   student_code: string;
   class_name: string | null;
 };
+
 
 export function ExamCreationTab() {
   const navigate = useNavigate();
@@ -81,9 +85,9 @@ export function ExamCreationTab() {
   const [saCount, setSaCount] = useState(6);
   const [laCount, setLaCount] = useState(2);
 
-  // Mode B specific state
-  const [previousPapers, setPreviousPapers] = useState<PreviousPaper[]>([]);
-  const [selectedPaperId, setSelectedPaperId] = useState<string>("");
+  // Mode B specific state — AI reproduces the actual paper of this TS IPE session
+  const [pyqSession, setPyqSession] = useState<string>(PYQ_SESSIONS[0]);
+
 
   // Mode C specific state
   const [bankQuestions, setBankQuestions] = useState<Question[]>([]);
@@ -128,20 +132,8 @@ export function ExamCreationTab() {
     return chapters.filter((c) => c.subject_id === selectedSubjectId);
   }, [chapters, filteredSubjects, selectedSubjectId]);
 
-  // Fetch previous papers when Mode B is chosen or subject changes
-  useEffect(() => {
-    if (mode === "mode_b" && selectedSubjectId) {
-      (async () => {
-        try {
-          const papers = await getIpePreviousPapers({ data: { subjectId: selectedSubjectId } });
-          setPreviousPapers(papers as PreviousPaper[]);
-          if (papers.length > 0) setSelectedPaperId(papers[0].id);
-        } catch (e) {
-          toast.error((e as Error).message);
-        }
-      })();
-    }
-  }, [mode, selectedSubjectId]);
+
+
 
   // Fetch bank questions when Mode C is chosen or subject changes
   useEffect(() => {
@@ -198,18 +190,20 @@ export function ExamCreationTab() {
           year,
           subjectId: selectedSubjectId,
           mode,
-          durationMinutes,
+          durationMinutes: Number.isFinite(durationMinutes) && durationMinutes > 0 ? durationMinutes : 180,
           accessCode: accessCode.trim() || undefined,
           showResultAfterSubmit: showResult,
           answerSheetRequired,
           studentIds: studentIdsToAssign,
           chapterIds: Array.from(selectedChapterIds),
+          useBlueprint: false,
           vsaCount,
           saCount,
           laCount,
-          previousPaperId: selectedPaperId || undefined,
+          pyqSession: mode === "mode_b" ? pyqSession : undefined,
           questionIds: Array.from(selectedQuestionIds),
         },
+
       });
 
       toast.success(`Created IPE Exam! Password: ${res.accessCode}`);
@@ -241,8 +235,9 @@ export function ExamCreationTab() {
               },
               {
                 id: "mode_b" as const,
-                title: "Mode B: Previous Year Paper (Verbatim)",
-                desc: "Pick an exact TS Intermediate Previous Year Paper (e.g. March 2023) to run verbatim.",
+                title: "Mode B: Previous Year Paper (AI)",
+                desc: "Pick a TS IPE session (e.g. March 2023) — the AI reproduces that actual paper, labelled with the year.",
+
                 icon: Calendar,
               },
               {
@@ -339,15 +334,16 @@ export function ExamCreationTab() {
                   <Label className="text-xs font-medium">Total Duration (Minutes)</Label>
                   <div className="relative mt-1">
                     <Clock className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      type="number"
+                    <NumberField
                       value={durationMinutes}
-                      onChange={(e) => setDurationMinutes(Number(e.target.value))}
+                      onChange={setDurationMinutes}
                       className="pl-8 text-xs"
                       min={15}
                       max={360}
+                      fallback={180}
                     />
                   </div>
+
                 </div>
 
                 <div>
@@ -409,32 +405,22 @@ export function ExamCreationTab() {
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <Label className="text-xs">VSA Count (2 Marks)</Label>
-                    <Input
-                      type="number"
-                      value={vsaCount}
-                      onChange={(e) => setVsaCount(Number(e.target.value))}
-                      className="text-xs mt-1"
-                    />
+                    <NumberField value={vsaCount} onChange={setVsaCount} min={0} max={20} fallback={10} className="text-xs mt-1" />
                   </div>
                   <div>
                     <Label className="text-xs">SA Count (4 Marks)</Label>
-                    <Input
-                      type="number"
-                      value={saCount}
-                      onChange={(e) => setSaCount(Number(e.target.value))}
-                      className="text-xs mt-1"
-                    />
+                    <NumberField value={saCount} onChange={setSaCount} min={0} max={20} fallback={8} className="text-xs mt-1" />
                   </div>
                   <div>
                     <Label className="text-xs">LA Count (8 Marks)</Label>
-                    <Input
-                      type="number"
-                      value={laCount}
-                      onChange={(e) => setLaCount(Number(e.target.value))}
-                      className="text-xs mt-1"
-                    />
+                    <NumberField value={laCount} onChange={setLaCount} min={0} max={20} fallback={3} className="text-xs mt-1" />
                   </div>
                 </div>
+                <p className="text-[11px] text-muted-foreground">
+                  If the bank is short of questions for these counts, the missing ones are AI-generated in TS board
+                  style and saved back to the bank automatically.
+                </p>
+
               </CardContent>
             </Card>
           )}
@@ -442,30 +428,45 @@ export function ExamCreationTab() {
           {mode === "mode_b" && (
             <Card className="border-border/80">
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">2. Mode B Verbatim Paper Selection</CardTitle>
+                <CardTitle className="text-base">2. Mode B Previous Year Paper (AI reproduced)</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {previousPapers.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No previous papers saved for this subject yet.</p>
-                ) : (
+                <p className="text-xs text-muted-foreground">
+                  The AI reproduces the actual TS IPE paper of the selected session for this subject, with the exam
+                  session labelled on every question in the result sheet.
+                </p>
+                <div>
+                  <Label className="text-xs font-medium">Exam Session</Label>
+                  <select
+                    className="w-full mt-1 rounded-md border border-input bg-background p-2 text-xs"
+                    value={pyqSession}
+                    onChange={(e) => setPyqSession(e.target.value)}
+                  >
+                    {PYQ_SESSIONS.map((s) => (
+                      <option key={s} value={s}>
+                        TS Intermediate {year === "1st_year" ? "1st Year" : "2nd Year"} — {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <Label className="text-xs font-medium">Select Previous Year Paper</Label>
-                    <select
-                      className="w-full mt-1 rounded-md border border-input bg-background p-2 text-xs"
-                      value={selectedPaperId}
-                      onChange={(e) => setSelectedPaperId(e.target.value)}
-                    >
-                      {previousPapers.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          TS Intermediate {year === "1st_year" ? "1st Year" : "2nd Year"} — {p.year} Paper
-                        </option>
-                      ))}
-                    </select>
+                    <Label className="text-xs">VSAQ Count</Label>
+                    <NumberField value={vsaCount} onChange={setVsaCount} min={0} max={20} fallback={10} className="text-xs mt-1" />
                   </div>
-                )}
+                  <div>
+                    <Label className="text-xs">SAQ Count</Label>
+                    <NumberField value={saCount} onChange={setSaCount} min={0} max={20} fallback={8} className="text-xs mt-1" />
+                  </div>
+                  <div>
+                    <Label className="text-xs">LAQ Count</Label>
+                    <NumberField value={laCount} onChange={setLaCount} min={0} max={20} fallback={3} className="text-xs mt-1" />
+                  </div>
+                </div>
               </CardContent>
             </Card>
           )}
+
 
           {mode === "mode_c" && (
             <Card className="border-border/80">
