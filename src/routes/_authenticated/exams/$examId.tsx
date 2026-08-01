@@ -651,22 +651,34 @@ function ExamDetail() {
         {/* SETTINGS */}
         <TabsContent value="settings" className="mt-4 space-y-4">
           <Card>
-            <CardHeader><CardTitle className="text-base">Exam pattern</CardTitle></CardHeader>
-            <CardContent>
-              <PatternPicker
-                pattern={exam.pattern as any}
-                config={exam.pattern_config}
-                onChange={(p, c) =>
-                  patchExam({
-                    pattern: p,
-                    pattern_config: c,
-                    duration_minutes: c?.duration_minutes ?? exam.duration_minutes,
-                    negative_mark_per_wrong: c?.negative_mark_per_wrong ?? exam.negative_mark_per_wrong,
-                  })
-                }
-              />
-            </CardContent>
-          </Card>
+          {exam.pattern === "ipe" ? (
+            <Card>
+              <CardHeader><CardTitle className="text-base">Exam pattern</CardTitle></CardHeader>
+              <CardContent className="text-sm text-muted-foreground">
+                This is a TS Intermediate (IPE) descriptive paper. Its section blueprint is fixed by the board
+                pattern and cannot be switched to an MCQ pattern here.
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardHeader><CardTitle className="text-base">Exam pattern</CardTitle></CardHeader>
+              <CardContent>
+                <PatternPicker
+                  pattern={exam.pattern as any}
+                  config={exam.pattern_config}
+                  onChange={(p, c) =>
+                    patchExam({
+                      pattern: p,
+                      pattern_config: c,
+                      duration_minutes: c?.duration_minutes ?? exam.duration_minutes,
+                      negative_mark_per_wrong: c?.negative_mark_per_wrong ?? exam.negative_mark_per_wrong,
+                    })
+                  }
+                />
+              </CardContent>
+            </Card>
+          )}
+
 
           <Card>
             <CardHeader><CardTitle className="text-base">Exam details</CardTitle></CardHeader>
