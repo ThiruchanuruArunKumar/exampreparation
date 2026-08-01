@@ -1152,7 +1152,7 @@ export const adminGetAttemptDetail = createServerFn({ method: "POST" })
     await assertAdmin(context);
     const { data: att } = await context.supabase
       .from("attempts")
-      .select("id, exam_id, student_id, status, score, max_score, warning_count, started_at, submitted_at, auto_submitted, question_order")
+      .select("id, exam_id, student_id, status, score, max_score, warning_count, started_at, submitted_at, auto_submitted, question_order, marks_published, grader_notes")
       .eq("id", data.attemptId)
       .maybeSingle();
     if (!att) throw new Error("Attempt not found");
@@ -1162,7 +1162,7 @@ export const adminGetAttemptDetail = createServerFn({ method: "POST" })
     const [{ data: exam }, { data: student }, { data: insight }, { data: answerSheetImages }] = await Promise.all([
       context.supabase
         .from("exams")
-        .select("id, title, duration_minutes, show_result_after_submit, show_answer_sheet, show_answer_book")
+        .select("id, title, duration_minutes, show_result_after_submit, show_answer_sheet, show_answer_book, pattern, pattern_config")
         .eq("id", att.exam_id)
         .single(),
       context.supabase
@@ -1225,6 +1225,8 @@ export const adminGetAttemptDetail = createServerFn({ method: "POST" })
             showResult: !!exam.show_result_after_submit,
             showAnswerSheet: !!exam.show_answer_sheet,
             showAnswerBook: !!exam.show_answer_book,
+            isIpe: !!(exam as any).pattern_config?.is_ipe,
+            patternConfig: (exam as any).pattern_config ?? null,
           }
         : null,
       attempt: {
@@ -1236,6 +1238,8 @@ export const adminGetAttemptDetail = createServerFn({ method: "POST" })
         started_at: att.started_at,
         auto_submitted: att.auto_submitted,
         warning_count: att.warning_count,
+        marks_published: !!(att as any).marks_published,
+        grader_notes: ((att as any).grader_notes as string | null) ?? "",
       },
       insight: insight ?? null,
       questions,
