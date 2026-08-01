@@ -59,7 +59,7 @@ type Exam = {
   access_code: string;
   start_at: string | null;
   end_at: string | null;
-  pattern: ExamPattern;
+  pattern: string;
   pattern_config: PatternConfig | null;
   negative_mark_per_wrong: number;
   show_result_after_submit: boolean;
@@ -363,7 +363,7 @@ function ExamDetail() {
         {/* QUESTIONS */}
         <TabsContent value="questions" className="mt-4 space-y-4">
           <QuestionSource
-            pattern={exam.pattern}
+            pattern={exam.pattern as any}
             subjects={subjects}
             onQuestions={(qs) => onAddQuestions(qs as Question[])}
           />
@@ -648,7 +648,7 @@ function ExamDetail() {
             <CardHeader><CardTitle className="text-base">Exam pattern</CardTitle></CardHeader>
             <CardContent>
               <PatternPicker
-                pattern={exam.pattern}
+                pattern={exam.pattern as any}
                 config={exam.pattern_config}
                 onChange={(p, c) =>
                   patchExam({

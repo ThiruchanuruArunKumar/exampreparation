@@ -116,7 +116,7 @@ export function QuestionSource({ pattern, subjects, onQuestions, onTitleSuggeste
   };
 
   const doGenAllSubjects = async () => {
-    const preset = pattern !== "custom" ? PATTERN_PRESETS[pattern] : null;
+    const preset = pattern !== "custom" && pattern in PATTERN_PRESETS ? PATTERN_PRESETS[pattern as keyof typeof PATTERN_PRESETS] : null;
     const sections = preset ? preset.sections : subjects.map((s) => ({ name: s, count, marks_per_q: 1 }));
     if (!sections.length) return toast.error("No subjects configured");
     setBusy(true);

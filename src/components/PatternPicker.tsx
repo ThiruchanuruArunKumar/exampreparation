@@ -106,7 +106,7 @@ export function PatternPicker({ pattern, config, onChange }: Props) {
             <div className="flex items-center gap-2">
               <BookOpen className="h-4 w-4 text-primary" />
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                {pattern === "custom" ? "Custom Config" : `${PATTERN_PRESETS[pattern as Exclude<ExamPattern, "custom">].label} Breakdown`}
+                {pattern === "custom" || !(pattern in PATTERN_PRESETS) ? "Custom Config" : `${PATTERN_PRESETS[pattern as Exclude<ExamPattern, "custom">].label} Breakdown`}
               </span>
             </div>
             <Badge variant="secondary" className="font-mono text-xs w-fit">

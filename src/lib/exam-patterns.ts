@@ -103,9 +103,10 @@ export const PATTERN_PRESETS: Record<Exclude<ExamPattern, "custom">, PatternConf
   },
 };
 
-export function presetToConfig(pattern: ExamPattern): PatternConfig | null {
-  if (pattern === "custom") return null;
-  const p = PATTERN_PRESETS[pattern];
+export function presetToConfig(pattern: string): PatternConfig | null {
+  if (!pattern || pattern === "custom" || !(pattern in PATTERN_PRESETS)) return null;
+  const p = PATTERN_PRESETS[pattern as keyof typeof PATTERN_PRESETS];
+  if (!p) return null;
   return {
     duration_minutes: p.duration_minutes,
     negative_mark_per_wrong: p.negative_mark_per_wrong,
@@ -134,7 +135,11 @@ export function totalMarks(cfg: PatternConfig | null | undefined): number {
   }, 0);
 }
 
-export function patternLabel(p: ExamPattern): string {
+export function patternLabel(p: string): string {
+  if (p === "ipe") return "IPE (TS Intermediate)";
   if (p === "custom") return "Custom";
-  return PATTERN_PRESETS[p].label;
+  if (p && p in PATTERN_PRESETS) {
+    return PATTERN_PRESETS[p as keyof typeof PATTERN_PRESETS].label;
+  }
+  return p ? p.toUpperCase() : "Custom";
 }
