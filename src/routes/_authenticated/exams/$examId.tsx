@@ -650,8 +650,8 @@ function ExamDetail() {
 
         {/* SETTINGS */}
         <TabsContent value="settings" className="mt-4 space-y-4">
-          <Card>
           {exam.pattern === "ipe" ? (
+
             <Card>
               <CardHeader><CardTitle className="text-base">Exam pattern</CardTitle></CardHeader>
               <CardContent className="text-sm text-muted-foreground">
