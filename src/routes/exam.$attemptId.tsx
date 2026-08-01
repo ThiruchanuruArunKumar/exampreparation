@@ -379,7 +379,9 @@ function TakeExam() {
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
             <div className="text-xs text-muted-foreground">
-              {answered}/{questions.length} answered · {reviewCount} marked
+              {isIpe
+                ? `${questions.length} questions · ${reviewCount} marked`
+                : `${answered}/${questions.length} answered · ${reviewCount} marked`}
             </div>
             <Button
               size="sm"
@@ -431,7 +433,7 @@ function TakeExam() {
                                    const qIdx = subStart + i;
                                    const qq = questions[qIdx];
                                    if (!qq) return null;
-                                   const done = (answers[qq.id] ?? []).length > 0;
+                                   const done = !isIpe && (answers[qq.id] ?? []).length > 0;
                                    const rev = reviewed.has(qq.id);
                                    const seen = visited.has(qq.id);
                                    let cls = "border-border bg-background text-foreground";
@@ -466,7 +468,7 @@ function TakeExam() {
                               const qIdx = activeSubjInfo.start + i;
                               const qq = questions[qIdx];
                               if (!qq) return null;
-                              const done = (answers[qq.id] ?? []).length > 0;
+                              const done = !isIpe && (answers[qq.id] ?? []).length > 0;
                               const rev = reviewed.has(qq.id);
                               const seen = visited.has(qq.id);
                               let cls = "border-border bg-background text-foreground";
@@ -496,7 +498,7 @@ function TakeExam() {
                 })() : (
                    <div className="grid grid-cols-8 gap-1 sm:grid-cols-10 lg:grid-cols-5">
                      {questions.map((qq, i) => {
-                       const done = (answers[qq.id] ?? []).length > 0;
+                       const done = !isIpe && (answers[qq.id] ?? []).length > 0;
                        const rev = reviewed.has(qq.id);
                        const seen = visited.has(qq.id);
                        let cls = "border-border bg-background text-foreground";
