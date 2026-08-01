@@ -729,8 +729,9 @@ async function loadAttemptByStudent(attemptId: string, studentCode: string) {
   const { data: att, error } = await sb
     .from("attempts")
     .select(
-      "id, exam_id, student_id, status, score, max_score, submitted_at, started_at, auto_submitted, warning_count, question_order",
+      "id, exam_id, student_id, status, score, max_score, submitted_at, started_at, auto_submitted, warning_count, question_order, marks_published, graded_at",
     )
+
     .eq("id", attemptId)
     .eq("student_id", student.id)
     .maybeSingle();
