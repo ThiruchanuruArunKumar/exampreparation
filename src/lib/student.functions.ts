@@ -322,14 +322,16 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
     const { sb, att } = await loadAttempt(data.attemptId, data.sessionToken);
     const { data: examFlags } = await sb
       .from("exams")
-      .select("title, show_result_after_submit, show_answer_sheet, show_answer_book, negative_mark_per_wrong, pattern_config")
+      .select("title, total_marks, show_result_after_submit, show_answer_sheet, show_answer_book, negative_mark_per_wrong, pattern_config")
       .eq("id", att.exam_id)
       .maybeSingle();
+    const isIpe = !!(examFlags?.pattern_config as any)?.is_ipe;
     const flags = {
-      showResult: examFlags?.show_result_after_submit ?? true,
-      showAnswerSheet: examFlags?.show_answer_sheet ?? false,
-      showAnswerBook: examFlags?.show_answer_book ?? false,
+      showResult: isIpe ? false : (examFlags?.show_result_after_submit ?? true),
+      showAnswerSheet: isIpe ? false : (examFlags?.show_answer_sheet ?? false),
+      showAnswerBook: isIpe ? false : (examFlags?.show_answer_book ?? false),
       examTitle: examFlags?.title ?? "",
+      pendingEvaluation: isIpe,
     };
     if (att.status !== "in_progress") {
       const { data: existing } = await sb
@@ -339,6 +341,30 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
         .maybeSingle();
       return { ok: true, alreadySubmitted: true, score: att.score, maxScore: att.max_score, insight: existing, ...flags };
     }
+
+    if (isIpe) {
+      // Descriptive board-pattern paper: nothing is graded on screen. The answer-sheet
+      // photos go to the teacher, who evaluates and publishes marks later.
+      await sb
+        .from("attempts")
+        .update({
+          status: data.autoSubmit ? "auto_submitted" : "submitted",
+          auto_submitted: !!data.autoSubmit,
+          submitted_at: new Date().toISOString(),
+          score: 0,
+          max_score: Number(examFlags?.total_marks ?? 0),
+          marks_published: false,
+        })
+        .eq("id", att.id);
+      return {
+        ok: true,
+        score: 0,
+        maxScore: Number(examFlags?.total_marks ?? 0),
+        insight: null,
+        ...flags,
+      };
+    }
+
 
     const negPerWrong = Number(examFlags?.negative_mark_per_wrong ?? 0);
 
