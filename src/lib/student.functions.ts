@@ -935,7 +935,7 @@ export const listStudentExams = createServerFn({ method: "POST" })
     const { data: attempts } = attemptIds.length
       ? await sb
           .from("attempts")
-          .select("id, assignment_id, status, submitted_at, score, max_score")
+          .select("id, assignment_id, status, submitted_at, score, max_score, marks_published")
           .in("assignment_id", attemptIds)
           .order("submitted_at", { ascending: false })
       : { data: [] as any[] };
