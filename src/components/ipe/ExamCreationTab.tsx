@@ -198,18 +198,20 @@ export function ExamCreationTab() {
           year,
           subjectId: selectedSubjectId,
           mode,
-          durationMinutes,
+          durationMinutes: Number.isFinite(durationMinutes) && durationMinutes > 0 ? durationMinutes : 180,
           accessCode: accessCode.trim() || undefined,
           showResultAfterSubmit: showResult,
           answerSheetRequired,
           studentIds: studentIdsToAssign,
           chapterIds: Array.from(selectedChapterIds),
+          useBlueprint: false,
           vsaCount,
           saCount,
           laCount,
-          previousPaperId: selectedPaperId || undefined,
+          pyqSession: mode === "mode_b" ? pyqSession : undefined,
           questionIds: Array.from(selectedQuestionIds),
         },
+
       });
 
       toast.success(`Created IPE Exam! Password: ${res.accessCode}`);
