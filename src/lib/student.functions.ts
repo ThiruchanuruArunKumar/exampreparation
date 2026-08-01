@@ -958,6 +958,8 @@ export const listStudentExams = createServerFn({ method: "POST" })
       else if (endMs && now > endMs) state = "closed";
       else if (dueMs && now > dueMs) state = "closed";
       else state = "ongoing";
+      const isIpe = !!(exam as any).pattern_config?.is_ipe;
+      const pending = !!latest && isIpe && !(latest as any).marks_published;
       return {
         assignment_id: asg.id,
         exam: {
@@ -967,6 +969,7 @@ export const listStudentExams = createServerFn({ method: "POST" })
           duration_minutes: exam.duration_minutes,
           total_marks: exam.total_marks,
           pattern: exam.pattern,
+          is_ipe: isIpe,
           start_at: exam.start_at,
           end_at: exam.end_at,
           negative_mark_per_wrong: exam.negative_mark_per_wrong,
@@ -978,13 +981,15 @@ export const listStudentExams = createServerFn({ method: "POST" })
         latest_attempt: latest
           ? {
               id: latest.id,
-              score: latest.score,
+              score: pending ? null : latest.score,
               max_score: latest.max_score,
               submitted_at: latest.submitted_at,
+              pending_evaluation: pending,
             }
           : null,
         state,
       };
+
     });
 
     const order = { ongoing: 0, upcoming: 1, closed: 2, completed: 3 } as const;
