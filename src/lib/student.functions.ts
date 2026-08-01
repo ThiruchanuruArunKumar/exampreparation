@@ -160,14 +160,14 @@ export const getStudentHistory = createServerFn({ method: "POST" })
 
     const { data: attempts } = await sb
       .from("attempts")
-      .select("id, exam_id, status, score, max_score, submitted_at, started_at, auto_submitted, warning_count")
+      .select("id, exam_id, status, score, max_score, submitted_at, started_at, auto_submitted, warning_count, marks_published")
       .eq("student_id", student.id)
       .order("started_at", { ascending: false });
 
     const examIds = Array.from(new Set((attempts ?? []).map((a) => a.exam_id)));
     const { data: exams } = examIds.length
-      ? await sb.from("exams").select("id, title, duration_minutes").in("id", examIds)
-      : { data: [] as { id: string; title: string; duration_minutes: number }[] };
+      ? await sb.from("exams").select("id, title, duration_minutes, pattern_config").in("id", examIds)
+      : { data: [] as { id: string; title: string; duration_minutes: number; pattern_config: any }[] };
     const examMap = new Map((exams ?? []).map((e) => [e.id, e]));
 
     const attemptIds = (attempts ?? []).map((a) => a.id);
@@ -181,12 +181,21 @@ export const getStudentHistory = createServerFn({ method: "POST" })
 
     return {
       student,
-      history: (attempts ?? []).map((a) => ({
-        ...a,
-        exam: examMap.get(a.exam_id) ?? null,
-        insight: insightMap.get(a.id) ?? null,
-      })),
+      history: (attempts ?? []).map((a: any) => {
+        const exam: any = examMap.get(a.exam_id) ?? null;
+        const isIpe = !!exam?.pattern_config?.is_ipe;
+        const pending = isIpe && !a.marks_published;
+        return {
+          ...a,
+          score: pending ? null : a.score,
+          pending_evaluation: pending,
+          is_ipe: isIpe,
+          exam: exam ? { id: exam.id, title: exam.title, duration_minutes: exam.duration_minutes } : null,
+          insight: pending ? null : (insightMap.get(a.id) ?? null),
+        };
+      }),
     };
+
   });
 
 async function loadAttempt(attemptId: string, token: string) {
