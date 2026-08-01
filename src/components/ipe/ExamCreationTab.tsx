@@ -409,32 +409,22 @@ export function ExamCreationTab() {
                 <div className="grid grid-cols-3 gap-3">
                   <div>
                     <Label className="text-xs">VSA Count (2 Marks)</Label>
-                    <Input
-                      type="number"
-                      value={vsaCount}
-                      onChange={(e) => setVsaCount(Number(e.target.value))}
-                      className="text-xs mt-1"
-                    />
+                    <NumberField value={vsaCount} onChange={setVsaCount} min={0} max={20} fallback={10} className="text-xs mt-1" />
                   </div>
                   <div>
                     <Label className="text-xs">SA Count (4 Marks)</Label>
-                    <Input
-                      type="number"
-                      value={saCount}
-                      onChange={(e) => setSaCount(Number(e.target.value))}
-                      className="text-xs mt-1"
-                    />
+                    <NumberField value={saCount} onChange={setSaCount} min={0} max={20} fallback={8} className="text-xs mt-1" />
                   </div>
                   <div>
                     <Label className="text-xs">LA Count (8 Marks)</Label>
-                    <Input
-                      type="number"
-                      value={laCount}
-                      onChange={(e) => setLaCount(Number(e.target.value))}
-                      className="text-xs mt-1"
-                    />
+                    <NumberField value={laCount} onChange={setLaCount} min={0} max={20} fallback={3} className="text-xs mt-1" />
                   </div>
                 </div>
+                <p className="text-[11px] text-muted-foreground">
+                  If the bank is short of questions for these counts, the missing ones are AI-generated in TS board
+                  style and saved back to the bank automatically.
+                </p>
+
               </CardContent>
             </Card>
           )}
