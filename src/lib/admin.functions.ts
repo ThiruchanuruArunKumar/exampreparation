@@ -655,7 +655,7 @@ const GenQuestionSchema = z.object({
   difficulty: z.enum(["easy", "medium", "hard", "extreme"]),
   source_ref: z.string().nullable(),
 });
-const GenSchema = z.object({ questions: z.array(GenQuestionSchema) });
+const GenSchema = z.record(z.string(), z.any());
 
 type GenQuestion = z.infer<typeof GenQuestionSchema>;
 
@@ -861,7 +861,7 @@ Approximate format ratio: ~65% direct single-correct MCQ, ~20% Numerical/integer
   custom: `Follow the admin's brief exactly.${PATTERN_FORMAT_MIX}`,
 };
 
-async function runGenerateOnce(prompt: string, userContent: any[]) {
+async function runGenerateOnce(prompt: string, userContent: any[]): Promise<GenQuestion[]> {
   const key = getAiApiKey();
   if (!key) throw new Error("Missing AI API key");
   const gateway = createLovableAiGatewayProvider(key, { structuredOutputs: true });
@@ -870,13 +870,53 @@ async function runGenerateOnce(prompt: string, userContent: any[]) {
       model: gateway("openai/gpt-5.4-mini"),
       providerOptions: { lovable: { service_tier: "priority" } },
       output: Output.object({ schema: GenSchema }),
-      instructions: prompt,
-      messages: [
-        { role: "user", content: userContent as any },
-      ],
+      instructions:
+        prompt +
+        "\n\nCRITICAL FORMATTING REQUIREMENT: You MUST return a JSON object containing a top-level key 'questions' with a JSON array of question objects.",
+      messages: [{ role: "user", content: userContent as any }],
     });
-    return output.questions;
+
+    let rawItems: any[] = [];
+    if (output && Array.isArray(output.questions)) {
+      rawItems = output.questions;
+    } else if (output && typeof output === "object") {
+      rawItems = Object.values(output).filter((v) => typeof v === "object" && v !== null);
+    }
+
+    const normalized: GenQuestion[] = rawItems
+      .map((item: any) => {
+        if (!item || typeof item !== "object") return null;
+        const promptText = item.prompt || item.question || item.promptText || item.text;
+        if (!promptText || typeof promptText !== "string") return null;
+
+        let correctArr: string[] = [];
+        if (Array.isArray(item.correct_answer)) correctArr = item.correct_answer.map(String);
+        else if (typeof item.correct_answer === "string") correctArr = [item.correct_answer];
+        else if (Array.isArray(item.correct)) correctArr = item.correct.map(String);
+        else if (typeof item.correct === "string") correctArr = [item.correct];
+
+        let opts: string[] | null = null;
+        if (Array.isArray(item.options)) opts = item.options.map(String);
+
+        const typeVal = ["mcq", "multi", "tf", "short"].includes(item.type) ? item.type : "mcq";
+        const diffVal = ["easy", "medium", "hard", "extreme"].includes(item.difficulty) ? item.difficulty : "medium";
+
+        return {
+          type: typeVal as any,
+          prompt: promptText,
+          options: opts,
+          correct_answer: correctArr,
+          marks: typeof item.marks === "number" ? item.marks : 4,
+          topic: typeof item.topic === "string" ? item.topic : "General",
+          difficulty: diffVal as any,
+          source_ref: typeof item.source_ref === "string" ? item.source_ref : null,
+        };
+      })
+      .filter((q): q is GenQuestion => q !== null);
+
+    return normalized;
   } catch (error) {
+    console.error("runGenerateOnce error:", error);
     if (NoObjectGeneratedError.isInstance(error)) {
       throw new Error("AI could not produce structured questions. Try clearer input or fewer questions.");
     }
@@ -884,8 +924,8 @@ async function runGenerateOnce(prompt: string, userContent: any[]) {
   }
 }
 
-// Split large generations into parallel chunks for much faster wall-clock time,
-// with prompt count sanitization per chunk and a top-up pass to guarantee exact count.
+// Split large generations into sequential chunks for high reliability,
+// with prompt count sanitization per chunk and exact count guarantees.
 async function runGenerateExact(prompt: string, userContent: any[], count: number) {
   const CHUNK = 20;
 
@@ -914,7 +954,10 @@ async function runGenerateExact(prompt: string, userContent: any[], count: numbe
   if (count <= CHUNK) {
     const p = sanitizePromptForCount(prompt, count);
     const c = sanitizeContentForCount(userContent, count);
-    accumulated = await runGenerateOnce(p, c).catch(() => []);
+    accumulated = await runGenerateOnce(p, c).catch((err) => {
+      console.error("runGenerateExact single chunk failed:", err);
+      return [];
+    });
   } else {
     const chunks: number[] = [];
     let remaining = count;
@@ -924,26 +967,39 @@ async function runGenerateExact(prompt: string, userContent: any[], count: numbe
       remaining -= n;
     }
 
-    const results = await Promise.all(
-      chunks.map((n, i) => {
-        const chunkPrompt = sanitizePromptForCount(prompt, n);
-        const cleanedUserContent = sanitizeContentForCount(userContent, n);
-        const chunkContent = [
-          ...cleanedUserContent,
-          {
-            type: "text",
-            text: `Batch ${i + 1} of ${chunks.length}. Produce exactly ${n} questions for THIS batch only. Vary topics/difficulty from other batches; do not repeat questions. Use a distinct random seed: ${Math.random().toString(36).slice(2, 10)}.`,
-          },
-        ];
-        return runGenerateOnce(chunkPrompt, chunkContent).then((qs) => qs.slice(0, n)).catch(() => []);
-      }),
-    );
+    const results: GenQuestion[][] = [];
+    for (let i = 0; i < chunks.length; i++) {
+      const n = chunks[i];
+      const chunkPrompt = sanitizePromptForCount(prompt, n);
+      const cleanedUserContent = sanitizeContentForCount(userContent, n);
+      const chunkContent = [
+        ...cleanedUserContent,
+        {
+          type: "text",
+          text: `Batch ${i + 1} of ${chunks.length}. Produce exactly ${n} questions for THIS batch only. Vary topics/difficulty from other batches; do not repeat questions. Use a distinct random seed: ${Math.random().toString(36).slice(2, 10)}.`,
+        },
+      ];
+      try {
+        const qs = await runGenerateOnce(chunkPrompt, chunkContent);
+        results.push(qs.slice(0, n));
+      } catch (err) {
+        console.error(`runGenerateExact batch ${i + 1} failed:`, err);
+      }
+    }
     accumulated = results.flat();
   }
 
+  // Sanitize latex formatting in generated questions
+  const cleaned = accumulated.map((q) => ({
+    ...fixMatchOptionsInQuestion(q),
+    prompt: repairLatex(q.prompt),
+    options: q.options?.map(repairLatex) ?? null,
+    correct_answer: q.correct_answer.map(repairLatex),
+  }));
+
   // Guarantee exact target count: if any chunk returned fewer items, run a top-up pass for the missing questions.
-  if (accumulated.length < count) {
-    const missing = count - accumulated.length;
+  if (cleaned.length < count) {
+    const missing = count - cleaned.length;
     const topUpPrompt = sanitizePromptForCount(prompt, missing);
     const topUpContent = [
       ...sanitizeContentForCount(userContent, missing),

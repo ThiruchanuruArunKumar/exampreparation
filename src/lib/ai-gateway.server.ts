@@ -1,7 +1,41 @@
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import fs from "fs";
+import path from "path";
+
+let cachedEnvKey: string | null = null;
 
 export function getAiApiKey(): string {
-  return process.env.GROQ_API_KEY || process.env.LOVABLE_API_KEY || "";
+  const envKey =
+    process.env.GROQ_API_KEY ||
+    process.env.VITE_GROQ_API_KEY ||
+    process.env.LOVABLE_API_KEY ||
+    process.env.VITE_LOVABLE_API_KEY;
+  if (envKey) return envKey;
+
+  if (cachedEnvKey) return cachedEnvKey;
+
+  try {
+    const envPath = path.resolve(process.cwd(), ".env");
+    if (fs.existsSync(envPath)) {
+      const content = fs.readFileSync(envPath, "utf-8");
+      for (const line of content.split("\n")) {
+        const trimmed = line.trim();
+        if (trimmed && !trimmed.startsWith("#")) {
+          const idx = trimmed.indexOf("=");
+          if (idx > 0) {
+            const k = trimmed.substring(0, idx).trim();
+            const v = trimmed.substring(idx + 1).trim().replace(/^["']|["']$/g, "");
+            if ((k === "GROQ_API_KEY" || k === "VITE_GROQ_API_KEY" || k === "LOVABLE_API_KEY") && v) {
+              cachedEnvKey = v;
+              return v;
+            }
+          }
+        }
+      }
+    }
+  } catch {}
+
+  return "";
 }
 
 export function createGroqAiGatewayProvider(
