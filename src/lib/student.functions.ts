@@ -480,7 +480,7 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
         try {
           const gateway = createLovableAiGatewayProvider(key, { structuredOutputs: true });
           const { output } = await generateText({
-            model: gateway("openai/gpt-5.5"),
+            model: gateway("openai/gpt-oss-120b"),
             output: Output.object({
               schema: z.object({
                 results: z.array(
@@ -571,8 +571,7 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
         }));
         const gateway = createLovableAiGatewayProvider(key, { structuredOutputs: true });
         const { output } = await generateText({
-          model: gateway("openai/gpt-5.4-mini"),
-          providerOptions: { lovable: { service_tier: "priority" } },
+          model: gateway("openai/gpt-oss-120b"),
           output: Output.object({
             schema: z.object({
               summary: z.string(),
@@ -706,8 +705,7 @@ export const getStudentExplanation = createServerFn({ method: "POST" })
     if (!key) throw new Error("AI not configured");
     const gateway = createLovableAiGatewayProvider(key);
     const { text } = await generateText({
-      model: gateway("openai/gpt-5.4-mini"),
-      providerOptions: { lovable: { service_tier: "priority" } },
+      model: gateway("openai/gpt-oss-120b"),
       instructions:
         "You are an expert tutor writing an Answer Book entry for a competitive-exam question, in the clean, well-organized style of ChatGPT. Structure the reply EXACTLY as Markdown with these sections in this order, using these exact headings:\n\n### Correct answer\nOne line only. State the correct option verbatim in **bold**. Do NOT repeat it.\n\n### Why it is correct\n2-4 short sentences of plain-language reasoning. No formulas here.\n\n### Step-by-step solution\nA numbered Markdown list (1., 2., 3., ...). Each step = ONE idea, ONE sentence + at most ONE formula on its own display line. For each formula: name it, define every variable, then show the substitution. Use $$...$$ on its own line for any formula that stands alone.\n\n### Why the other options are wrong\nA Markdown bullet list (\"- \"). One short bullet per wrong option, starting with the option text in **bold**.\n\n### Key takeaway\nOne single line the student should memorize.\n\nSTRICT FORMATTING RULES — the output renders with Markdown + KaTeX + mhchem:\n- Use ONLY $...$ for inline math and $$...$$ for display math. NEVER use \\( \\), \\[ \\], plain parentheses, or plain brackets around LaTeX.\n- Every \\ce{...}, \\frac{...}{...}, \\sqrt{...}, ^, _ MUST be inside $...$ or $$...$$. Never write bare \\ce{AgCl} — write $\\ce{AgCl}$.\n- Chemistry example: $\\ce{H2SO4 -> 2H+ + SO4^{2-}}$. Powers/subs: $x^2$, $H_2O$, $10^{-3}$. Units: $9.8\\,\\text{m/s}^2$.\n- No emojis, no ASCII art, no horizontal rules, no walls of text, no preamble like \"Sure!\" or \"Let us solve this\". Get straight to the answer.",
       prompt: JSON.stringify(
@@ -882,8 +880,7 @@ export const getHistoryExplanation = createServerFn({ method: "POST" })
     if (!key) throw new Error("AI not configured");
     const gateway = createLovableAiGatewayProvider(key);
     const { text } = await generateText({
-      model: gateway("openai/gpt-5.4-mini"),
-      providerOptions: { lovable: { service_tier: "priority" } },
+      model: gateway("openai/gpt-oss-120b"),
       instructions:
         "You are an expert tutor writing an Answer Book entry for a competitive-exam question, in the clean, well-organized style of ChatGPT. Structure the reply EXACTLY as Markdown with these sections in this order, using these exact headings:\n\n### Correct answer\nOne line only. State the correct option verbatim in **bold**. Do NOT repeat it.\n\n### Why it is correct\n2-4 short sentences of plain-language reasoning. No formulas here.\n\n### Step-by-step solution\nA numbered Markdown list (1., 2., 3., ...). Each step = ONE idea, ONE sentence + at most ONE formula on its own display line. For each formula: name it, define every variable, then show the substitution. Use $$...$$ on its own line for any formula that stands alone.\n\n### Why the other options are wrong\nA Markdown bullet list (\"- \"). One short bullet per wrong option, starting with the option text in **bold**.\n\n### Key takeaway\nOne single line the student should memorize.\n\nSTRICT FORMATTING RULES — the output renders with Markdown + KaTeX + mhchem:\n- Use ONLY $...$ for inline math and $$...$$ for display math. NEVER use \\( \\), \\[ \\], plain parentheses, or plain brackets around LaTeX.\n- Every \\ce{...}, \\frac{...}{...}, \\sqrt{...}, ^, _ MUST be inside $...$ or $$...$$. Never write bare \\ce{AgCl} — write $\\ce{AgCl}$.\n- Chemistry example: $\\ce{H2SO4 -> 2H+ + SO4^{2-}}$. Powers/subs: $x^2$, $H_2O$, $10^{-3}$. Units: $9.8\\,\\text{m/s}^2$.\n- No emojis, no ASCII art, no horizontal rules, no walls of text, no preamble like \"Sure!\" or \"Let us solve this\". Get straight to the answer.",
       prompt: JSON.stringify(
