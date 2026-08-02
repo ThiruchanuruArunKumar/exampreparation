@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { createLovableAiGatewayProvider, getAiApiKey } from "./ai-gateway.server";
+import { createLovableAiGatewayProvider, getAiApiKey, createVisionProvider, getVisionApiKey } from "./ai-gateway.server";
 import { repairQuestionLatex } from "./latex-repair";
 
 

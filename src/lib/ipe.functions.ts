@@ -4,7 +4,7 @@ import { generateText, Output } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { repairLatex } from "./latex-repair";
 import { SEED_SUBJECTS } from "./ipe-seed-data";
-import { createLovableAiGatewayProvider, getAiApiKey } from "./ai-gateway.server";
+import { createLovableAiGatewayProvider, getAiApiKey, createVisionProvider, getVisionApiKey } from "./ai-gateway.server";
 import { blueprintForSubject, blueprintMaxMarks, sectionLabel } from "./ipe-blueprints";
 
 
