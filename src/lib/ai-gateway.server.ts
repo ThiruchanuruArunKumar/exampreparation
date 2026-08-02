@@ -41,38 +41,44 @@ export function getAiApiKey(): string {
 
 /**
  * Text/JSON generation via Groq.
- * Every legacy model id (openai/gpt-*, lovable ids) is mapped to a real Groq model.
- * Groq only supports `json_schema` structured outputs on the gpt-oss models, so
- * that is the default flagship — llama-3.3 would fail on structured requests.
+ * Maps models to Groq's top 70B models (llama-3.3-70b-versatile and deepseek-r1-distill-llama-70b).
+ * supportsStructuredOutputs is set to false so Vercel AI SDK uses prompt-injected JSON mode
+ * ({ type: 'json_object' }), which Groq fully supports.
  */
 export function createGroqAiGatewayProvider(
   apiKey?: string,
-  _options?: { structuredOutputs?: boolean },
+  options?: { structuredOutputs?: boolean },
 ) {
   const key = apiKey && apiKey.trim().length > 0 ? apiKey : getAiApiKey();
   const groq = createOpenAICompatible({
     name: "groq",
     baseURL: "https://api.groq.com/openai/v1",
     apiKey: key,
-    supportsStructuredOutputs: true,
+    supportsStructuredOutputs: false,
   });
 
-  const flagshipModel = process.env.GROQ_MODEL || "openai/gpt-oss-120b";
-  const fastModel = process.env.GROQ_FAST_MODEL || "openai/gpt-oss-20b";
-
-  const isGroqNative = (id: string) =>
-    id.startsWith("llama-") ||
-    id.startsWith("groq/") ||
-    id.startsWith("qwen/") ||
-    id.startsWith("meta-llama/") ||
-    id === "openai/gpt-oss-120b" ||
-    id === "openai/gpt-oss-20b" ||
-    id === "openai/gpt-oss-safeguard-20b";
+  const flagshipModel = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+  const reasoningModel = process.env.GROQ_REASONING_MODEL || "deepseek-r1-distill-llama-70b";
 
   return (modelId: string) => {
-    if (modelId && isGroqNative(modelId)) return groq(modelId);
-    if (modelId && (modelId.includes("nano") || modelId.includes("lite"))) return groq(fastModel);
-    return groq(flagshipModel);
+    // If explicit Groq model ID is provided, use it directly
+    if (
+      modelId === "llama-3.3-70b-versatile" ||
+      modelId === "deepseek-r1-distill-llama-70b" ||
+      modelId === "qwen-2.5-coder-32b" ||
+      modelId === "llama-3.1-8b-instant" ||
+      modelId === "mixtral-8x7b-32768"
+    ) {
+      return groq(modelId);
+    }
+
+    // Map legacy or generic model requests to Groq's top 70B parameter models:
+    let resolvedModel = flagshipModel;
+    if (!options?.structuredOutputs && (modelId.includes("sol") || modelId.includes("reasoning"))) {
+      resolvedModel = reasoningModel;
+    }
+
+    return groq(resolvedModel);
   };
 }
 
@@ -80,11 +86,9 @@ export const createLovableAiGatewayProvider = createGroqAiGatewayProvider;
 
 /**
  * Vision / document understanding (PDF, DOCX, images).
- * Groq exposes no multimodal chat model, so these calls go through the
- * Lovable AI Gateway, which does.
  */
 export function getVisionApiKey(): string {
-  return process.env.LOVABLE_API_KEY || "";
+  return process.env.LOVABLE_API_KEY || getAiApiKey();
 }
 
 export function createVisionProvider(apiKey?: string) {
