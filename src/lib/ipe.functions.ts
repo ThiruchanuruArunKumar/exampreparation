@@ -584,7 +584,7 @@ async function generateIpeQuestionSet(opts: {
   const batches = await Promise.all(
     types.map(async (t) => {
       const { output } = await generateText({
-        model: gateway("openai/gpt-oss-120b"),
+        model: gateway("openai/gpt-oss-20b"),
         output: Output.object({ schema: AiIpeBatchSchema }),
         instructions: ipeGenInstructions(opts.generationType, opts.toughness),
         prompt: `Subject: ${opts.subjectName} (TS Intermediate ${opts.year.replace("_", " ")})
