@@ -866,7 +866,7 @@ async function runGenerateOnce(prompt: string, userContent: any[]) {
   if (!key) throw new Error("Missing AI API key");
   const model = needsVision
     ? createVisionProvider(key)("google/gemini-3.5-flash")
-    : createLovableAiGatewayProvider(key, { structuredOutputs: true })("openai/gpt-oss-120b");
+    : createLovableAiGatewayProvider(key, { structuredOutputs: true })("openai/gpt-oss-20b");
   try {
     const { output } = await generateText({
       model,
@@ -888,7 +888,9 @@ async function runGenerateOnce(prompt: string, userContent: any[]) {
 // Split large generations into parallel chunks for much faster wall-clock time,
 // with prompt count sanitization per chunk and a top-up pass to guarantee exact count.
 async function runGenerateExact(prompt: string, userContent: any[], count: number) {
-  const CHUNK = 20;
+  // Groq's 20B model is substantially faster for structured question batches.
+  // Keep each response small so a full exam does not wait on one very large completion.
+  const CHUNK = 10;
 
   const sanitizeContentForCount = (contentArray: any[], targetCount: number) => {
     return contentArray.map((item) => {
@@ -915,7 +917,7 @@ async function runGenerateExact(prompt: string, userContent: any[], count: numbe
   if (count <= CHUNK) {
     const p = sanitizePromptForCount(prompt, count);
     const c = sanitizeContentForCount(userContent, count);
-    accumulated = await runGenerateOnce(p, c).catch(() => []);
+    accumulated = await runGenerateOnce(p, c);
   } else {
     const chunks: number[] = [];
     let remaining = count;
@@ -936,7 +938,7 @@ async function runGenerateExact(prompt: string, userContent: any[], count: numbe
             text: `Batch ${i + 1} of ${chunks.length}. Produce exactly ${n} questions for THIS batch only. Vary topics/difficulty from other batches; do not repeat questions. Use a distinct random seed: ${Math.random().toString(36).slice(2, 10)}.`,
           },
         ];
-        return runGenerateOnce(chunkPrompt, chunkContent).then((qs) => qs.slice(0, n)).catch(() => []);
+        return runGenerateOnce(chunkPrompt, chunkContent).then((qs) => qs.slice(0, n));
       }),
     );
     accumulated = results.flat();
@@ -953,7 +955,7 @@ async function runGenerateExact(prompt: string, userContent: any[], count: numbe
         text: `Top-up batch: Produce exactly ${missing} additional unique questions to complete the set. Do not repeat existing topics.`,
       },
     ];
-    const extra = await runGenerateOnce(topUpPrompt, topUpContent).then((qs) => qs.slice(0, missing)).catch(() => []);
+    const extra = await runGenerateOnce(topUpPrompt, topUpContent).then((qs) => qs.slice(0, missing));
     accumulated = [...accumulated, ...extra];
   }
 
