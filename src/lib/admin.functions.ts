@@ -862,13 +862,15 @@ Approximate format ratio: ~65% direct single-correct MCQ, ~20% Numerical/integer
 };
 
 async function runGenerateOnce(prompt: string, userContent: any[]) {
-  const key = getAiApiKey();
+  const needsVision = userContent.some((p) => p?.type === "image" || p?.type === "file");
+  const key = needsVision ? getVisionApiKey() : getAiApiKey();
   if (!key) throw new Error("Missing AI API key");
-  const gateway = createLovableAiGatewayProvider(key, { structuredOutputs: true });
+  const model = needsVision
+    ? createVisionProvider(key)("google/gemini-3.5-flash")
+    : createLovableAiGatewayProvider(key, { structuredOutputs: true })("openai/gpt-oss-120b");
   try {
     const { output } = await generateText({
-      model: gateway("openai/gpt-5.4-mini"),
-      providerOptions: { lovable: { service_tier: "priority" } },
+      model,
       output: Output.object({ schema: GenSchema }),
       instructions: prompt,
       messages: [
