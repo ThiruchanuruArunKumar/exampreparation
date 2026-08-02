@@ -4,7 +4,7 @@ import path from "path";
 
 let cachedEnvKey: string | null = null;
 
-/** Groq key powers all text generation. */
+/** Groq API key powers all text and vision generation. */
 export function getAiApiKey(): string {
   const envKey =
     process.env.GROQ_API_KEY ||
@@ -40,10 +40,8 @@ export function getAiApiKey(): string {
 }
 
 /**
- * Text/JSON generation via Groq.
- * Maps models to Groq's top 70B models (llama-3.3-70b-versatile and deepseek-r1-distill-llama-70b).
- * supportsStructuredOutputs is set to false so Vercel AI SDK uses prompt-injected JSON mode
- * ({ type: 'json_object' }), which Groq fully supports.
+ * All AI text and JSON generation via Groq API ONLY (https://api.groq.com/openai/v1).
+ * Maps models to Groq's top 70B parameter models (llama-3.3-70b-versatile and deepseek-r1-distill-llama-70b).
  */
 export function createGroqAiGatewayProvider(
   apiKey?: string,
@@ -67,12 +65,13 @@ export function createGroqAiGatewayProvider(
       modelId === "deepseek-r1-distill-llama-70b" ||
       modelId === "qwen-2.5-coder-32b" ||
       modelId === "llama-3.1-8b-instant" ||
-      modelId === "mixtral-8x7b-32768"
+      modelId === "mixtral-8x7b-32768" ||
+      modelId === "llama-3.2-11b-vision-preview"
     ) {
       return groq(modelId);
     }
 
-    // Map legacy or generic model requests to Groq's top 70B parameter models:
+    // Map all generic or legacy requests to Groq's top 70B models:
     let resolvedModel = flagshipModel;
     if (!options?.structuredOutputs && (modelId.includes("sol") || modelId.includes("reasoning"))) {
       resolvedModel = reasoningModel;
@@ -85,20 +84,14 @@ export function createGroqAiGatewayProvider(
 export const createLovableAiGatewayProvider = createGroqAiGatewayProvider;
 
 /**
- * Vision / document understanding (PDF, DOCX, images).
+ * All vision & document understanding operations route to Groq API ONLY.
  */
 export function getVisionApiKey(): string {
-  return process.env.LOVABLE_API_KEY || getAiApiKey();
+  return getAiApiKey();
 }
 
 export function createVisionProvider(apiKey?: string) {
-  const key = apiKey && apiKey.trim().length > 0 ? apiKey : getVisionApiKey();
-  const gateway = createOpenAICompatible({
-    name: "lovable",
-    baseURL: "https://ai.gateway.lovable.dev/v1",
-    apiKey: key,
-    headers: { "Lovable-API-Key": key },
-    supportsStructuredOutputs: true,
-  });
-  return (modelId: string) => gateway(modelId || "google/gemini-3.5-flash");
+  const key = apiKey && apiKey.trim().length > 0 ? apiKey : getAiApiKey();
+  const groq = createGroqAiGatewayProvider(key);
+  return (modelId: string) => groq(modelId || "llama-3.3-70b-versatile");
 }

@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { createLovableAiGatewayProvider, getAiApiKey, createVisionProvider, getVisionApiKey } from "./ai-gateway.server";
+import { createGroqAiGatewayProvider, createLovableAiGatewayProvider, getAiApiKey, createVisionProvider, getVisionApiKey } from "./ai-gateway.server";
 import { repairLatex } from "./latex-repair";
 import { stripNullBytes } from "./utils";
 
@@ -861,13 +861,10 @@ Approximate format ratio: ~65% direct single-correct MCQ, ~20% Numerical/integer
 };
 
 async function runGenerateOnce(prompt: string, userContent: any[]): Promise<GenQuestion[]> {
-  const needsVision = userContent.some((p) => p?.type === "image" || p?.type === "file");
-  const key = needsVision ? getVisionApiKey() : getAiApiKey();
+  const key = getAiApiKey();
   if (!key) throw new Error("Missing AI API key");
 
-  const model = needsVision
-    ? createVisionProvider(key)("google/gemini-3.5-flash")
-    : createLovableAiGatewayProvider(key, { structuredOutputs: true })("llama-3.3-70b-versatile");
+  const model = createGroqAiGatewayProvider(key, { structuredOutputs: true })("llama-3.3-70b-versatile");
 
   try {
     const { output } = await generateText({
@@ -1064,12 +1061,12 @@ FORMATTING (CRITICAL — questions render with Markdown + KaTeX + mhchem):
 - Powers/subscripts: $x^2$, $a_{ij}$, $10^{-3}$.
 - Fractions/roots: $\\frac{a}{b}$, $\\sqrt{x}$, $\\sqrt[3]{x}$.
 - Greek/symbols: $\\alpha$, $\\beta$, $\\pi$, $\\sigma$, $\\theta$, $\\Delta$, $\\rightarrow$, $\\pm$, $\\times$, $\\infty$ — each in its own $...$.
-- Vectors/units: $\\vec{F} = m\\vec{a}$, $9.8\\ \\text{m/s}^2$.
+- Vectors/units: Write physical units in clean plain text (e.g. 10 m/s, 2 m/s², 60 m, 4 s, 9.8 m/s², 50 km/h). Do NOT wrap units inside \text{...} macros.
 - CHEMISTRY (strict): ALWAYS use mhchem inside math, one species/equation per $...$ pair:
   species -> $\\ce{H2SO4}$, $\\ce{SO4^2-}$, $\\ce{NH3(aq)}$, $\\ce{AgCl(s)}$
   reaction -> $\\ce{2SO2(g) + O2(g) <=> 2SO3(g)}$
-  Never write bare \\ce{...} outside $...$; never write \\mathrm{...} around a whole reaction; never mix prose inside \\ce{}. Use $\\ce{->}$ / $\\ce{<=>}$ for arrows, never the words "arrow" or raw \\rightleftharpoons outside math. For bonds write "sigma bond" / "pi bond" in words, or $\\sigma$ / $\\pi$ inside math — never a stray \\sigma in prose.
-- PHYSICS: state every symbol's meaning in words; numbers with units as $5\\ \\text{m s}^{-1}$.
+  Never write bare \\ce{...} outside $...$; never write \\mathrm{...} around a whole reaction; never mix prose inside \\ce{}. Use $\\ce{->}$ / $\\ce{<=>}$ for arrows, never the words "arrow" or raw \\rightleftharpoons outside math. For bonds write "sigma bond" / "pi bond" in words, or $\\sigma$ / $\\pi$ inside math.
+- PHYSICS: state every symbol's meaning in words; numbers with units in clean text (e.g. 5 m/s).
 - BOTANY / ZOOLOGY: plain English only, italics via **bold** is not needed; scientific names written normally (e.g. Homo sapiens). No LaTeX unless a real formula appears.
 - Options must be pure text of the choice (no "A)"/"B)" prefixes), self-contained, and use the same math rules.
 - Preserve line breaks in the prompt using \\n. Do NOT wrap the question in a code block. Do NOT escape backslashes twice.

@@ -70,11 +70,27 @@ export function repairLatex(input: string | null | undefined): string {
   s = s.replace(/\t(ext|times|theta|tan|to|tau|triangle|tilde)/g, "\\$1");
   s = s.replace(/\\ext\{/g, "\\text{");
 
-  // Repair corrupted unit strings produced by unescaped \text: e.g. 10extm/s -> 10\text{m/s}, 60extm -> 60\text{m}, 4exts -> 4\text{s}
+  // Repair tab-corrupted \times -> imes (e.g. 2imes10^{-6} -> 2 \times 10^{-6}, 9imes10^4 -> 9 \times 10^4)
+  s = s.replace(/(\d+)\s*imes\s*10/g, "$1 \\times 10");
+  s = s.replace(/(-?\d+)\s*imes\s*10/g, "$1 \\times 10");
+
+  // Repair corrupted unit strings produced by unescaped \text: e.g. 10extm/s -> 10 m/s, 60extm -> 60 m, 4exts -> 4 s
   s = s.replace(/(\d+)\s*ext\s*(\{([^}]+)\}|([a-zA-Z]+(?:\/[a-zA-Z]+)?(?:\^\d+)?))/g, (_m, num, _rest, unitInsideBraces, rawUnit) => {
-    const unit = unitInsideBraces || rawUnit;
-    return `${num}\\text{${unit}}`;
+    let unit = (unitInsideBraces || rawUnit || "").replace(/\^2/g, "²").replace(/\^3/g, "³");
+    return `${num} ${unit}`;
   });
+
+  // Clean redundant \text{...} wrappers around simple units
+  s = s.replace(/(\d+)\s*\\text\{([^}]+)\}/g, (_m, num, unit) => `${num} ${unit.replace(/\^2/g, "²").replace(/\^3/g, "³")}`);
+
+  // Format scientific units attached to exponents (e.g. 10^{-6}C -> 10^{-6} C, 10^4V -> 10^4 V)
+  s = s.replace(/(10\^\{?-?\d+\}?)\s*([A-Z])\b/g, "$1 $2");
+
+  // Ensure space between numbers and standard physical units (e.g. 10cm -> 10 cm, 0V -> 0 V)
+  s = s.replace(/(\d+)\s*(cm|mm|km|kg|g|N|J|W|Hz|Pa|V|A|C|T|F|H|Ω|ohm)\b/g, "$1 $2");
+
+
+
 
 
   // Fix invalid backslashes before plain chemical formulas like \NH3 -> NH3
