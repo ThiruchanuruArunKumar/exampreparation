@@ -584,8 +584,7 @@ async function generateIpeQuestionSet(opts: {
   const batches = await Promise.all(
     types.map(async (t) => {
       const { output } = await generateText({
-        model: gateway("openai/gpt-5.6-sol"),
-        providerOptions: { lovable: { reasoningEffort: "none", service_tier: "priority" } },
+        model: gateway("openai/gpt-oss-120b"),
         output: Output.object({ schema: AiIpeBatchSchema }),
         instructions: ipeGenInstructions(opts.generationType, opts.toughness),
         prompt: `Subject: ${opts.subjectName} (TS Intermediate ${opts.year.replace("_", " ")})
@@ -1382,9 +1381,9 @@ export const aiEvaluateIpeAnswerSheet = createServerFn({ method: "POST" })
     if (!questions.length) throw new Error("This exam has no questions to evaluate.");
     if (!pages.length) throw new Error("The student has not uploaded any answer sheet pages for this attempt.");
 
-    const key = getAiApiKey();
+    const key = getVisionApiKey();
     if (!key) throw new Error("AI is not configured");
-    const gateway = createLovableAiGatewayProvider(key, { structuredOutputs: true });
+    const gateway = createVisionProvider(key);
 
     const EvalSchema = z.object({
       grades: z.array(
@@ -1409,8 +1408,7 @@ export const aiEvaluateIpeAnswerSheet = createServerFn({ method: "POST" })
       .join("\n\n");
 
     const { output } = await generateText({
-      model: gateway("openai/gpt-5.6-sol"),
-      providerOptions: { lovable: { reasoningEffort: "none" } },
+      model: gateway("google/gemini-3.5-flash"),
       output: Output.object({ schema: EvalSchema }),
       instructions: `You are an experienced TS Intermediate Board (TSBIE) evaluator marking a handwritten descriptive answer script.
 
