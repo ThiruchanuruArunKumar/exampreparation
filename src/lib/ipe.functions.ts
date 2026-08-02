@@ -4,7 +4,7 @@ import { generateText, Output } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { repairLatex } from "./latex-repair";
 import { SEED_SUBJECTS } from "./ipe-seed-data";
-import { createLovableAiGatewayProvider } from "./ai-gateway.server";
+import { createLovableAiGatewayProvider, getAiApiKey } from "./ai-gateway.server";
 import { blueprintForSubject, blueprintMaxMarks, sectionLabel } from "./ipe-blueprints";
 
 
@@ -572,7 +572,7 @@ async function generateIpeQuestionSet(opts: {
   /** e.g. "March 2023" — force the AI to reproduce that exact TS IPE session's paper */
   sessionHint?: string;
 }) {
-  const key = process.env.LOVABLE_API_KEY;
+  const key = getAiApiKey();
   if (!key) throw new Error("AI is not configured");
   const gateway = createLovableAiGatewayProvider(key, { structuredOutputs: true });
 
@@ -1382,7 +1382,7 @@ export const aiEvaluateIpeAnswerSheet = createServerFn({ method: "POST" })
     if (!questions.length) throw new Error("This exam has no questions to evaluate.");
     if (!pages.length) throw new Error("The student has not uploaded any answer sheet pages for this attempt.");
 
-    const key = process.env.LOVABLE_API_KEY;
+    const key = getAiApiKey();
     if (!key) throw new Error("AI is not configured");
     const gateway = createLovableAiGatewayProvider(key, { structuredOutputs: true });
 

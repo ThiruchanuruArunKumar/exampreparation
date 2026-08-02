@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { createLovableAiGatewayProvider } from "./ai-gateway.server";
+import { createLovableAiGatewayProvider, getAiApiKey } from "./ai-gateway.server";
 import { repairLatex } from "./latex-repair";
 import { stripNullBytes } from "./utils";
 
@@ -268,7 +268,7 @@ export const getOrGenerateExplanation = createServerFn({ method: "POST" })
       .eq("id", data.questionId)
       .single();
     if (!q) throw new Error("Question not found");
-    const key = process.env.LOVABLE_API_KEY;
+    const key = getAiApiKey();
     if (!key) throw new Error("AI not configured");
     const gateway = createLovableAiGatewayProvider(key);
     const { text } = await generateText({
@@ -862,8 +862,8 @@ Approximate format ratio: ~65% direct single-correct MCQ, ~20% Numerical/integer
 };
 
 async function runGenerateOnce(prompt: string, userContent: any[]) {
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) throw new Error("Missing LOVABLE_API_KEY");
+  const key = getAiApiKey();
+  if (!key) throw new Error("Missing AI API key");
   const gateway = createLovableAiGatewayProvider(key, { structuredOutputs: true });
   try {
     const { output } = await generateText({
@@ -1288,7 +1288,7 @@ export const adminGetAttemptExplanation = createServerFn({ method: "POST" })
       .eq("id", data.questionId)
       .single();
     if (!q) throw new Error("Question not found");
-    const key = process.env.LOVABLE_API_KEY;
+    const key = getAiApiKey();
     if (!key) throw new Error("AI not configured");
     const gateway = createLovableAiGatewayProvider(key);
     const { text } = await generateText({

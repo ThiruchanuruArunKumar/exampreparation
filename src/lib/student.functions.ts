@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { generateText, Output } from "ai";
-import { createLovableAiGatewayProvider } from "./ai-gateway.server";
+import { createLovableAiGatewayProvider, getAiApiKey } from "./ai-gateway.server";
 
 function shuffle<T>(a: T[]): T[] {
   const b = a.slice();
@@ -475,7 +475,7 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
       }
     }
     if (shortToGrade.length) {
-      const key = process.env.LOVABLE_API_KEY;
+      const key = getAiApiKey();
       if (key) {
         try {
           const gateway = createLovableAiGatewayProvider(key, { structuredOutputs: true });
@@ -554,7 +554,7 @@ export const submitStudentAttempt = createServerFn({ method: "POST" })
       recommendations: string;
     } | null = null;
     try {
-      const key = process.env.LOVABLE_API_KEY;
+      const key = getAiApiKey();
       if (key) {
         const topicStats = new Map<string, { correct: number; total: number }>();
         for (const g of graded) {
@@ -702,7 +702,7 @@ export const getStudentExplanation = createServerFn({ method: "POST" })
       .eq("id", data.questionId)
       .single();
     if (!q) throw new Error("Question not found");
-    const key = process.env.LOVABLE_API_KEY;
+    const key = getAiApiKey();
     if (!key) throw new Error("AI not configured");
     const gateway = createLovableAiGatewayProvider(key);
     const { text } = await generateText({
@@ -878,7 +878,7 @@ export const getHistoryExplanation = createServerFn({ method: "POST" })
       .eq("id", data.questionId)
       .single();
     if (!q) throw new Error("Question not found");
-    const key = process.env.LOVABLE_API_KEY;
+    const key = getAiApiKey();
     if (!key) throw new Error("AI not configured");
     const gateway = createLovableAiGatewayProvider(key);
     const { text } = await generateText({
