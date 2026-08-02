@@ -66,6 +66,17 @@ export function repairLatex(input: string | null | undefined): string {
   // Un-double escaped macros ("\\ce{" -> "\ce{") produced by JSON round-trips.
   s = s.replace(/\\\\(?=[a-zA-Z])/g, "\\");
 
+  // Repair ASCII tab character (\t) corruptions before LaTeX keywords: \text, \times, \theta, \tan, \to, \tau, \triangle, \tilde
+  s = s.replace(/\t(ext|times|theta|tan|to|tau|triangle|tilde)/g, "\\$1");
+  s = s.replace(/\\ext\{/g, "\\text{");
+
+  // Repair corrupted unit strings produced by unescaped \text: e.g. 10extm/s -> 10\text{m/s}, 60extm -> 60\text{m}, 4exts -> 4\text{s}
+  s = s.replace(/(\d+)\s*ext\s*(\{([^}]+)\}|([a-zA-Z]+(?:\/[a-zA-Z]+)?(?:\^\d+)?))/g, (_m, num, _rest, unitInsideBraces, rawUnit) => {
+    const unit = unitInsideBraces || rawUnit;
+    return `${num}\\text{${unit}}`;
+  });
+
+
   // Fix invalid backslashes before plain chemical formulas like \NH3 -> NH3
   s = s.replace(/\\([A-Z][a-z0-9_+\-^\(\)]+)/g, (_m, inner) => {
     const valid = [
