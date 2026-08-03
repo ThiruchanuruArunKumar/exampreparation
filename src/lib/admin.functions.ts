@@ -649,12 +649,12 @@ const GenQuestionSchema = z.object({
   prompt: z.string(),
   options: z.array(z.string()).nullable(),
   correct_answer: z.array(z.string()),
-  marks: z.number().min(0).max(100),
+  marks: z.number(),
   topic: z.string().nullable(),
   difficulty: z.enum(["easy", "medium", "hard", "extreme"]),
   source_ref: z.string().nullable(),
 });
-const GenSchema = z.record(z.string(), z.any());
+const GenSchema = z.object({ questions: z.array(GenQuestionSchema) });
 
 type GenQuestion = z.infer<typeof GenQuestionSchema>;
 
@@ -864,24 +864,26 @@ async function runGenerateOnce(prompt: string, userContent: any[]): Promise<GenQ
   const key = getAiApiKey();
   if (!key) throw new Error("Missing AI API key");
 
-  const model = createGroqAiGatewayProvider(key, { structuredOutputs: true })("llama-3.3-70b-versatile");
+  const model = createGroqAiGatewayProvider(key, { structuredOutputs: true })("openai/gpt-oss-20b");
 
   try {
     const { output } = await generateText({
       model,
       output: Output.object({ schema: GenSchema }),
+      providerOptions: {
+        groq: {
+          reasoningEffort: "low",
+          structuredOutputs: true,
+          strictJsonSchema: true,
+        },
+      },
       instructions:
         prompt +
         "\n\nCRITICAL FORMATTING REQUIREMENT: You MUST return a JSON object containing a top-level key 'questions' with a JSON array of question objects.",
       messages: [{ role: "user", content: userContent as any }],
     });
 
-    let rawItems: any[] = [];
-    if (output && Array.isArray(output.questions)) {
-      rawItems = output.questions;
-    } else if (output && typeof output === "object") {
-      rawItems = Object.values(output).filter((v) => typeof v === "object" && v !== null);
-    }
+    const rawItems: any[] = output.questions;
 
     const normalized: GenQuestion[] = rawItems
       .map((item: any) => {
@@ -954,10 +956,7 @@ async function runGenerateExact(prompt: string, userContent: any[], count: numbe
   if (count <= CHUNK) {
     const p = sanitizePromptForCount(prompt, count);
     const c = sanitizeContentForCount(userContent, count);
-    accumulated = await runGenerateOnce(p, c).catch((err) => {
-      console.error("runGenerateExact single chunk failed:", err);
-      return [];
-    });
+    accumulated = await runGenerateOnce(p, c);
   } else {
     const chunks: number[] = [];
     let remaining = count;
@@ -989,17 +988,9 @@ async function runGenerateExact(prompt: string, userContent: any[], count: numbe
     accumulated = results.flat();
   }
 
-  // Sanitize latex formatting in generated questions
-  const cleaned = accumulated.map((q) => ({
-    ...fixMatchOptionsInQuestion(q),
-    prompt: repairLatex(q.prompt),
-    options: q.options?.map(repairLatex) ?? null,
-    correct_answer: q.correct_answer.map(repairLatex),
-  }));
-
   // Guarantee exact target count: if any chunk returned fewer items, run a top-up pass for the missing questions.
-  if (cleaned.length < count) {
-    const missing = count - cleaned.length;
+  if (accumulated.length < count) {
+    const missing = count - accumulated.length;
     const topUpPrompt = sanitizePromptForCount(prompt, missing);
     const topUpContent = [
       ...sanitizeContentForCount(userContent, missing),
@@ -1012,7 +1003,16 @@ async function runGenerateExact(prompt: string, userContent: any[], count: numbe
     accumulated = [...accumulated, ...extra];
   }
 
-  return accumulated.slice(0, count);
+  if (!accumulated.length) {
+    throw new Error("AI did not return any questions. Please retry with a smaller count.");
+  }
+
+  return accumulated.slice(0, count).map((q) => ({
+    ...fixMatchOptionsInQuestion(q),
+    prompt: repairLatex(q.prompt),
+    options: q.options?.map(repairLatex) ?? null,
+    correct_answer: q.correct_answer.map(repairLatex),
+  }));
 }
 
 

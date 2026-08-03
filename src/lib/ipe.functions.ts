@@ -516,7 +516,7 @@ const AiIpeQuestionSchema = z.object({
   question_type: z.enum(["very_short_answer", "short_answer", "long_answer"]),
   question_text: z.string(),
   expected_answer: z.string(),
-  marks: z.number().int().min(1).max(12),
+  marks: z.number(),
   source_year: z.string().nullable(),
 });
 const AiIpeBatchSchema = z.object({ questions: z.array(AiIpeQuestionSchema) });
@@ -586,15 +586,24 @@ async function generateIpeQuestionSet(opts: {
       const { output } = await generateText({
         model: gateway("openai/gpt-oss-20b"),
         output: Output.object({ schema: AiIpeBatchSchema }),
+        providerOptions: {
+          groq: {
+            reasoningEffort: "low",
+            structuredOutputs: true,
+            strictJsonSchema: true,
+          },
+        },
         instructions: ipeGenInstructions(opts.generationType, opts.toughness),
         prompt: `Subject: ${opts.subjectName} (TS Intermediate ${opts.year.replace("_", " ")})
 Chapters to cover${opts.chapterNames.length ? "" : " (whole syllabus)"}: ${opts.chapterNames.length ? opts.chapterNames.join("; ") : "all prescribed chapters"}
 ${opts.sessionHint ? `\nTARGET SESSION: reproduce the questions of the actual TS IPE ${opts.sessionHint} ${opts.subjectName} paper as faithfully as you can. Set source_year to "${opts.sessionHint}" on every question.\n` : ""}
 Produce EXACTLY ${opts.counts[t]} questions of type "${t}" worth ${marksFor(t)} marks each. Spread them evenly across the listed chapters and do not repeat a question.`,
       });
-      return output.questions
+      const questions = output.questions
         .slice(0, opts.counts[t])
         .map((q) => ({ ...q, question_type: t, marks: marksFor(t), source_year: opts.sessionHint ?? q.source_year }));
+      if (!questions.length) throw new Error(`AI returned no ${t.replaceAll("_", " ")} questions.`);
+      return questions;
     }),
   );
 
