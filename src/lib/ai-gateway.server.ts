@@ -1,4 +1,4 @@
-import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
+import { createGroq } from "@ai-sdk/groq";
 import fs from "fs";
 import path from "path";
 
@@ -39,44 +39,20 @@ export function getAiApiKey(): string {
   return "";
 }
 
-/**
- * All AI text and JSON generation via Groq API ONLY (https://api.groq.com/openai/v1).
- * Maps models to Groq's top 70B parameter models (llama-3.3-70b-versatile and deepseek-r1-distill-llama-70b).
- */
+/** Groq text generation with native structured-output support. */
 export function createGroqAiGatewayProvider(
   apiKey?: string,
-  options?: { structuredOutputs?: boolean },
+  _options?: { structuredOutputs?: boolean },
 ) {
   const key = apiKey && apiKey.trim().length > 0 ? apiKey : getAiApiKey();
-  const groq = createOpenAICompatible({
-    name: "groq",
-    baseURL: "https://api.groq.com/openai/v1",
+  const groq = createGroq({
     apiKey: key,
-    supportsStructuredOutputs: false,
   });
 
-  const flagshipModel = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
-  const reasoningModel = process.env.GROQ_REASONING_MODEL || "deepseek-r1-distill-llama-70b";
-
   return (modelId: string) => {
-    // If explicit Groq model ID is provided, use it directly
-    if (
-      modelId === "llama-3.3-70b-versatile" ||
-      modelId === "deepseek-r1-distill-llama-70b" ||
-      modelId === "qwen-2.5-coder-32b" ||
-      modelId === "llama-3.1-8b-instant" ||
-      modelId === "mixtral-8x7b-32768" ||
-      modelId === "llama-3.2-11b-vision-preview"
-    ) {
-      return groq(modelId);
-    }
-
-    // Map all generic or legacy requests to Groq's top 70B models:
-    let resolvedModel = flagshipModel;
-    if (!options?.structuredOutputs && (modelId.includes("sol") || modelId.includes("reasoning"))) {
-      resolvedModel = reasoningModel;
-    }
-
+    const resolvedModel = modelId.startsWith("openai/gpt-oss-")
+      ? modelId
+      : process.env.GROQ_MODEL || "openai/gpt-oss-20b";
     return groq(resolvedModel);
   };
 }
