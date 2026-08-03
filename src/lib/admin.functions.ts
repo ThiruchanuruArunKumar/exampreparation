@@ -967,23 +967,29 @@ async function runGenerateExact(prompt: string, userContent: any[], count: numbe
     }
 
     const results: GenQuestion[][] = [];
-    for (let i = 0; i < chunks.length; i++) {
-      const n = chunks[i];
-      const chunkPrompt = sanitizePromptForCount(prompt, n);
-      const cleanedUserContent = sanitizeContentForCount(userContent, n);
-      const chunkContent = [
-        ...cleanedUserContent,
-        {
-          type: "text",
-          text: `Batch ${i + 1} of ${chunks.length}. Produce exactly ${n} questions for THIS batch only. Vary topics/difficulty from other batches; do not repeat questions. Use a distinct random seed: ${Math.random().toString(36).slice(2, 10)}.`,
-        },
-      ];
-      try {
-        const qs = await runGenerateOnce(chunkPrompt, chunkContent);
-        results.push(qs.slice(0, n));
-      } catch (err) {
-        console.error(`runGenerateExact batch ${i + 1} failed:`, err);
-      }
+    const CONCURRENCY = 2;
+    for (let start = 0; start < chunks.length; start += CONCURRENCY) {
+      const wave = chunks.slice(start, start + CONCURRENCY);
+      const settled = await Promise.allSettled(
+        wave.map(async (n, offset) => {
+          const batchIndex = start + offset;
+          const chunkPrompt = sanitizePromptForCount(prompt, n);
+          const cleanedUserContent = sanitizeContentForCount(userContent, n);
+          const chunkContent = [
+            ...cleanedUserContent,
+            {
+              type: "text",
+              text: `Batch ${batchIndex + 1} of ${chunks.length}. Produce exactly ${n} questions for THIS batch only. Vary topics and difficulty; do not repeat questions.`,
+            },
+          ];
+          const questions = await runGenerateOnce(chunkPrompt, chunkContent);
+          return questions.slice(0, n);
+        }),
+      );
+      settled.forEach((result, offset) => {
+        if (result.status === "fulfilled") results.push(result.value);
+        else console.error(`runGenerateExact batch ${start + offset + 1} failed:`, result.reason);
+      });
     }
     accumulated = results.flat();
   }

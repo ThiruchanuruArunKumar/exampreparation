@@ -759,7 +759,9 @@ export const bulkFillIpeQuestionBank = createServerFn({ method: "POST" })
 
     let inserted = 0;
     const failures: string[] = [];
-    const CONCURRENCY = 4;
+    // Each chapter can produce three model calls, so two chapter jobs already
+    // create up to six concurrent requests. Keep this bounded to avoid Groq 429s.
+    const CONCURRENCY = 2;
     for (let i = 0; i < jobs.length; i += CONCURRENCY) {
       const slice = jobs.slice(i, i + CONCURRENCY);
       await Promise.all(
